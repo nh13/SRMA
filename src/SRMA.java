@@ -46,7 +46,7 @@ public class SRMA extends CommandLineProgram {
 
         for (final SAMRecord rec : in) {
             try {
-                graph.update(rec);
+                graph.addSAMRecord(rec);
             } catch (Exception e) {
                 System.err.println("Error!");
                 System.err.println(e.toString());

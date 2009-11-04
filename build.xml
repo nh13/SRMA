@@ -30,7 +30,7 @@
 
 	<target name="compile" depends="init">
 		<mkdir dir="${classes}"/>
-		<javac srcdir="${src}" destdir="${classes}">
+		<javac srcdir="${src}" destdir="${classes}" debug="on" debuglevel="lines,vars,source">
 			<classpath refid="sam-jdk.path"/>
 			<classpath refid="picard-jdk.path"/>
 			<classpath refid="classpath"/>
