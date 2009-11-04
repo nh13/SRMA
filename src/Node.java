@@ -5,26 +5,26 @@ package srma;
 
 import java.io.*;
 import java.util.*;
-
+    
 public class Node {
-    public enum NodeType {
-        MATCH, MISMATCH, INSERTION, DELETION }
 
-    char base; // [acgtnACGTN]
+    public enum NodeType { MATCH, MISMATCH, INSERTION, DELETION }
+
+    byte base; // [acgtnACGTN]
     NodeType type;
     int contig;
     int position;
-    Set<Node> next; // downstream nodes
-    Set<Node> prev; // upstream nodes
+    List<Node> next; // downstream nodes
+    List<Node> prev; // upstream nodes
 
-    public Node(char base, NodeType type, int contig, int position, Node node)
+    public Node(byte base, NodeType type, int contig, int position, Node node)
     {
         this.base = base;
         this.type = type;
         this.contig = contig;
         this.position = position;
-        this.next = new HashSet<Node>();
-        this.prev = new HashSet<Node>();
+        this.next = new ArrayList<Node>();
+        this.prev = new ArrayList<Node>();
     }
 
     public void addToNext(Node node)
