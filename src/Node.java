@@ -17,7 +17,7 @@ public class Node {
     List<Node> next; // downstream nodes
     List<Node> prev; // upstream nodes
 
-    public Node(byte base, NodeType type, int contig, int position, Node node)
+    public Node(byte base, NodeType type, int contig, int position, Node prev)
     {
         this.base = base;
         this.type = type;
@@ -25,6 +25,7 @@ public class Node {
         this.position = position;
         this.next = new ArrayList<Node>();
         this.prev = new ArrayList<Node>();
+        addToPrev(prev);
     }
 
     public void addToNext(Node node)
