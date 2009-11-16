@@ -13,7 +13,7 @@ public class Graph {
     int contig;
     int position_start;
     int position_end;
-    List<Node> referenceNodes;
+    Vector<Node> referenceNodes;
     SAMFileHeader header;
     List<ReferenceSequence> sequences;
 
@@ -24,7 +24,7 @@ public class Graph {
         this.contig = 0;
         this.position_start = -1;
         this.position_end = -1;
-        referenceNodes = new ArrayList<Node>(); 
+        referenceNodes = new Vector<Node>(); 
     }
 
     public void addSAMRecord(SAMRecord record) throws Exception
@@ -34,10 +34,8 @@ public class Graph {
         // Get the alignment
         alignment = new Alignment(record);
 
-        /*
-        System.out.println("refr:" + new String(alignment.reference));
-        System.out.println("read:" + new String(alignment.read));
-        */
+        // System.out.println("refr:" + new String(alignment.reference));
+        // System.out.println("read:" + new String(alignment.read));
 
         int i, j, ref_i, seq_i;
         Node prev=null, cur=null;
@@ -60,6 +58,10 @@ public class Graph {
                     }
                 }
                 if(null == cur) { // No such insertion
+                    if(null == prev) {
+                        // This could throw an exception if the vector does not have the prev base
+                        prev = this.referenceNodes.get(record.getAlignmentStart() - position_start); 
+                    }
                     cur = new Node(alignment.read[i],
                             Node.NodeType.INSERTION,
                             prev.contig,
@@ -91,27 +93,64 @@ public class Graph {
             assert null != cur;
             if(null != prev 
                     && prev != cur) {
-                if(!prev.next.contains(cur)) {
-                    prev.next.add(cur);
-                }
-                if(!cur.prev.contains(cur)) {
-                    cur.prev.add(prev);
-                }
+                prev.addToNext(cur);
+                cur.addToPrev(prev);
                 fixReverseInsertion(cur);
             }
             prev = cur;
         }
     }
 
-    private Node insertMatch(byte base, int contig, int position, Node node)
+    private Node insertMatch(byte base, int contig, int position, Node prev)
     {
+        Node cur;
         // TODO
-        return null;
+        
+        if(contig != this.contig || this.position_end < position) { // Not within the range
+            cur = new Node(base, Node.NodeType.MATCH, contig, position, prev);
+
+            if(contig != this.contig) {
+                // TODO: destroy the graph
+            }
+
+            assert this.position_start <= position;
+
+            if(this.referenceNodes.isEmpty()) {
+                this.position_start = position;
+                if(0 == this.referenceNodes.size()) {
+                    this.referenceNodes.setSize(1);
+                }
+                this.referenceNodes.add(0, cur);
+            }
+            else {
+                if(this.referenceNodes.size() < position - this.position_start + 1) {
+                    this.referenceNodes.setSize(position - this.position_start + 1);
+                }
+                this.referenceNodes.add(position - this.position_start, cur);
+            }
+            this.contig = contig;
+            this.position_end = position;
+        }
+        else {
+            cur = this.referenceNodes.get(position - this.position_start);
+            if(null == cur) {
+                cur = new Node(base, Node.NodeType.MATCH, contig, position, prev);
+                if(this.referenceNodes.size() < position - this.position_start + 1) {
+                    this.referenceNodes.setSize(position - this.position_start + 1);
+                }
+                this.referenceNodes.add(position - this.position_start, cur);
+            }
+            else {
+                cur.addToPrev(prev);
+            }
+        }
+        return cur;
     }
 
     private void fixReverseInsertion(Node node)
     {
         // TODO
+        // Ignore for now since this is computationally expensive
     }
 
     // Inner class
