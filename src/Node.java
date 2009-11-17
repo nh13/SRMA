@@ -8,16 +8,19 @@ import java.util.*;
     
 public class Node {
 
-    public enum NodeType { MATCH, MISMATCH, INSERTION, DELETION }
+    public static final int MATCH       = 0;
+    public static final int MISMATCH    = 0;
+    public static final int INSERTION   = 0;
+    public static final int DELETION    = 0;
 
     byte base; // [acgtnACGTN]
-    NodeType type;
+    int type;
     int contig;
     int position;
     List<Node> next; // downstream nodes
     List<Node> prev; // upstream nodes
 
-    public Node(byte base, NodeType type, int contig, int position, Node prev)
+    public Node(byte base, int type, int contig, int position, Node prev)
     {
         this.base = base;
         this.type = type;
