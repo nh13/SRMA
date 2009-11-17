@@ -43,16 +43,32 @@ public class SRMA extends CommandLineProgram {
         } while(null != referenceSequence);
 
         Graph graph = new Graph(header, referenceSequences);
+        LinkedList<SAMRecord> recordQueue = new LinkedList<SAMRecord>();
 
         for (final SAMRecord rec : in) {
+            // TODO: Make sure that it is sorted
             try {
-                graph.addSAMRecord(rec);
+                // Add it to the queue
+                recordQueue.add(rec);
+
+                // Add only if it is from the same contig
+                if(graph.contig == rec.getReferenceIndex()) {
+                    graph.addSAMRecord(rec);
+                }
+
+                // Process
+                // TODO:
+
+                // Add...
+                if(graph.contig != rec.getReferenceIndex()) {
+                    graph.addSAMRecord(rec);
+                }
             } catch (Exception e) {
-                System.err.println("Error!");
                 System.err.println(e.toString());
                 e.printStackTrace();
                 System.exit(1);
             }
+
         }
 
         /*

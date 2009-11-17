@@ -53,7 +53,7 @@ public class Graph {
                 assert Alignment.GAP != alignment.read[i];
                 for(cur=null,j=0;null != prev && j < prev.next.size();j++) {
                     Node tmpNode = prev.next.get(j);
-                    if(Node.NodeType.MATCH != tmpNode.type) {
+                    if(Node.MATCH != tmpNode.type) {
                         cur = tmpNode;
                     }
                 }
@@ -63,7 +63,7 @@ public class Graph {
                         prev = this.referenceNodes.get(record.getAlignmentStart() - position_start); 
                     }
                     cur = new Node(alignment.read[i],
-                            Node.NodeType.INSERTION,
+                            Node.INSERTION,
                             prev.contig,
                             prev.position,
                             prev);
@@ -85,7 +85,7 @@ public class Graph {
             }
             else { // mismatch
                 cur = new Node(alignment.read[i],
-                            Node.NodeType.MISMATCH,
+                            Node.MISMATCH,
                             record.getReferenceIndex(),
                             record.getAlignmentStart() + ref_i,
                             prev);
@@ -101,16 +101,49 @@ public class Graph {
         }
     }
 
+    private void destroy()
+    {
+        int i;
+        Node node;
+        for(i=0;i<this.referenceNodes.size();i++) {
+            node = this.referenceNodes.get(i);
+            destroyNode(node);
+        }
+
+        this.contig = 0;
+        this.position_start = this.position_end = -1;
+        this.referenceNodes.clear();
+    }
+
+    private void destroyNode(Node node)
+    {
+        ListIterator iter;
+        Node n;
+
+        // Clear the previous list
+        iter = node.prev.listIterator();
+        node.prev.clear();
+
+        // Clear the next list
+        iter = node.next.listIterator();
+        while(iter.hasNext()) {
+            n = (Node)iter.next();
+            if(Node.MATCH != n.type) {
+                destroyNode(n);
+            }
+        }
+        node.next.clear();
+    }
+
     private Node insertMatch(byte base, int contig, int position, Node prev)
     {
         Node cur;
-        // TODO
         
         if(contig != this.contig || this.position_end < position) { // Not within the range
-            cur = new Node(base, Node.NodeType.MATCH, contig, position, prev);
+            cur = new Node(base, Node.MATCH, contig, position, prev);
 
             if(contig != this.contig) {
-                // TODO: destroy the graph
+                this.destroy();
             }
 
             assert this.position_start <= position;
@@ -134,7 +167,7 @@ public class Graph {
         else {
             cur = this.referenceNodes.get(position - this.position_start);
             if(null == cur) {
-                cur = new Node(base, Node.NodeType.MATCH, contig, position, prev);
+                cur = new Node(base, Node.MATCH, contig, position, prev);
                 if(this.referenceNodes.size() < position - this.position_start + 1) {
                     this.referenceNodes.setSize(position - this.position_start + 1);
                 }
