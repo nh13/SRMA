@@ -68,8 +68,10 @@ public class SRMA extends CommandLineProgram {
                 e.printStackTrace();
                 System.exit(1);
             }
-
         }
+
+        // DEBUGGING
+        graph.print();
 
         /*
            final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);

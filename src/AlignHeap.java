@@ -21,18 +21,16 @@ public class AlignHeap {
 
     public void insert(AlignHeapNode heapNode) 
     {
-        // TODO
+        this.queue.add(heapNode);
     }
 
     public AlignHeapNode remove()
     {
-        // TODO
-        return null;
+        return this.queue.poll();
     }
 
     public AlignHeapNode peek()
     {
-        // TODO
-        return null;
+        return this.queue.peek();
     }
 }
