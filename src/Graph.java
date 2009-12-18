@@ -10,8 +10,8 @@ import java.util.*;
 import srma.Node;
 
 public class Graph {
-    int contig;
-    int position_start;
+    int contig; // one based
+    int position_start; // one based
     int position_end;
     Vector<Node> referenceNodes;
     SAMFileHeader header;
@@ -21,8 +21,8 @@ public class Graph {
     {
         this.header = header;
         this.sequences = sequences;
-        this.contig = 0;
-        this.position_start = -1;
+        this.contig = 0; 
+        this.position_start = -1; 
         this.position_end = -1;
         referenceNodes = new Vector<Node>(); 
     }
@@ -40,6 +40,10 @@ public class Graph {
         int i, j, ref_i, seq_i;
         Node prev=null, cur=null;
 
+        if(this.position_start <= record.getAlignmentStart() && record.getAlignmentStart() <= this.position_end) {
+            prev = referenceNodes.get(record.getAlignmentStart() - this.position_start);
+        }
+
         for(i=ref_i=seq_i=0;i<alignment.length;i++) { // go through the alignment
             // TODO: lower/upper case?
             if(alignment.read[i] == alignment.reference[i]) { // match
@@ -51,10 +55,14 @@ public class Graph {
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
                 assert Alignment.GAP != alignment.read[i];
+                // check if the insertion exists
                 for(cur=null,j=0;null != prev && j < prev.next.size();j++) {
                     Node tmpNode = prev.next.get(j);
-                    if(Node.MATCH != tmpNode.type) {
+                    if(Node.INSERTION == tmpNode.type &&
+                            alignment.read[i] == tmpNode.base) {
                         cur = tmpNode;
+                        cur.coverage++;
+                        break; // Found one
                     }
                 }
                 if(null == cur) { // No such insertion
@@ -66,13 +74,13 @@ public class Graph {
                             Node.INSERTION,
                             prev.contig,
                             prev.position,
+                            prev.offset+1,
                             prev);
                 }
                 seq_i++;
             }
             else if(alignment.read[i] == Alignment.GAP) { // deletion
                 assert Alignment.GAP != alignment.read[i];
-                ref_i++;
                 cur = prev;
                 // Skip over deletion.  Note: impossible to end with a deletion.
                 while(Alignment.GAP == alignment.read[i]) {
@@ -84,13 +92,15 @@ public class Graph {
                 i--;
             }
             else { // mismatch
+                // TODO check mismatch does not exist
                 cur = new Node(alignment.read[i],
                             Node.MISMATCH,
                             record.getReferenceIndex(),
                             record.getAlignmentStart() + ref_i,
+                            0,
                             prev);
+                ref_i++; seq_i++;
             }
-            assert null != cur;
             if(null != prev 
                     && prev != cur) {
                 prev.addToNext(cur);
@@ -138,9 +148,9 @@ public class Graph {
     private Node insertMatch(byte base, int contig, int position, Node prev)
     {
         Node cur;
-        
+
         if(contig != this.contig || this.position_end < position) { // Not within the range
-            cur = new Node(base, Node.MATCH, contig, position, prev);
+            cur = new Node(base, Node.MATCH, contig, position, 0, prev);
 
             if(contig != this.contig) {
                 this.destroy();
@@ -167,15 +177,14 @@ public class Graph {
         else {
             cur = this.referenceNodes.get(position - this.position_start);
             if(null == cur) {
-                cur = new Node(base, Node.MATCH, contig, position, prev);
+                System.out.println("NULL !\n");
+                cur = new Node(base, Node.MATCH, contig, position, 0, prev);
                 if(this.referenceNodes.size() < position - this.position_start + 1) {
                     this.referenceNodes.setSize(position - this.position_start + 1);
                 }
-                this.referenceNodes.add(position - this.position_start, cur);
+                referenceNodes.set(position - this.position_start, cur);
             }
-            else {
-                cur.addToPrev(prev);
-            }
+            cur.coverage++;
         }
         return cur;
     }
@@ -184,6 +193,33 @@ public class Graph {
     {
         // TODO
         // Ignore for now since this is computationally expensive
+    }
+
+    public void print()
+    {
+        System.out.println((1+contig)+":"+position_start+"-"+position_end);
+
+        PriorityQueue<Node> queue;
+        ListIterator<Node> iter;
+
+        queue = new PriorityQueue<Node>(10, new NodeComparator());
+        Node node = (Node)referenceNodes.get(0);
+        if(null != node) {
+            queue.add(node);
+        }
+
+        // BFS
+        while(null != queue.peek()) {
+            node = queue.poll();
+            node.print();
+            iter = node.next.listIterator();
+            while(iter.hasNext()) {
+                Node next = iter.next();
+                if(!queue.contains(next)) {
+                    queue.add(next);
+                }
+            }
+        }
     }
 
     // Inner class
