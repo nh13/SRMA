@@ -13,18 +13,31 @@ public class AlignHeapNode {
     public static final byte COLORSPACE_ADAPTOR = 'A';
     public static final byte DNA[] = {'A', 'C', 'G', 'T', 'N'};
 
+    AlignHeapNode prev; // previous
     Node node;
     int readOffset; // # of bases from the beginning of the read
     int score; // alignment score
     int startPosition; // zero based
     Space space;
 
+    /* 
+     * Creates a heap node
+     * @param prev The previous node, null otherwise.
+     * @param curNode The current node in the graph.
+     * @param base The base (or color) in the read.
+     * @param qual The base (or color) quality in the read.
+     * @param space The space of the alignment.
+     * */
     public AlignHeapNode(AlignHeapNode prev,
             Node curNode,
             byte base,
             byte qual,
             Space space) throws Exception 
     {
+        if(null == curNode) {
+            throw new Exception("Error.  curNode was null");
+        }
+
         this.node = curNode;
         this.space = space;
 
@@ -35,6 +48,7 @@ public class AlignHeapNode {
             this.readOffset = 0;
             this.score = 0;
             this.startPosition = curNode.position;
+            this.prev = null;
         }
         else {
             assert(prev.space == space);
@@ -44,6 +58,7 @@ public class AlignHeapNode {
             this.readOffset = prev.readOffset + 1;
             this.score = prev.score;
             this.startPosition = prev.startPosition;
+            this.prev = prev;
         }
 
         this.score += (base == curNode.base) ? 0 : -1*CHAR2QUAL(qual); 

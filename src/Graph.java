@@ -177,7 +177,6 @@ public class Graph {
         else {
             cur = this.referenceNodes.get(position - this.position_start);
             if(null == cur) {
-                System.out.println("NULL !\n");
                 cur = new Node(base, Node.MATCH, contig, position, 0, prev);
                 if(this.referenceNodes.size() < position - this.position_start + 1) {
                     this.referenceNodes.setSize(position - this.position_start + 1);

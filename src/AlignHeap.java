@@ -15,16 +15,16 @@ public class AlignHeap {
 
     public AlignHeap(HeapType type)
     {
-        this.queue = new PriorityQueue<AlignHeapNode>(0, new AlignHeapNodeComparator(type));
+        this.queue = new PriorityQueue<AlignHeapNode>(1, new AlignHeapNodeComparator(type));
         this.type = type;
     }
 
-    public void insert(AlignHeapNode heapNode) 
+    public void add(AlignHeapNode heapNode) 
     {
         this.queue.add(heapNode);
     }
 
-    public AlignHeapNode remove()
+    public AlignHeapNode poll()
     {
         return this.queue.poll();
     }
@@ -32,5 +32,10 @@ public class AlignHeap {
     public AlignHeapNode peek()
     {
         return this.queue.peek();
+    }
+    
+    public int size()
+    {
+        return this.queue.size();
     }
 }

@@ -3,6 +3,8 @@
  */
 package srma;
 
+import srma.Align;
+
 import net.sf.samtools.*;
 import net.sf.picard.cmdline.*;
 import net.sf.picard.io.IoUtil;
@@ -23,11 +25,17 @@ public class SRMA extends CommandLineProgram {
         new SRMA().instanceMain(args);
     }
 
+    /*
+     * Current assumptions:
+     * - single contig
+     * - can fit entire partial order graph in memory
+     * - SAM entries are on the forward strand
+     * */
     protected int doWork() {
         List<ReferenceSequence> referenceSequences = new ArrayList();
                 
         IoUtil.assertFileIsReadable(INPUT);
-        final SAMFileReader in = new SAMFileReader(INPUT);
+        SAMFileReader in = new SAMFileReader(INPUT);
         final SAMFileHeader header = in.getFileHeader();
 
         // Get references
@@ -43,14 +51,10 @@ public class SRMA extends CommandLineProgram {
         } while(null != referenceSequence);
 
         Graph graph = new Graph(header, referenceSequences);
-        LinkedList<SAMRecord> recordQueue = new LinkedList<SAMRecord>();
 
         for (final SAMRecord rec : in) {
             // TODO: Make sure that it is sorted
             try {
-                // Add it to the queue
-                recordQueue.add(rec);
-
                 // Add only if it is from the same contig
                 if(graph.contig == rec.getReferenceIndex()) {
                     graph.addSAMRecord(rec);
@@ -61,7 +65,8 @@ public class SRMA extends CommandLineProgram {
 
                 // Add...
                 if(graph.contig != rec.getReferenceIndex()) {
-                    graph.addSAMRecord(rec);
+                    throw new Exception("Error.  Multiple contigs not supported.");
+                    //graph.addSAMRecord(rec);
                 }
             } catch (Exception e) {
                 System.err.println(e.toString());
@@ -69,10 +74,29 @@ public class SRMA extends CommandLineProgram {
                 System.exit(1);
             }
         }
+        in.close();
 
         // DEBUGGING
-        graph.print();
+        //graph.print();
 
+        /* Align sam records */
+        in = new SAMFileReader(INPUT);
+        //final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
+        for (final SAMRecord rec : in) {
+            // TODO: Make sure that it is sorted
+            try {
+                // Align the data
+                //out.addAlignment(rec);
+                Align align = new Align(graph, rec);
+            } catch (Exception e) {
+                System.err.println(e.toString());
+                e.printStackTrace();
+                System.exit(1);
+            }
+        }
+        in.close();
+        //out.close();
+        
         /*
            final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
            for (final SAMRecord rec : in) {
