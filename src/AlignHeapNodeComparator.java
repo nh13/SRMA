@@ -18,6 +18,7 @@ public class AlignHeapNodeComparator implements Comparator {
         AlignHeapNode a = (AlignHeapNode)o1;
         AlignHeapNode b = (AlignHeapNode)o2;
 
+        // compare: contig, position, read offset, type, and base
         if(null == a ||
                 a.node.contig < b.node.contig ||
                 (a.node.contig == b.node.contig &&
