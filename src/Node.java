@@ -10,14 +10,14 @@ public class Node {
 
     public static final int MATCH       = 0;
     public static final int MISMATCH    = 1;
-    public static final int INSERTION   = 2;
-    public static final int DELETION    = 3;
+    public static final int INSERTION   = 2; // into the read
+    public static final int DELETION    = 3; // from the read
 
     byte base; // [acgtnACGTN]
     int type;
     int contig;
-    int position;
-    int offset;
+    int position; // one-based
+    int offset; // for insertions
     int coverage;
     List<Node> next; // downstream nodes
     List<Node> prev; // upstream nodes
