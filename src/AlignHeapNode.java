@@ -17,7 +17,8 @@ public class AlignHeapNode {
     Node node;
     int readOffset; // # of bases from the beginning of the read
     int score; // alignment score
-    int startPosition; // zero based
+    int startPosition; // one-based
+    int alignmentLength; // alignment length
     Space space;
 
     /* 
@@ -48,6 +49,7 @@ public class AlignHeapNode {
             this.readOffset = 0;
             this.score = 0;
             this.startPosition = curNode.position;
+            this.alignmentLength = 1;
             this.prev = null;
         }
         else {
@@ -58,6 +60,7 @@ public class AlignHeapNode {
             this.readOffset = prev.readOffset + 1;
             this.score = prev.score;
             this.startPosition = prev.startPosition;
+            this.alignmentLength = prev.alignmentLength + 1;
             this.prev = prev;
         }
 

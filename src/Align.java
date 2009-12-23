@@ -9,7 +9,7 @@ import srma.*;
 
 public class Align {
 
-    public Align(Graph graph, SAMRecord rec)
+    public Align(Graph graph, SAMRecord rec, int offset)
         throws Exception
     {
         if(rec.getReadNegativeStrandFlag()) {
@@ -18,11 +18,11 @@ public class Align {
         }
         else {
             // Forward
-            AlignForwardStrand(graph, rec);
+            AlignForwardStrand(graph, rec, offset);
         }
     }
 
-    private void AlignForwardStrand(Graph graph, SAMRecord rec)
+    private void AlignForwardStrand(Graph graph, SAMRecord rec, int offset)
         throws Exception
     {
         Node startNode=null;
@@ -36,7 +36,7 @@ public class Align {
         AlignHeapNode.Space space=AlignHeapNode.Space.NTSPACE;
         ListIterator<Node> iter=null;
         AlignHeapNodeComparator comp;
-
+        int alignmentStart = rec.getAlignmentStart();
 
         assert AlignHeapNode.Space.COLORSPACE != space;
         // TODO:
@@ -57,7 +57,13 @@ public class Align {
 
         heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); // should be set based on strand
         comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); // should be set based on strand
-        heap.add(new AlignHeapNode(null, graph.referenceNodes.get(0), readBases[0], readQualities[0], space));
+
+        // Add first node - should be set based on strand
+        heap.add(new AlignHeapNode(null, 
+                    graph.getReferenceNode(alignmentStart - offset),
+                    readBases[0], 
+                    readQualities[0], 
+                    space));
 
         while(null != heap.peek()) {
             curAlignHeapNode = heap.poll();
@@ -97,10 +103,20 @@ public class Align {
                 iter = curAlignHeapNode.node.next.listIterator();
                 while(iter.hasNext()) {
                     nextNode = iter.next();
-                    heap.add(new AlignHeapNode(curAlignHeapNode, nextNode, readBases[curAlignHeapNode.readOffset+1], readQualities[curAlignHeapNode.readOffset+1], space));
+                    heap.add(new AlignHeapNode(curAlignHeapNode, 
+                                nextNode, 
+                                readBases[curAlignHeapNode.readOffset+1], 
+                                readQualities[curAlignHeapNode.readOffset+1], 
+                                space));
                     // Add a start node
-                    // TODO: should be conditioned on start etc.
-                    //heap.add(new AlignHeapNode(null, nextNode, readBases[0], readQualities[0], space));
+                    // TODO should be conditioned on strand
+                    if(nextNode.position <= alignmentStart + offset) {
+                        heap.add(new AlignHeapNode(null, 
+                                    nextNode, 
+                                    readBases[0], 
+                                    readQualities[0], 
+                                    space));
+                    }
                 }
                 iter=null;
             }
@@ -111,17 +127,94 @@ public class Align {
     }
 
     private void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode)
+        throws Exception
     {
         AlignHeapNode curAlignHeapNode;
+
+        int alignmentStart = 0;
+        byte read[]=null;
+        int readIndex=-1;
+        byte readBases[]=null;
+        
+        // To generate a new CIGAR
+        List<CigarElement> cigarElements=null;
+        CigarOperator prevCigarOperator=null, curCigarOperator=null;
+        int prevCigarOperatorLength=0;
+        
+        // TODO 
+        // setAttributes
+        // setInferredInsertSize (invalidates paired end reads)
+        // setMappingQuality (?)
+        // setFlag
+        // setReadBases (for color space)
+        //
+        //
+        // color errors
+        // do not use readBases in color space
+
+        readBases = rec.getReadBases();
+        readIndex = bestAlignHeapNode.alignmentLength-1;
+        read = new byte[readIndex+1];
+        cigarElements = new LinkedList<CigarElement>();
+        alignmentStart=bestAlignHeapNode.startPosition;
+
         // TODO
         assert null != bestAlignHeapNode;
         curAlignHeapNode = bestAlignHeapNode;
         while(null != curAlignHeapNode) {
-            curAlignHeapNode.node.print(System.out);
+            // Do stuff
+            //curAlignHeapNode.node.print(System.out);
+            switch(curAlignHeapNode.node.type) {
+                case Node.MATCH: /* Fall through */
+                case Node.MISMATCH:
+                    if(null == curAlignHeapNode.prev || curAlignHeapNode.prev.node.position == curAlignHeapNode.node.position-1) { 
+                        //System.out.println("M/MM");
+                        read[readIndex]=readBases[curAlignHeapNode.readOffset];
+                        curCigarOperator = CigarOperator.MATCH_OR_MISMATCH;
+                        readIndex--;
+                    }
+                    else {
+                        //System.out.println("DEL");
+                        curCigarOperator = CigarOperator.DELETION;
+                    }
+                    break;
+                case Node.INSERTION:
+                    //System.out.println("INS");
+                    read[readIndex]=readBases[curAlignHeapNode.readOffset];
+                    readIndex--;
+                    curCigarOperator = CigarOperator.INSERTION;
+                    break;
+                default:
+                    throw new Exception("Unknown Type");
+            }
+            if(null == prevCigarOperator) {
+                prevCigarOperator = curCigarOperator;
+                prevCigarOperatorLength=1;
+            }
+            else if(0 < prevCigarOperatorLength && prevCigarOperator != curCigarOperator) {
+                cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
+                prevCigarOperator = curCigarOperator;
+                prevCigarOperatorLength=1;
+            }
+            else {
+                prevCigarOperatorLength++;
+            }
+
             // Update
             curAlignHeapNode = curAlignHeapNode.prev;
         }
+        if(0 < prevCigarOperatorLength) {
+            cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
+        }
+
+        // Update SAM record
+        rec.setCigar(new Cigar(cigarElements));
+        System.out.println("rec.getAlignmentStart()="+rec.getAlignmentStart());
+        System.out.println("alignmentStart="+alignmentStart);
+        rec.setAlignmentStart(alignmentStart);
+        rec.setReadBases(read);
+        //rec.setAttributes(null);
+
         assert null != curAlignHeapNode; 
-        System.out.println("************************");
     }
 }

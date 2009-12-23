@@ -15,11 +15,15 @@ import java.util.*;
 
 public class SRMA extends CommandLineProgram { 
 
+    public static final String OFFSET_SHORT_NAME = "O"; 
+
     @Usage public final String USAGE = getStandardUsagePreamble() + "Prints a SAM or BAM file to the screen.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The SAM or BAM file to view.")
         public File INPUT;
     @Option(shortName=StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference FASTA file.")
         public File REFERENCE;
+    @Option(shortName=OFFSET_SHORT_NAME, doc="The alignment offset.")
+        public int OFFSET=0;
 
     public static void main(final String[] args) {
         new SRMA().instanceMain(args);
@@ -77,17 +81,18 @@ public class SRMA extends CommandLineProgram {
         in.close();
 
         // DEBUGGING
-        //graph.print();
+        graph.print();
 
         /* Align sam records */
         in = new SAMFileReader(INPUT);
-        //final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
+        final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
         for (final SAMRecord rec : in) {
             // TODO: Make sure that it is sorted
             try {
                 // Align the data
-                //out.addAlignment(rec);
-                Align align = new Align(graph, rec);
+                out.addAlignment(rec);
+                Align align = new Align(graph, rec, OFFSET);
+                out.addAlignment(rec);
             } catch (Exception e) {
                 System.err.println(e.toString());
                 e.printStackTrace();
@@ -95,7 +100,7 @@ public class SRMA extends CommandLineProgram {
             }
         }
         in.close();
-        //out.close();
+        out.close();
         
         /*
            final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
