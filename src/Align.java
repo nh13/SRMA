@@ -31,8 +31,8 @@ public class Align {
         AlignHeapNode nextAlignHeapNode=null;
         AlignHeapNode bestAlignHeapNode=null;
         AlignHeap heap=null;
-        byte readBases[]=null;
-        byte readQualities[]=null;
+        byte read[]=null;
+        byte qualities[]=null;
         AlignHeapNode.Space space=AlignHeapNode.Space.NTSPACE;
         ListIterator<Node> iter=null;
         AlignHeapNodeComparator comp;
@@ -46,13 +46,26 @@ public class Align {
         // - get colors and color qualities for COLORSPACE, must normalize colors to adaptor too
         // - recover alignment and print
 
-        readBases = rec.getReadBases();
-        if(readBases.length <= 0) {
-            throw new Exception("Error.  The current alignment has no bases.");
+
+        read = (byte[])rec.getAttribute("CS");
+        if(null == read) {
+            space = AlignHeapNode.Space.NTSPACE;
+            read = rec.getReadBases();
+            if(read.length <= 0) {
+                throw new Exception("Error.  The current alignment has no bases.");
+            }
+            qualities = rec.getBaseQualities();
+            if(qualities.length <= 0) {
+                throw new Exception("Error.  The current alignment has no qualities.");
+            }
         }
-        readQualities = rec.getBaseQualities();
-        if(readQualities.length <= 0) {
-            throw new Exception("Error.  The current alignment has no qualities.");
+        else {
+            AlignHeapNode.normalizeColorSpaceRead(read);
+            space = AlignHeapNode.Space.COLORSPACE;
+            qualities = (byte[])rec.getAttribute("CQ");
+            if(null == qualities) {
+                throw new Exception("Error.  The current color space alignment has no color qualities.");
+            }
         }
 
         heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); // should be set based on strand
@@ -61,17 +74,17 @@ public class Align {
         // Add first node - should be set based on strand
         heap.add(new AlignHeapNode(null, 
                     graph.getReferenceNode(alignmentStart - offset),
-                    readBases[0], 
-                    readQualities[0], 
+                    read[0], 
+                    qualities[0], 
                     space));
 
         while(null != heap.peek()) {
             curAlignHeapNode = heap.poll();
 
             /*
-            System.out.println("size:" + heap.size());
-            curAlignHeapNode.node.print();
-            */
+               System.out.println("size:" + heap.size());
+               curAlignHeapNode.node.print();
+               */
 
             // Remove all non-insertions with the same contig/pos/read offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
@@ -88,7 +101,7 @@ public class Align {
             }
             nextAlignHeapNode=null;
             // Check if the alignment is complete
-            if(curAlignHeapNode.readOffset == readBases.length - 1) {
+            if(curAlignHeapNode.readOffset == read.length - 1) {
                 // Complete, store if has the best alignment.
                 // TODO: must guarantee left-most alignment based on strand
                 if(null == bestAlignHeapNode || bestAlignHeapNode.score < curAlignHeapNode.score) {
@@ -98,30 +111,30 @@ public class Align {
             else {
                 // Based on strand etc.
                 // Assuming only forward for now
-                
+
                 // Go to all "next" nodes
                 iter = curAlignHeapNode.node.next.listIterator();
                 while(iter.hasNext()) {
                     nextNode = iter.next();
                     heap.add(new AlignHeapNode(curAlignHeapNode, 
                                 nextNode, 
-                                readBases[curAlignHeapNode.readOffset+1], 
-                                readQualities[curAlignHeapNode.readOffset+1], 
+                                read[curAlignHeapNode.readOffset+1], 
+                                qualities[curAlignHeapNode.readOffset+1], 
                                 space));
                     // Add a start node
                     // TODO should be conditioned on strand
                     if(nextNode.position <= alignmentStart + offset) {
                         heap.add(new AlignHeapNode(null, 
                                     nextNode, 
-                                    readBases[0], 
-                                    readQualities[0], 
+                                    read[0], 
+                                    qualities[0], 
                                     space));
                     }
                 }
                 iter=null;
             }
         }
-        
+
         // Recover alignment
         this.updateSAM(rec, bestAlignHeapNode);
     }
@@ -135,12 +148,12 @@ public class Align {
         byte read[]=null;
         int readIndex=-1;
         byte readBases[]=null;
-        
+
         // To generate a new CIGAR
         List<CigarElement> cigarElements=null;
         CigarOperator prevCigarOperator=null, curCigarOperator=null;
         int prevCigarOperatorLength=0;
-        
+
         // TODO 
         // setAttributes
         // setInferredInsertSize (invalidates paired end reads)
@@ -209,11 +222,19 @@ public class Align {
 
         // Update SAM record
         rec.setCigar(new Cigar(cigarElements));
-        System.out.println("rec.getAlignmentStart()="+rec.getAlignmentStart());
-        System.out.println("alignmentStart="+alignmentStart);
+        //System.out.println("rec.getAlignmentStart()="+rec.getAlignmentStart());
+        //System.out.println("alignmentStart="+alignmentStart);
         rec.setAlignmentStart(alignmentStart);
         rec.setReadBases(read);
-        //rec.setAttributes(null);
+        // Clear attributes
+        List<SAMRecord.SAMTagAndValue> atts = rec.getAttributes();
+        ListIterator<SAMRecord.SAMTagAndValue> attsIter = atts.listIterator();
+        while(attsIter.hasNext()) {
+            SAMRecord.SAMTagAndValue att = attsIter.next();
+            rec.setAttribute(att.tag, null);
+        }
+        // Set new attributes
+        rec.setAttribute("AS", bestAlignHeapNode.score);
 
         assert null != curAlignHeapNode; 
     }
