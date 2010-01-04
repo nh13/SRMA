@@ -33,15 +33,14 @@ public class Align {
         AlignHeap heap=null;
         byte read[]=null;
         byte qualities[]=null;
-        AlignHeapNode.Space space=AlignHeapNode.Space.NTSPACE;
+        SRMAUtil.Space space=SRMAUtil.Space.NTSPACE;
         ListIterator<Node> iter=null;
         AlignHeapNodeComparator comp;
         int alignmentStart = rec.getAlignmentStart();
 
-        assert AlignHeapNode.Space.COLORSPACE != space;
+        assert SRMAUtil.Space.COLORSPACE != space;
         // TODO:
         // - reverse strand
-        // - infer COLORSPACE
         // - get first node based on ???
         // - get colors and color qualities for COLORSPACE, must normalize colors to adaptor too
         // - recover alignment and print
@@ -49,7 +48,7 @@ public class Align {
 
         read = (byte[])rec.getAttribute("CS");
         if(null == read) {
-            space = AlignHeapNode.Space.NTSPACE;
+            space = SRMAUtil.Space.NTSPACE;
             read = rec.getReadBases();
             if(read.length <= 0) {
                 throw new Exception("Error.  The current alignment has no bases.");
@@ -60,8 +59,8 @@ public class Align {
             }
         }
         else {
-            AlignHeapNode.normalizeColorSpaceRead(read);
-            space = AlignHeapNode.Space.COLORSPACE;
+            SRMAUtil.normalizeColorSpaceRead(read);
+            space = SRMAUtil.Space.COLORSPACE;
             qualities = (byte[])rec.getAttribute("CQ");
             if(null == qualities) {
                 throw new Exception("Error.  The current color space alignment has no color qualities.");
@@ -136,18 +135,20 @@ public class Align {
         }
 
         // Recover alignment
-        this.updateSAM(rec, bestAlignHeapNode);
+        this.updateSAM(rec, bestAlignHeapNode, space, read);
     }
 
-    private void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode)
+    private void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, byte read[])
         throws Exception
     {
         AlignHeapNode curAlignHeapNode;
 
         int alignmentStart = 0;
-        byte read[]=null;
         int readIndex=-1;
-        byte readBases[]=null;
+        byte decodedBases[];
+        byte colorErrors[];
+        int i;
+        int length=0;// HERE
 
         // To generate a new CIGAR
         List<CigarElement> cigarElements=null;
@@ -165,9 +166,8 @@ public class Align {
         // color errors
         // do not use readBases in color space
 
-        readBases = rec.getReadBases();
+        decodedBases = new byte[bestAlignHeapNode.alignmentLength];
         readIndex = bestAlignHeapNode.alignmentLength-1;
-        read = new byte[readIndex+1];
         cigarElements = new LinkedList<CigarElement>();
         alignmentStart=bestAlignHeapNode.startPosition;
 
@@ -182,9 +182,11 @@ public class Align {
                 case Node.MISMATCH:
                     if(null == curAlignHeapNode.prev || curAlignHeapNode.prev.node.position == curAlignHeapNode.node.position-1) { 
                         //System.out.println("M/MM");
-                        read[readIndex]=readBases[curAlignHeapNode.readOffset];
+                        if(space == SRMAUtil.Space.COLORSPACE) {
+                            decodedBases[readIndex]  = curAlignHeapNode.node.base;
+                            readIndex--;
+                        }
                         curCigarOperator = CigarOperator.MATCH_OR_MISMATCH;
-                        readIndex--;
                     }
                     else {
                         //System.out.println("DEL");
@@ -193,23 +195,31 @@ public class Align {
                     break;
                 case Node.INSERTION:
                     //System.out.println("INS");
-                    read[readIndex]=readBases[curAlignHeapNode.readOffset];
-                    readIndex--;
+                    if(space == SRMAUtil.Space.COLORSPACE) {
+                        decodedBases[readIndex]  = curAlignHeapNode.node.base;
+                        readIndex--;
+                    }
                     curCigarOperator = CigarOperator.INSERTION;
                     break;
                 default:
                     throw new Exception("Unknown Type");
             }
             if(null == prevCigarOperator) {
+                // first cigar operator
                 prevCigarOperator = curCigarOperator;
                 prevCigarOperatorLength=1;
             }
             else if(0 < prevCigarOperatorLength && prevCigarOperator != curCigarOperator) {
+                // new cigar operator
+                if(prevCigarOperator != CigarOperator.D) {
+                    length += prevCigarOperatorLength;
+                }
                 cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
                 prevCigarOperator = curCigarOperator;
                 prevCigarOperatorLength=1;
             }
             else {
+                // same cigar operator
                 prevCigarOperatorLength++;
             }
 
@@ -217,7 +227,24 @@ public class Align {
             curAlignHeapNode = curAlignHeapNode.prev;
         }
         if(0 < prevCigarOperatorLength) {
+            if(prevCigarOperator != CigarOperator.D) {
+                length += prevCigarOperatorLength;
+            }
             cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
+        }
+
+        // Get color error string
+        if(space == SRMAUtil.Space.COLORSPACE) {
+            colorErrors = new byte[bestAlignHeapNode.alignmentLength];
+            byte prevBase = SRMAUtil.COLORSPACE_ADAPTOR;
+            for(i=0;i<read.length;i++) {
+                if(SRMAUtil.colorSpaceNextBase(prevBase, read[i]) == decodedBases[i]) {
+                    colorErrors[i] = Alignment.GAP;
+                }
+                else {
+                    colorErrors[i] = read[i];
+                }
+            }
         }
 
         // Update SAM record
@@ -225,8 +252,14 @@ public class Align {
         //System.out.println("rec.getAlignmentStart()="+rec.getAlignmentStart());
         //System.out.println("alignmentStart="+alignmentStart);
         rec.setAlignmentStart(alignmentStart);
-        rec.setReadBases(read);
+        if(space == SRMAUtil.Space.COLORSPACE) {
+            rec.setReadBases(decodedBases);
+        }
+        else {
+            rec.setReadBases(read);
+        }
         // Clear attributes
+        // TODO: use the new picard clear attributes function
         List<SAMRecord.SAMTagAndValue> atts = rec.getAttributes();
         ListIterator<SAMRecord.SAMTagAndValue> attsIter = atts.listIterator();
         while(attsIter.hasNext()) {
@@ -235,7 +268,13 @@ public class Align {
         }
         // Set new attributes
         rec.setAttribute("AS", bestAlignHeapNode.score);
+        // set the XE attribute for colorError string
 
+        // HERE
+        //System.out.println("length="+length+"\trec.getReadBases().length="+rec.getReadBases().length);
+        if(length != rec.getReadBases().length) {
+            throw new Exception("CIGAR length and sequence length were inconsistent");
+        }
         assert null != curAlignHeapNode; 
     }
 }
