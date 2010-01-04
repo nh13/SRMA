@@ -81,7 +81,7 @@ public class SRMA extends CommandLineProgram {
         in.close();
 
         // DEBUGGING
-        graph.print();
+        // graph.print();
 
         /* Align sam records */
         in = new SAMFileReader(INPUT);
@@ -90,7 +90,7 @@ public class SRMA extends CommandLineProgram {
             // TODO: Make sure that it is sorted
             try {
                 // Align the data
-                out.addAlignment(rec);
+                //out.addAlignment(rec); // HERE
                 Align align = new Align(graph, rec, OFFSET);
                 out.addAlignment(rec);
             } catch (Exception e) {
