@@ -9,7 +9,7 @@ import srma.*;
 
 public class Align {
 
-    public Align(Graph graph, SAMRecord rec, int offset)
+    public static void Align(Graph graph, SAMRecord rec, int offset, int coverage)
         throws Exception
     {
         if(rec.getReadNegativeStrandFlag()) {
@@ -18,11 +18,11 @@ public class Align {
         }
         else {
             // Forward
-            AlignForwardStrand(graph, rec, offset);
+            AlignForwardStrand(graph, rec, offset, coverage);
         }
     }
 
-    private void AlignForwardStrand(Graph graph, SAMRecord rec, int offset)
+    private static void AlignForwardStrand(Graph graph, SAMRecord rec, int offset, int coverage)
         throws Exception
     {
         Node startNode=null;
@@ -35,6 +35,7 @@ public class Align {
         byte qualities[]=null;
         SRMAUtil.Space space=SRMAUtil.Space.NTSPACE;
         ListIterator<Node> iter=null;
+        ListIterator<Integer> iterCov=null;
         AlignHeapNodeComparator comp;
         int alignmentStart = rec.getAlignmentStart();
 
@@ -45,6 +46,7 @@ public class Align {
         // - get first node based on ???
         // - get colors and color qualities for COLORSPACE, must normalize colors to adaptor too
         // - recover alignment and print
+        // - remove/fix paired end reads?
 
         read = (byte[])rec.getAttribute("CS");
         if(null == read) {
@@ -113,21 +115,24 @@ public class Align {
 
                 // Go to all "next" nodes
                 iter = curAlignHeapNode.node.next.listIterator();
+                iterCov = curAlignHeapNode.node.nextCov.listIterator();
                 while(iter.hasNext()) {
                     nextNode = iter.next();
-                    heap.add(new AlignHeapNode(curAlignHeapNode, 
-                                nextNode, 
-                                read[curAlignHeapNode.readOffset+1], 
-                                qualities[curAlignHeapNode.readOffset+1], 
-                                space));
-                    // Add a start node
-                    // TODO should be conditioned on strand
-                    if(nextNode.position <= alignmentStart + offset) {
-                        heap.add(new AlignHeapNode(null, 
+                    if(coverage <= iterCov.next()) {
+                        heap.add(new AlignHeapNode(curAlignHeapNode, 
                                     nextNode, 
-                                    read[0], 
-                                    qualities[0], 
+                                    read[curAlignHeapNode.readOffset+1], 
+                                    qualities[curAlignHeapNode.readOffset+1], 
                                     space));
+                        // Add a start node
+                        // TODO should be conditioned on strand
+                        if(nextNode.position <= alignmentStart + offset) {
+                            heap.add(new AlignHeapNode(null, 
+                                        nextNode, 
+                                        read[0], 
+                                        qualities[0], 
+                                        space));
+                        }
                     }
                 }
                 iter=null;
@@ -135,10 +140,10 @@ public class Align {
         }
 
         // Recover alignment
-        this.updateSAM(rec, bestAlignHeapNode, space, read);
+        Align.updateSAM(rec, bestAlignHeapNode, space, read);
     }
 
-    private void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, byte read[])
+    private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, byte read[])
         throws Exception
     {
         AlignHeapNode curAlignHeapNode;
@@ -150,6 +155,10 @@ public class Align {
         int i;
         int length=0;// HERE
         int length2=0;// HERE
+
+        if(null == bestAlignHeapNode) {
+            return;
+        }
 
         // To generate a new CIGAR
         List<CigarElement> cigarElements=null;

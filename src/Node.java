@@ -20,7 +20,9 @@ public class Node {
     int offset; // for insertions
     int coverage;
     List<Node> next; // downstream nodes
+    List<Integer> nextCov;
     List<Node> prev; // upstream nodes
+    List<Integer> prevCov;
 
     public Node(byte base, int type, int contig, int position, int offset, Node prev)
     {
@@ -31,34 +33,50 @@ public class Node {
         this.offset = offset;
         this.coverage = 1;
         this.next = new ArrayList<Node>();
+        this.nextCov = new ArrayList<Integer>();
         this.prev = new ArrayList<Node>();
+        this.prevCov = new ArrayList<Integer>();
         addToPrev(prev);
     }
 
     public void addToNext(Node node)
     {
-        if(!this.next.contains(node)) {
+        int indexOf = this.next.indexOf(node);
+        if(indexOf < 0) {
             this.next.add(node);
+            this.nextCov.add(1);
+        }
+        else {
+            this.nextCov.add(indexOf, this.nextCov.remove(indexOf) + 1);
         }
     }
 
     public void addToPrev(Node node) 
     {
-        if(!this.prev.contains(node)) {
+        int indexOf = this.prev.indexOf(node);
+        if(indexOf < 0) {
             this.prev.add(node);
+            this.prevCov.add(1);
+        }
+        else {
+            this.prevCov.add(indexOf, this.prevCov.remove(indexOf) + 1);
         }
     }
 
     public void print(PrintStream out) 
     {
         ListIterator<Node> iter;
+        ListIterator<Integer> iterCov;
         out.print("[" + (char)this.base + ":" + this.type + ":" + this.contig + ":" + 
                 this.position + ":" + this.offset + ":" + this.coverage + "]");
         iter = this.next.listIterator();
+        iterCov = this.nextCov.listIterator();
+
         while(iter.hasNext()) {
             Node next = iter.next();
+            Integer nextCov = iterCov.next();
             out.print("\t" + (char)next.base + ":" + next.type + ":" + next.contig + 
-                    ":" + next.position + ":" + next.offset + ":" + next.coverage); 
+                    ":" + next.position + ":" + next.offset + ":" + next.coverage + ":" + nextCov); 
         }
         out.println("");
     }
