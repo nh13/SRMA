@@ -16,6 +16,7 @@ import java.util.*;
 public class SRMA extends CommandLineProgram { 
 
     public static final String OFFSET_SHORT_NAME = "O"; 
+    public static final String COVERAGE_SHORT_NAME = "C";
 
     @Usage public final String USAGE = getStandardUsagePreamble() + "Prints a SAM or BAM file to the screen.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The SAM or BAM file to view.")
@@ -24,6 +25,8 @@ public class SRMA extends CommandLineProgram {
         public File REFERENCE;
     @Option(shortName=OFFSET_SHORT_NAME, doc="The alignment offset.")
         public int OFFSET=0;
+    @Option(shortName=COVERAGE_SHORT_NAME, doc="The minimum haploid coverage for the consensus")
+        public int COVERAGE=1;
 
     public static void main(final String[] args) {
         new SRMA().instanceMain(args);
@@ -91,7 +94,7 @@ public class SRMA extends CommandLineProgram {
             try {
                 // Align the data
                 //out.addAlignment(rec); // HERE
-                Align align = new Align(graph, rec, OFFSET);
+                Align.Align(graph, rec, OFFSET, COVERAGE);
                 out.addAlignment(rec);
             } catch (Exception e) {
                 System.err.println(e.toString());
