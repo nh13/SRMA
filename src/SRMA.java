@@ -81,7 +81,7 @@ public class SRMA extends CommandLineProgram {
         in.close();
 
         // DEBUGGING
-        // graph.print();
+        //graph.print();
 
         /* Align sam records */
         in = new SAMFileReader(INPUT);

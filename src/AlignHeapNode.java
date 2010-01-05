@@ -52,19 +52,14 @@ public class AlignHeapNode {
             if(SRMAUtil.Space.COLORSPACE == space) {
                 base = SRMAUtil.colorSpaceNextBase(prev.node.base, base);
             }
-            if(prev.node.position + 1 == this.node.position || this.node.type == Node.INSERTION) {
-                // match/mismatch or insertion
-                this.readOffset = prev.readOffset + 1;
-            }
-            else {
-                // Deletion
-                this.readOffset = prev.readOffset;
-            }
+            this.readOffset = prev.readOffset + 1;
             this.score = prev.score;
             this.startPosition = prev.startPosition;
-            this.alignmentLength = prev.alignmentLength + 1;
+            this.alignmentLength = this.node.position - prev.node.position + this.node.offset - prev.node.offset;
             this.prev = prev;
         }
+        // HERE
+        // System.err.println("base="+(char)base+" curNode.base="+(char)curNode.base+" score="+((base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual)));
         this.score += (base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual); 
     }
 }

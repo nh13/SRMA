@@ -39,12 +39,12 @@ public class Align {
         int alignmentStart = rec.getAlignmentStart();
 
         assert SRMAUtil.Space.COLORSPACE != space;
+
         // TODO:
         // - reverse strand
         // - get first node based on ???
         // - get colors and color qualities for COLORSPACE, must normalize colors to adaptor too
         // - recover alignment and print
-
 
         read = (byte[])rec.getAttribute("CS");
         if(null == read) {
@@ -149,6 +149,7 @@ public class Align {
         byte colorErrors[];
         int i;
         int length=0;// HERE
+        int length2=0;// HERE
 
         // To generate a new CIGAR
         List<CigarElement> cigarElements=null;
@@ -175,23 +176,28 @@ public class Align {
         assert null != bestAlignHeapNode;
         curAlignHeapNode = bestAlignHeapNode;
         while(null != curAlignHeapNode) {
+            length2++;
             // Do stuff
             //curAlignHeapNode.node.print(System.out);
             switch(curAlignHeapNode.node.type) {
                 case Node.MATCH: /* Fall through */
                 case Node.MISMATCH:
-                    if(null == curAlignHeapNode.prev || curAlignHeapNode.prev.node.position == curAlignHeapNode.node.position-1) { 
-                        //System.out.println("M/MM");
-                        if(space == SRMAUtil.Space.COLORSPACE) {
-                            decodedBases[readIndex]  = curAlignHeapNode.node.base;
-                            readIndex--;
-                        }
-                        curCigarOperator = CigarOperator.MATCH_OR_MISMATCH;
+                    if(null != curAlignHeapNode.prev && curAlignHeapNode.prev.node.position != curAlignHeapNode.node.position-1) { 
+                        //System.out.println("DEL");
+                        length+=prevCigarOperatorLength;
+                        cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
+                        cigarElements.add(0, new CigarElement(curAlignHeapNode.node.position - curAlignHeapNode.prev.node.position - 1, CigarOperator.DELETION));
+                        // Start mismatch
+                        prevCigarOperator = null;
                     }
                     else {
-                        //System.out.println("DEL");
-                        curCigarOperator = CigarOperator.DELETION;
+                        //System.out.println("M/MM");
                     }
+                    if(space == SRMAUtil.Space.COLORSPACE) {
+                        decodedBases[readIndex]  = curAlignHeapNode.node.base;
+                        readIndex--;
+                    }
+                    curCigarOperator = CigarOperator.MATCH_OR_MISMATCH;
                     break;
                 case Node.INSERTION:
                     //System.out.println("INS");
@@ -211,9 +217,7 @@ public class Align {
             }
             else if(0 < prevCigarOperatorLength && prevCigarOperator != curCigarOperator) {
                 // new cigar operator
-                if(prevCigarOperator != CigarOperator.D) {
-                    length += prevCigarOperatorLength;
-                }
+                length += prevCigarOperatorLength;
                 cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
                 prevCigarOperator = curCigarOperator;
                 prevCigarOperatorLength=1;
@@ -227,9 +231,7 @@ public class Align {
             curAlignHeapNode = curAlignHeapNode.prev;
         }
         if(0 < prevCigarOperatorLength) {
-            if(prevCigarOperator != CigarOperator.D) {
-                length += prevCigarOperatorLength;
-            }
+            length += prevCigarOperatorLength;
             cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
         }
 
@@ -271,8 +273,10 @@ public class Align {
         // set the XE attribute for colorError string
 
         // HERE
-        //System.out.println("length="+length+"\trec.getReadBases().length="+rec.getReadBases().length);
         if(length != rec.getReadBases().length) {
+            System.out.println("length="+length+"\tlength2="+length2+"\trec.getReadBases().length="+rec.getReadBases().length);
+            System.out.println("CIGAR="+rec.getCigarString());
+            System.out.println("readOffset="+bestAlignHeapNode.readOffset);
             throw new Exception("CIGAR length and sequence length were inconsistent");
         }
         assert null != curAlignHeapNode; 
