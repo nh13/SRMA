@@ -52,8 +52,8 @@ public class Node {
     public void print(PrintStream out) 
     {
         ListIterator<Node> iter;
-        out.print("" + (char)this.base + "\t" + this.type + "\t" + this.contig + "\t" + 
-                this.position + "\t" + this.offset + "\t" + this.coverage);
+        out.print("[" + (char)this.base + ":" + this.type + ":" + this.contig + ":" + 
+                this.position + ":" + this.offset + ":" + this.coverage + "]");
         iter = this.next.listIterator();
         while(iter.hasNext()) {
             Node next = iter.next();
