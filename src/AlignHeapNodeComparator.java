@@ -34,7 +34,13 @@ public class AlignHeapNodeComparator implements Comparator {
                  a.node.position == b.node.position &&
                  a.readOffset == b.readOffset &&
                  a.node.type == b.node.type &&
-                 a.node.base < b.node.base)) {
+                 a.node.base < b.node.base) ||
+                (a.node.contig == b.node.contig &&
+                 a.node.position == b.node.position &&
+                 a.readOffset == b.readOffset &&
+                 a.node.type == b.node.type &&
+                 a.node.base == b.node.base &&
+                 a.score < b.score)) {
             return (AlignHeap.HeapType.MINHEAP == type) ? -1 : 1;
                  }
         else if(null != b &&
@@ -42,7 +48,8 @@ public class AlignHeapNodeComparator implements Comparator {
                 a.node.position == b.node.position &&
                 a.readOffset == b.readOffset &&
                 a.node.type == b.node.type &&
-                a.node.base == b.node.base) {
+                a.node.base == b.node.base &&
+                a.score == b.score) {
             return 0;
                 }
         else {

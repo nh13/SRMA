@@ -35,10 +35,11 @@ public class Graph {
         // Get the alignment
         alignment = new Alignment(record, sequences);
 
-        // HERE
-        System.err.println(record.toString()); 
-        System.err.println("refr:" + new String(alignment.reference));
-        System.err.println("read:" + new String(alignment.read));
+        /*
+           System.err.println(record.toString()); 
+           System.err.println("refr:" + new String(alignment.reference));
+           System.err.println("read:" + new String(alignment.read));
+           */
 
         int i, j, ref_i, seq_i;
         Node prev=null, cur=null;
@@ -142,13 +143,24 @@ public class Graph {
                 i--;
             }
             else { // mismatch
-                // TODO check mismatch does not exist (beginning of the read)
+                // TODO check mismatch does not exist 
                 cur = new Node((char)alignment.read[i],
                         Node.MISMATCH,
                         record.getReferenceIndex(),
                         record.getAlignmentStart() + ref_i,
                         0,
                         prev);
+                if(prev != null) {
+                    ListIterator<Node> iter = prev.next.listIterator();
+                    NodeComparator comp = new NodeComparator();
+                    while(iter.hasNext()) {
+                        Node node = iter.next();
+                        if(0 == comp.compare(node, cur)) {
+                            cur = node; 
+                            break;
+                        }
+                    }
+                }
                 ref_i++; seq_i++;
             }
             if(null != prev 
@@ -173,7 +185,9 @@ public class Graph {
         return this.referenceNodes.get(position - this.position_start);
     }
 
-    public void prune(int start) {
+    public void prune(int start) 
+        throws GraphException
+    {
         // TODO
         throw new GraphException(GraphException.NOT_IMPLEMENTED);
     }

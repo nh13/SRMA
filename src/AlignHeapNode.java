@@ -12,8 +12,8 @@ public class AlignHeapNode {
     Node node;
     int readOffset; // # of bases from the beginning of the read
     int score; // alignment score
+    int coverageSum; // coverage sum 
     int startPosition; // one-based
-    int alignmentLength; // alignment length
     SRMAUtil.Space space;
 
     /* 
@@ -26,6 +26,7 @@ public class AlignHeapNode {
      * */
     public AlignHeapNode(AlignHeapNode prev,
             Node curNode,
+            int curCoverage,
             char base,
             char qual,
             SRMAUtil.Space space) throws Exception 
@@ -44,8 +45,8 @@ public class AlignHeapNode {
             this.readOffset = 0;
             this.score = 0;
             this.startPosition = curNode.position;
-            this.alignmentLength = 1;
             this.prev = null;
+            this.coverageSum = curCoverage;
         }
         else {
             assert(prev.space == space);
@@ -55,10 +56,9 @@ public class AlignHeapNode {
             this.readOffset = prev.readOffset + 1;
             this.score = prev.score;
             this.startPosition = prev.startPosition;
-            this.alignmentLength = this.node.position - prev.node.position + this.node.offset - prev.node.offset;
             this.prev = prev;
+            this.coverageSum = prev.coverageSum + curCoverage;
         }
-        // HERE
         // System.err.println("base="+(char)base+" curNode.base="+(char)curNode.base+" score="+((base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual)));
         this.score += (base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual); 
     }

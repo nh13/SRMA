@@ -10,7 +10,7 @@ import net.sf.picard.cmdline.*;
 import net.sf.picard.io.IoUtil;
 import net.sf.picard.reference.*;
 
-import java.io.File;
+import java.io.*;
 import java.util.*;
 
 public class SRMA extends CommandLineProgram { 
@@ -38,7 +38,8 @@ public class SRMA extends CommandLineProgram {
      * - can fit entire partial order graph in memory
      * - SAM entries are on the forward strand
      * */
-    protected int doWork() {
+    protected int doWork() 
+    {
         List<ReferenceSequence> referenceSequences = new ArrayList();
 
         IoUtil.assertFileIsReadable(INPUT);
@@ -63,8 +64,8 @@ public class SRMA extends CommandLineProgram {
         Graph graph = new Graph(header, referenceSequences);
 
         // Go through each SAM record
-        int ctr = 0;
         try {
+            PrintStream graphOut = new PrintStream("graph.txt");
             for (final SAMRecord rec : in) {
                 // TODO: Make sure that it is sorted
                 // Add only if it is from the same contig
@@ -77,34 +78,36 @@ public class SRMA extends CommandLineProgram {
 
                 // Add to the graph 
                 try {
-                graph.addSAMRecord(rec);
+                    graph.addSAMRecord(rec);
                 } catch (Graph.GraphException e) {
                     if(Graph.GraphException.NOT_IMPLEMENTED != e.type) {
                         throw e;
                     }
                 }
                 list.add(rec);
-                
-                // HERE
-                System.err.println("Printing GRAPH:");
-                graph.print(System.err);
+
+                //System.err.println("Printing GRAPH:");
+                //graph.print(System.err);
+                graphOut.println("GRAPH"); // HERE
+                graph.print(graphOut); // HERE
 
                 // TODO: check if we should process ... 
-                while(0 < list.size() && graph.position_start + OFFSET <= list.getFirst().getAlignmentStart()) {
-                    ctr++;
-                    System.err.println("ctr="+ctr);
+
+                while(0 < list.size() && list.getFirst().getAlignmentEnd() + OFFSET < list.getLast().getAlignmentStart()) {
+                    //graphOut.println("HERE1\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
+                    //System.err.println(list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
                     SAMRecord curSAMRecord = list.removeFirst();
-                    graph.prune(curSAMRecord.getAlignmentStart() - OFFSET);
+                    // HERE TODO
+                    graph.prune(curSAMRecord.getAlignmentStart() - OFFSET); // TODO
                     out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
                 }
             }
             // Process the rest of the reads
-            System.err.println("Finishing!");
             while(0 < list.size()) {
-                ctr++;
-                System.err.println("ctr="+ctr);
+                graphOut.println("HERE2\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
                 out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
             }
+            graphOut.close();
         } catch (Exception e) {
             System.err.println(e.toString());
             e.printStackTrace();
@@ -113,6 +116,8 @@ public class SRMA extends CommandLineProgram {
         // Close files
         in.close();
         out.close();
+
+        // HERE
 
         return 0;
     }
