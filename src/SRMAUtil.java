@@ -9,11 +9,11 @@ import srma.*;
 public class SRMAUtil {
     // These should be in a util class
     public enum Space { NTSPACE, COLORSPACE }
-    public static final byte COLORSPACE_ADAPTOR = 'A';
-    public static final byte DNA[] = {'A', 'C', 'G', 'T', 'N'};
-    public static final byte COLORS[] = {'0', '1', '2', '3', '4'};
+    public static final char COLORSPACE_ADAPTOR = 'A';
+    public static final char DNA[] = {'A', 'C', 'G', 'T', 'N'};
+    public static final char COLORS[] = {'0', '1', '2', '3', '4'};
 
-    public static int CHAR2QUAL(byte qual)
+    public static int CHAR2QUAL(char qual)
     {
         int q = (((int)qual) - 33);
         if(q < 0) {
@@ -27,23 +27,28 @@ public class SRMAUtil {
         }
     }
 
-    public static byte colorSpaceNextBase(byte base, byte color) throws Exception
+    public static char colorSpaceNextBase(char base, char color) throws Exception
     {
         int start=0, by=0, result=0;
 
         switch(base) {
             case 'A':
+            case 'a':
                 start=0; by=1; break;
             case 'C':
+            case 'c':
                 start=1; by=-1; break;
             case 'G':
+            case 'g':
                 start=2; by=1; break;
             case 'T':
+            case 't':
                 start=3; by=-1; break;
             case 'N':
+            case 'n':
                 return 'N'; 
             default:
-                throw new Exception("Error: could not understand the base");
+                throw new Exception("Error: could not understand the base: " + (char)base);
         }
 
         switch(color) {
@@ -68,21 +73,26 @@ public class SRMAUtil {
             return DNA[result % 4];
         }
     }
-    
-    public static byte colorSpaceEncode(byte b1, byte b2) throws Exception
+
+    public static char colorSpaceEncode(char b1, char b2) throws Exception
     {
         int start=0, by=0, result=0;
 
         switch(b1) {
             case 'A':
+            case 'a':
                 start=0; by=1; break;
             case 'C':
+            case 'c':
                 start=1; by=-1; break;
             case 'G':
+            case 'g':
                 start=2; by=1; break;
             case 'T':
+            case 't':
                 start=3; by=-1; break;
             case 'N':
+            case 'n':
                 return 'N'; 
             default:
                 throw new Exception("Error: could not understand the base");
@@ -90,14 +100,19 @@ public class SRMAUtil {
 
         switch(b2) {
             case 'A':
+            case 'a':
                 result = start; break;
             case 'C':
+            case 'c':
                 result = start + by; break;
             case 'G':
+            case 'g':
                 result = start + 2*by; break;
             case 'T':
+            case 't':
                 result = start + 3*by; break;
             case 'N':
+            case 'n':
                 return 'N'; 
             default:
                 throw new Exception("Error: could not understand the base");
@@ -111,23 +126,23 @@ public class SRMAUtil {
         }
     }
 
-    public static void normalizeColorSpaceRead(byte read[])
+    public static String normalizeColorSpaceRead(String read)
         throws Exception
     {
-        if(read.length < 2) {
+        // Remove the adaptor
+        String ret = new String(read.substring(1));;
+
+        if(read.length() < 2) {
             throw new Exception("Read was too short");
         }
-        else if(read[0] != COLORSPACE_ADAPTOR) {
-            byte base = colorSpaceNextBase(read[0], read[1]);
-            read[0] = COLORSPACE_ADAPTOR;
-            read[1] = colorSpaceEncode(read[0], base);
+        else if(read.charAt(0) != COLORSPACE_ADAPTOR) {
+            ret = replaceCharAt(ret, 0, colorSpaceEncode(COLORSPACE_ADAPTOR, 
+                        colorSpaceNextBase(read.charAt(0), read.charAt(1))));
         }
-        // Remove adaptor
-        int i;
-        byte tmp[] = new byte[read.length-1];
-        for(i=0;i<read.length-1;i++) {
-            tmp[i] = read[i+1];
-        }
-        read = tmp;
+        return ret;
+    }
+
+    public static String replaceCharAt(String s, int pos, char c) {
+        return s.substring(0,pos) + c + s.substring(pos+1);
     }
 }

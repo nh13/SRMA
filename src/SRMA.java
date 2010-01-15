@@ -40,10 +40,8 @@ public class SRMA extends CommandLineProgram {
      * */
     protected int doWork() {
         List<ReferenceSequence> referenceSequences = new ArrayList();
-                
+
         IoUtil.assertFileIsReadable(INPUT);
-        SAMFileReader in = new SAMFileReader(INPUT);
-        final SAMFileHeader header = in.getFileHeader();
 
         // Get references
         IoUtil.assertFileIsReadable(REFERENCE);
@@ -57,67 +55,65 @@ public class SRMA extends CommandLineProgram {
             }
         } while(null != referenceSequence);
 
+        // Initialize graph, input/output files
+        LinkedList<SAMRecord> list = new LinkedList<SAMRecord>();
+        SAMFileReader in = new SAMFileReader(INPUT);
+        final SAMFileHeader header = in.getFileHeader();
+        final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
         Graph graph = new Graph(header, referenceSequences);
 
-        for (final SAMRecord rec : in) {
-            // TODO: Make sure that it is sorted
-            try {
+        // Go through each SAM record
+        int ctr = 0;
+        try {
+            for (final SAMRecord rec : in) {
+                // TODO: Make sure that it is sorted
                 // Add only if it is from the same contig
-                if(graph.contig == rec.getReferenceIndex()) {
-                    graph.addSAMRecord(rec);
-                }
-
-                // Process
-                // TODO:
-
-                // Add...
                 if(graph.contig != rec.getReferenceIndex()) {
-                    throw new Exception("Error.  Multiple contigs not supported.");
-                    //graph.addSAMRecord(rec);
+                    // Process the rest of the reads
+                    while(0 < list.size()) {
+                        out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
+                    }
                 }
-            } catch (Exception e) {
-                System.err.println(e.toString());
-                e.printStackTrace();
-                System.exit(1);
-            }
-        }
-        in.close();
 
-        // DEBUGGING
-        //graph.print();
+                // Add to the graph 
+                try {
+                graph.addSAMRecord(rec);
+                } catch (Graph.GraphException e) {
+                    if(Graph.GraphException.NOT_IMPLEMENTED != e.type) {
+                        throw e;
+                    }
+                }
+                list.add(rec);
+                
+                // HERE
+                System.err.println("Printing GRAPH:");
+                graph.print(System.err);
 
-        /* Align sam records */
-        in = new SAMFileReader(INPUT);
-        final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
-        for (final SAMRecord rec : in) {
-            // TODO: Make sure that it is sorted
-            try {
-                // Align the data
-                //out.addAlignment(rec); // HERE
-                Align.Align(graph, rec, OFFSET, COVERAGE);
-                out.addAlignment(rec);
-            } catch (Exception e) {
-                System.err.println(e.toString());
-                e.printStackTrace();
-                System.exit(1);
+                // TODO: check if we should process ... 
+                while(0 < list.size() && graph.position_start + OFFSET <= list.getFirst().getAlignmentStart()) {
+                    ctr++;
+                    System.err.println("ctr="+ctr);
+                    SAMRecord curSAMRecord = list.removeFirst();
+                    graph.prune(curSAMRecord.getAlignmentStart() - OFFSET);
+                    out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
+                }
             }
+            // Process the rest of the reads
+            System.err.println("Finishing!");
+            while(0 < list.size()) {
+                ctr++;
+                System.err.println("ctr="+ctr);
+                out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
+            }
+        } catch (Exception e) {
+            System.err.println(e.toString());
+            e.printStackTrace();
+            System.exit(1);
         }
+        // Close files
         in.close();
         out.close();
-        
-        /*
-           final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
-           for (final SAMRecord rec : in) {
-           if (System.out.checkError()) {
-           return 0;
-           }
-
-           out.addAlignment(rec);
-           }
-           out.close();
-           */
 
         return 0;
-
     }
 }
