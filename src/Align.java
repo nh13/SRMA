@@ -73,8 +73,10 @@ public class Align {
         comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); // should be set based on strand
 
         // Add first node - should be set based on strand
+        startNode = graph.getReferenceNode(alignmentStart - offset);
         heap.add(new AlignHeapNode(null, 
-                    graph.getReferenceNode(alignmentStart - offset),
+                    startNode,
+                    startNode.coverage,
                     read.charAt(0),
                     qualities.charAt(0),
                     space));
@@ -83,16 +85,16 @@ public class Align {
             curAlignHeapNode = heap.poll();
 
             // HERE
-            //System.err.println("size:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
-            //curAlignHeapNode.node.print(System.err);
-            if(250 < heap.size()) {
-                //graph.print(System.err);
-                throw new Exception("HEAP SIZE IS GROWING HERE");
-            }
+            /*
+            System.err.println("size:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
+            curAlignHeapNode.node.print(System.err);
+            */
 
-            // Remove all non-insertions with the same contig/pos/read offset/type/base and lower score 
+            // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
-            while(Node.INSERTION != curAlignHeapNode.node.type && null != nextAlignHeapNode && 0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) {
+            while(Node.INSERTION != curAlignHeapNode.node.type && 
+                    null != nextAlignHeapNode && 
+                    0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) {
                 if(curAlignHeapNode.score < nextAlignHeapNode.score) {
                     // Update current node
                     curAlignHeapNode = heap.poll();
@@ -108,7 +110,10 @@ public class Align {
             if(curAlignHeapNode.readOffset == read.length() - 1) {
                 // Complete, store if has the best alignment.
                 // TODO: must guarantee left-most alignment based on strand
-                if(null == bestAlignHeapNode || bestAlignHeapNode.score < curAlignHeapNode.score) {
+                if(null == bestAlignHeapNode || 
+                        bestAlignHeapNode.score < curAlignHeapNode.score || 
+                        (bestAlignHeapNode.score == curAlignHeapNode.score && 
+                         bestAlignHeapNode.coverageSum < curAlignHeapNode.coverageSum)) {
                     bestAlignHeapNode = curAlignHeapNode;
                 }
             }
@@ -121,9 +126,11 @@ public class Align {
                 iterCov = curAlignHeapNode.node.nextCov.listIterator();
                 while(iter.hasNext()) {
                     nextNode = iter.next();
-                    if(coverage <= iterCov.next()) {
+                    int nextCoverage = iterCov.next();
+                    if(coverage <= nextCoverage) {
                         heap.add(new AlignHeapNode(curAlignHeapNode, 
                                     nextNode, 
+                                    nextCoverage,
                                     read.charAt(curAlignHeapNode.readOffset+1), 
                                     qualities.charAt(curAlignHeapNode.readOffset+1), 
                                     space));
@@ -132,6 +139,7 @@ public class Align {
                         if(nextNode.position <= alignmentStart + offset) {
                             heap.add(new AlignHeapNode(null, 
                                         nextNode, 
+                                        nextCoverage,
                                         read.charAt(0),
                                         qualities.charAt(0), 
                                         space));
@@ -181,8 +189,8 @@ public class Align {
         // color errors
         // do not use readBases in color space
 
-        decodedBases = new byte[bestAlignHeapNode.alignmentLength];
-        readIndex = bestAlignHeapNode.alignmentLength-1;
+        decodedBases = new byte[read.length()];
+        readIndex = read.length()-1;
         cigarElements = new LinkedList<CigarElement>();
         alignmentStart=bestAlignHeapNode.startPosition;
 
@@ -192,13 +200,13 @@ public class Align {
         while(null != curAlignHeapNode) {
             length2++;
             // Do stuff
-            //curAlignHeapNode.node.print(System.out);
             switch(curAlignHeapNode.node.type) {
                 case Node.MATCH: /* Fall through */
                 case Node.MISMATCH:
-                    if(null != curAlignHeapNode.prev && curAlignHeapNode.prev.node.position != curAlignHeapNode.node.position-1) { 
+                    if(null != prevCigarOperator && null != curAlignHeapNode.prev && curAlignHeapNode.prev.node.position != curAlignHeapNode.node.position-1) { 
                         //System.out.println("DEL");
                         length+=prevCigarOperatorLength;
+                        //if(null == prevCigarOperator) { throw new Exception("HERE 111"); }
                         cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
                         cigarElements.add(0, new CigarElement(curAlignHeapNode.node.position - curAlignHeapNode.prev.node.position - 1, CigarOperator.DELETION));
                         // Start mismatch
@@ -232,6 +240,7 @@ public class Align {
             else if(0 < prevCigarOperatorLength && prevCigarOperator != curCigarOperator) {
                 // new cigar operator
                 length += prevCigarOperatorLength;
+                if(null == prevCigarOperator) { throw new Exception("HERE 222"); }
                 cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
                 prevCigarOperator = curCigarOperator;
                 prevCigarOperatorLength=1;
@@ -245,13 +254,14 @@ public class Align {
             curAlignHeapNode = curAlignHeapNode.prev;
         }
         if(0 < prevCigarOperatorLength) {
+            if(null == prevCigarOperator) { throw new Exception("HERE 333:" + prevCigarOperatorLength); }
             length += prevCigarOperatorLength;
             cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
         }
 
         // Get color error string
         if(space == SRMAUtil.Space.COLORSPACE) {
-            colorErrors = new byte[bestAlignHeapNode.alignmentLength];
+            colorErrors = new byte[read.length()];
             char prevBase = SRMAUtil.COLORSPACE_ADAPTOR;
             for(i=0;i<read.length();i++) {
                 if(SRMAUtil.colorSpaceNextBase(prevBase, read.charAt(i)) == decodedBases[i]) {
