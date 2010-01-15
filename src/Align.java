@@ -9,7 +9,7 @@ import srma.*;
 
 public class Align {
 
-    public static void Align(Graph graph, SAMRecord rec, int offset, int coverage)
+    public static SAMRecord Align(Graph graph, SAMRecord rec, int offset, int coverage)
         throws Exception
     {
         if(rec.getReadNegativeStrandFlag()) {
@@ -18,11 +18,11 @@ public class Align {
         }
         else {
             // Forward
-            AlignForwardStrand(graph, rec, offset, coverage);
+            return AlignForwardStrand(graph, rec, offset, coverage);
         }
     }
 
-    private static void AlignForwardStrand(Graph graph, SAMRecord rec, int offset, int coverage)
+    private static SAMRecord AlignForwardStrand(Graph graph, SAMRecord rec, int offset, int coverage)
         throws Exception
     {
         Node startNode=null;
@@ -31,8 +31,8 @@ public class Align {
         AlignHeapNode nextAlignHeapNode=null;
         AlignHeapNode bestAlignHeapNode=null;
         AlignHeap heap=null;
-        byte read[]=null;
-        byte qualities[]=null;
+        String read=null;
+        String qualities=null;
         SRMAUtil.Space space=SRMAUtil.Space.NTSPACE;
         ListIterator<Node> iter=null;
         ListIterator<Integer> iterCov=null;
@@ -48,22 +48,22 @@ public class Align {
         // - recover alignment and print
         // - remove/fix paired end reads?
 
-        read = (byte[])rec.getAttribute("CS");
+        read = (String)rec.getAttribute("CS");
         if(null == read) {
             space = SRMAUtil.Space.NTSPACE;
-            read = rec.getReadBases();
-            if(read.length <= 0) {
+            read = new String(rec.getReadBases());
+            if(read.length() <= 0) {
                 throw new Exception("Error.  The current alignment has no bases.");
             }
-            qualities = rec.getBaseQualities();
-            if(qualities.length <= 0) {
+            qualities = new String(rec.getBaseQualities());
+            if(qualities.length() <= 0) {
                 throw new Exception("Error.  The current alignment has no qualities.");
             }
         }
         else {
-            SRMAUtil.normalizeColorSpaceRead(read);
+            read = SRMAUtil.normalizeColorSpaceRead(read);
             space = SRMAUtil.Space.COLORSPACE;
-            qualities = (byte[])rec.getAttribute("CQ");
+            qualities = (String)rec.getAttribute("CQ");
             if(null == qualities) {
                 throw new Exception("Error.  The current color space alignment has no color qualities.");
             }
@@ -75,17 +75,20 @@ public class Align {
         // Add first node - should be set based on strand
         heap.add(new AlignHeapNode(null, 
                     graph.getReferenceNode(alignmentStart - offset),
-                    read[0], 
-                    qualities[0], 
+                    read.charAt(0),
+                    qualities.charAt(0),
                     space));
 
         while(null != heap.peek()) {
             curAlignHeapNode = heap.poll();
 
-            /*
-               System.out.println("size:" + heap.size());
-               curAlignHeapNode.node.print();
-               */
+            // HERE
+            //System.err.println("size:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
+            //curAlignHeapNode.node.print(System.err);
+            if(250 < heap.size()) {
+                //graph.print(System.err);
+                throw new Exception("HEAP SIZE IS GROWING HERE");
+            }
 
             // Remove all non-insertions with the same contig/pos/read offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
@@ -102,7 +105,7 @@ public class Align {
             }
             nextAlignHeapNode=null;
             // Check if the alignment is complete
-            if(curAlignHeapNode.readOffset == read.length - 1) {
+            if(curAlignHeapNode.readOffset == read.length() - 1) {
                 // Complete, store if has the best alignment.
                 // TODO: must guarantee left-most alignment based on strand
                 if(null == bestAlignHeapNode || bestAlignHeapNode.score < curAlignHeapNode.score) {
@@ -121,16 +124,16 @@ public class Align {
                     if(coverage <= iterCov.next()) {
                         heap.add(new AlignHeapNode(curAlignHeapNode, 
                                     nextNode, 
-                                    read[curAlignHeapNode.readOffset+1], 
-                                    qualities[curAlignHeapNode.readOffset+1], 
+                                    read.charAt(curAlignHeapNode.readOffset+1), 
+                                    qualities.charAt(curAlignHeapNode.readOffset+1), 
                                     space));
                         // Add a start node
                         // TODO should be conditioned on strand
                         if(nextNode.position <= alignmentStart + offset) {
                             heap.add(new AlignHeapNode(null, 
                                         nextNode, 
-                                        read[0], 
-                                        qualities[0], 
+                                        read.charAt(0),
+                                        qualities.charAt(0), 
                                         space));
                         }
                     }
@@ -141,9 +144,11 @@ public class Align {
 
         // Recover alignment
         Align.updateSAM(rec, bestAlignHeapNode, space, read);
+
+        return rec;
     }
 
-    private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, byte read[])
+    private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read)
         throws Exception
     {
         AlignHeapNode curAlignHeapNode;
@@ -203,7 +208,7 @@ public class Align {
                         //System.out.println("M/MM");
                     }
                     if(space == SRMAUtil.Space.COLORSPACE) {
-                        decodedBases[readIndex]  = curAlignHeapNode.node.base;
+                        decodedBases[readIndex]  = (byte)curAlignHeapNode.node.base;
                         readIndex--;
                     }
                     curCigarOperator = CigarOperator.MATCH_OR_MISMATCH;
@@ -211,7 +216,7 @@ public class Align {
                 case Node.INSERTION:
                     //System.out.println("INS");
                     if(space == SRMAUtil.Space.COLORSPACE) {
-                        decodedBases[readIndex]  = curAlignHeapNode.node.base;
+                        decodedBases[readIndex]  = (byte)curAlignHeapNode.node.base;
                         readIndex--;
                     }
                     curCigarOperator = CigarOperator.INSERTION;
@@ -247,14 +252,20 @@ public class Align {
         // Get color error string
         if(space == SRMAUtil.Space.COLORSPACE) {
             colorErrors = new byte[bestAlignHeapNode.alignmentLength];
-            byte prevBase = SRMAUtil.COLORSPACE_ADAPTOR;
-            for(i=0;i<read.length;i++) {
-                if(SRMAUtil.colorSpaceNextBase(prevBase, read[i]) == decodedBases[i]) {
+            char prevBase = SRMAUtil.COLORSPACE_ADAPTOR;
+            for(i=0;i<read.length();i++) {
+                if(SRMAUtil.colorSpaceNextBase(prevBase, read.charAt(i)) == decodedBases[i]) {
                     colorErrors[i] = Alignment.GAP;
                 }
                 else {
-                    colorErrors[i] = read[i];
+                    colorErrors[i] = (byte)read.charAt(i);
                 }
+            }
+        }
+        else {
+            decodedBases = new byte[read.length()];
+            for(i=0;i<read.length();i++) {
+                decodedBases[i] = (byte)read.charAt(i);
             }
         }
 
@@ -263,12 +274,7 @@ public class Align {
         //System.out.println("rec.getAlignmentStart()="+rec.getAlignmentStart());
         //System.out.println("alignmentStart="+alignmentStart);
         rec.setAlignmentStart(alignmentStart);
-        if(space == SRMAUtil.Space.COLORSPACE) {
-            rec.setReadBases(decodedBases);
-        }
-        else {
-            rec.setReadBases(read);
-        }
+        rec.setReadBases(decodedBases);
         // Clear attributes
         // TODO: use the new picard clear attributes function
         List<SAMRecord.SAMTagAndValue> atts = rec.getAttributes();

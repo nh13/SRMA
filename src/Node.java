@@ -13,7 +13,7 @@ public class Node {
     public static final int INSERTION   = 2; // into the read
     public static final int DELETION    = 3; // from the read
 
-    byte base; // [acgtnACGTN]
+    char base; // [acgtnACGTN]
     int type;
     int contig;
     int position; // one-based
@@ -24,7 +24,7 @@ public class Node {
     List<Node> prev; // upstream nodes
     List<Integer> prevCov;
 
-    public Node(byte base, int type, int contig, int position, int offset, Node prev)
+    public Node(char base, int type, int contig, int position, int offset, Node prev)
     {
         this.base = base;
         this.type = type;

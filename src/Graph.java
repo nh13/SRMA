@@ -7,6 +7,7 @@ import net.sf.picard.reference.ReferenceSequence;
 import net.sf.samtools.*;
 
 import java.util.*;
+import java.io.*;
 import srma.Node;
 
 public class Graph {
@@ -34,20 +35,22 @@ public class Graph {
         // Get the alignment
         alignment = new Alignment(record, sequences);
 
-        // System.out.println("refr:" + new String(alignment.reference));
-        // System.out.println("read:" + new String(alignment.read));
+        // HERE
+        System.err.println(record.toString()); 
+        System.err.println("refr:" + new String(alignment.reference));
+        System.err.println("read:" + new String(alignment.read));
 
         int i, j, ref_i, seq_i;
         Node prev=null, cur=null;
 
-        if(this.position_start <= record.getAlignmentStart() && record.getAlignmentStart() <= this.position_end) {
+        if(this.position_start <= record.getAlignmentStart() && record.getAlignmentStart() <= this.position_end && alignment.reference[0] != Alignment.GAP) {
             prev = referenceNodes.get(record.getAlignmentStart() - this.position_start);
         }
 
         for(i=ref_i=seq_i=0;i<alignment.length;i++) { // go through the alignment
             // TODO: lower/upper case?
             if(alignment.read[i] == alignment.reference[i]) { // match
-                cur = insertMatch(alignment.read[i],
+                cur = insertMatch((char)alignment.read[i],
                         record.getReferenceIndex(),
                         record.getAlignmentStart() + ref_i,
                         prev);
@@ -55,6 +58,57 @@ public class Graph {
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
                 assert Alignment.GAP != alignment.read[i];
+                // begins with an insertion
+                if(null == prev) { 
+                    assert i == 0;
+                    // See if such an insertion exists
+
+                    // Get insertion range
+                    int start=0, end=0, found=0;
+
+                    for(end=0;end<alignment.length;end++) {
+                        if(alignment.reference[end] != Alignment.GAP) {
+                            break;
+                        }
+                    }
+
+                    try {
+
+                        Queue<Node> nodeQueue = new LinkedList<Node>();
+                        Queue<Integer> intQueue = new LinkedList<Integer>(); 
+                        // Get Node and try to see if there is an incoming insertion etc...
+                        nodeQueue.add(this.referenceNodes.get(record.getAlignmentStart() - position_start));
+                        intQueue.add(end);
+
+                        while(0 < nodeQueue.size() && 0 == found) {
+                            // Get element off the queue
+                            Node nodeCur = nodeQueue.poll();
+                            int endCur = intQueue.poll();
+
+                            // Go through all previous
+                            ListIterator<Node> nodeIter = nodeCur.prev.listIterator();
+                            while(nodeIter.hasNext() && 0 == found) {
+                                Node node = nodeIter.next();
+                                // only accept insertions that have the potential to account for the above alignment
+                                if(node.type == Node.INSERTION && node.offset <= endCur - start + 1 && alignment.read[endCur] == node.base) {
+                                    nodeQueue.add(node);
+                                    intQueue.add(endCur-1);
+                                }
+                                else if(endCur == start - 1) {
+                                    prev = node;
+                                    found = 1;
+                                }
+                            }
+                        }
+
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        // unsuccessful retrieval of the reference nodes -> ignore
+                    }
+                    if(0 == found) {
+                        // Must insert from the first reference base (ugh)
+                        throw new GraphException(GraphException.NOT_IMPLEMENTED);
+                    }
+                }
                 // check if the insertion exists
                 for(cur=null,j=0;null != prev && j < prev.next.size();j++) {
                     Node tmpNode = prev.next.get(j);
@@ -63,14 +117,10 @@ public class Graph {
                         cur = tmpNode;
                         cur.coverage++;
                         break; // Found one
-                    }
+                            }
                 }
                 if(null == cur) { // No such insertion
-                    if(null == prev) {
-                        // This could throw an exception if the vector does not have the prev base
-                        prev = this.referenceNodes.get(record.getAlignmentStart() - position_start); 
-                    }
-                    cur = new Node(alignment.read[i],
+                    cur = new Node((char)alignment.read[i],
                             Node.INSERTION,
                             prev.contig,
                             prev.position,
@@ -92,13 +142,13 @@ public class Graph {
                 i--;
             }
             else { // mismatch
-                // TODO check mismatch does not exist
-                cur = new Node(alignment.read[i],
-                            Node.MISMATCH,
-                            record.getReferenceIndex(),
-                            record.getAlignmentStart() + ref_i,
-                            0,
-                            prev);
+                // TODO check mismatch does not exist (beginning of the read)
+                cur = new Node((char)alignment.read[i],
+                        Node.MISMATCH,
+                        record.getReferenceIndex(),
+                        record.getAlignmentStart() + ref_i,
+                        0,
+                        prev);
                 ref_i++; seq_i++;
             }
             if(null != prev 
@@ -106,7 +156,7 @@ public class Graph {
                 prev.addToNext(cur);
                 cur.addToPrev(prev);
                 fixReverseInsertion(cur);
-            }
+                    }
             prev = cur;
         }
     }
@@ -121,6 +171,11 @@ public class Graph {
             throw new Exception("Out of range");
         }
         return this.referenceNodes.get(position - this.position_start);
+    }
+
+    public void prune(int start) {
+        // TODO
+        throw new GraphException(GraphException.NOT_IMPLEMENTED);
     }
 
     private void destroy()
@@ -157,7 +212,7 @@ public class Graph {
         node.next.clear();
     }
 
-    private Node insertMatch(byte base, int contig, int position, Node prev)
+    private Node insertMatch(char base, int contig, int position, Node prev)
     {
         Node cur;
 
@@ -208,7 +263,12 @@ public class Graph {
 
     public void print()
     {
-        System.out.println((1+contig)+":"+position_start+"-"+position_end);
+        this.print(System.out);
+    }
+
+    public void print(PrintStream out)
+    {
+        out.println((1+contig)+":"+position_start+"-"+position_end);
 
         PriorityQueue<Node> queue;
         ListIterator<Node> iter;
@@ -222,7 +282,7 @@ public class Graph {
         // BFS
         while(null != queue.peek()) {
             node = queue.poll();
-            node.print();
+            node.print(out);
             iter = node.next.listIterator();
             while(iter.hasNext()) {
                 Node next = iter.next();
@@ -230,6 +290,19 @@ public class Graph {
                     queue.add(next);
                 }
             }
+        }
+    }
+
+    public class GraphException extends Exception
+    {
+        int type;
+        public static final int NOT_IMPLEMENTED = 0;
+        public static final int OTHER = 1;
+
+        public GraphException(int type)
+        {
+            super("Not implemented");
+            this.type = type;
         }
     }
 }

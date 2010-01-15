@@ -26,8 +26,8 @@ public class AlignHeapNode {
      * */
     public AlignHeapNode(AlignHeapNode prev,
             Node curNode,
-            byte base,
-            byte qual,
+            char base,
+            char qual,
             SRMAUtil.Space space) throws Exception 
     {
         if(null == curNode) {
@@ -39,7 +39,7 @@ public class AlignHeapNode {
 
         if(null == prev) { // first base
             if(SRMAUtil.Space.COLORSPACE == space) {
-                base = SRMAUtil.colorSpaceNextBase(SRMAUtil.COLORSPACE_ADAPTOR, base);
+                base = SRMAUtil.colorSpaceNextBase(SRMAUtil.COLORSPACE_ADAPTOR, (char)base);
             }
             this.readOffset = 0;
             this.score = 0;
@@ -50,7 +50,7 @@ public class AlignHeapNode {
         else {
             assert(prev.space == space);
             if(SRMAUtil.Space.COLORSPACE == space) {
-                base = SRMAUtil.colorSpaceNextBase(prev.node.base, base);
+                base = SRMAUtil.colorSpaceNextBase((char)prev.node.base, (char)base);
             }
             this.readOffset = prev.readOffset + 1;
             this.score = prev.score;

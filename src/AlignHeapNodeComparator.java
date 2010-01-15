@@ -28,12 +28,12 @@ public class AlignHeapNodeComparator implements Comparator {
                  a.readOffset < b.readOffset) ||
                 (a.node.contig == b.node.contig &&
                  a.node.position == b.node.position &&
-                 a.readOffset < b.readOffset &&
+                 a.readOffset == b.readOffset &&
                  a.node.type < b.node.type) ||
                 (a.node.contig == b.node.contig &&
                  a.node.position == b.node.position &&
-                 a.readOffset < b.readOffset &&
-                 a.node.type < b.node.type &&
+                 a.readOffset == b.readOffset &&
+                 a.node.type == b.node.type &&
                  a.node.base < b.node.base)) {
             return (AlignHeap.HeapType.MINHEAP == type) ? -1 : 1;
                  }
