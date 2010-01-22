@@ -25,6 +25,7 @@ public class Align {
     private static SAMRecord AlignForwardStrand(Graph graph, SAMRecord rec, int offset, int coverage)
         throws Exception
     {
+        int i;
         PriorityQueue<Node> startNodeQueue = null;
         Iterator<Node> startNodeQueueIter = null;
         Node startNode;
@@ -50,6 +51,9 @@ public class Align {
         // - recover alignment and print
         // - remove/fix paired end reads?
 
+        // HERE
+        System.err.println("ALI:"+rec.toString());
+
         read = (String)rec.getAttribute("CS");
         if(null == read) {
             space = SRMAUtil.Space.NTSPACE;
@@ -74,21 +78,19 @@ public class Align {
         heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); // should be set based on strand
         comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); // should be set based on strand
 
-        // Add first node - should be set based on strand
-        startNodeQueue = graph.getPriorityQueueAtPositionOrGreater(alignmentStart - offset);
-        startNodeQueueIter = startNodeQueue.iterator();
-        while(startNodeQueueIter.hasNext()) {
-            startNode = startNodeQueueIter.next();
-            // HERE
-            //System.err.print("Adding start node:");
-            //startNode.print(System.err);
-            // HERE END
-            heap.add(new AlignHeapNode(null, 
-                        startNode,
-                        startNode.coverage,
-                        read.charAt(0),
-                        qualities.charAt(0),
-                        space));
+        for(i=alignmentStart-offset;i<=alignmentStart+offset;) {
+            startNodeQueue = graph.getPriorityQueueAtPositionOrGreater(i);
+            startNodeQueueIter = startNodeQueue.iterator();
+            while(startNodeQueueIter.hasNext()) {
+                startNode = startNodeQueueIter.next();
+                heap.add(new AlignHeapNode(null, 
+                            startNode,
+                            startNode.coverage,
+                            read.charAt(0),
+                            qualities.charAt(0),
+                            space));
+                i=startNode.position+1;
+            }
         }
 
         while(null != heap.peek()) {
@@ -102,9 +104,10 @@ public class Align {
 
             // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
-            while(Node.INSERTION != curAlignHeapNode.node.type && 
-                    null != nextAlignHeapNode && 
-                    0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) {
+            while(Node.INSERTION != curAlignHeapNode.node.type 
+                    && null != nextAlignHeapNode 
+                    && 0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) 
+            {
                 if(curAlignHeapNode.score < nextAlignHeapNode.score) {
                     // Update current node
                     curAlignHeapNode = heap.poll();
@@ -114,18 +117,25 @@ public class Align {
                     heap.poll();
                 }
                 nextAlignHeapNode = heap.peek();
-                    }
+            }
             nextAlignHeapNode=null;
+            
             // Check if the alignment is complete
             if(curAlignHeapNode.readOffset == read.length() - 1) {
                 // Complete, store if has the best alignment.
                 // TODO: must guarantee left-most alignment based on strand
-                if(null == bestAlignHeapNode || 
-                        bestAlignHeapNode.score < curAlignHeapNode.score || 
-                        (bestAlignHeapNode.score == curAlignHeapNode.score && 
-                         bestAlignHeapNode.coverageSum < curAlignHeapNode.coverageSum)) {
+                
+                // HERE
+                System.err.print(curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.score + ":");
+                curAlignHeapNode.node.print(System.err);
+           
+                if(null == bestAlignHeapNode 
+                        || bestAlignHeapNode.score < curAlignHeapNode.score 
+                        || (bestAlignHeapNode.score == curAlignHeapNode.score 
+                            && bestAlignHeapNode.coverageSum < curAlignHeapNode.coverageSum)) 
+                {
                     bestAlignHeapNode = curAlignHeapNode;
-                         }
+                }
             }
             else {
                 // Based on strand etc.
@@ -144,16 +154,6 @@ public class Align {
                                     read.charAt(curAlignHeapNode.readOffset+1), 
                                     qualities.charAt(curAlignHeapNode.readOffset+1), 
                                     space));
-                        // Add a start node
-                        // TODO should be conditioned on strand
-                        if(nextNode.position <= alignmentStart + offset) {
-                            heap.add(new AlignHeapNode(null, 
-                                        nextNode, 
-                                        nextCoverage,
-                                        read.charAt(0),
-                                        qualities.charAt(0), 
-                                        space));
-                        }
                     }
                 }
                 iter=null;
@@ -305,6 +305,7 @@ public class Align {
         }
         // Set new attributes
         rec.setAttribute("AS", bestAlignHeapNode.score);
+        rec.setAttribute("XC", bestAlignHeapNode.coverageSum);
         // set the XE attribute for colorError string
 
         // HERE

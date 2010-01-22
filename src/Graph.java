@@ -50,9 +50,9 @@ public class Graph {
            ref_i - index within 'alignment.reference'
            */
 
-        for(i=j=ref_i=0;
+        for(i=j=0,ref_i=-1;
                 i<alignment.length;
-                i++,ref_i+=j,prev=cur) 
+                i++,prev=cur) 
         { // go through the alignment
 
             // Skip over a deletion
@@ -65,7 +65,7 @@ public class Graph {
             offset = 0;
             if(alignment.read[i] == alignment.reference[i]) { // match
                 node_type = Node.MATCH;
-                j=1;
+                ref_i++;
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
                 node_type = Node.INSERTION; 
@@ -77,6 +77,7 @@ public class Graph {
             else { // mismatch
                 node_type = Node.MISMATCH;
                 j=1;
+                ref_i++;
             }
 
             // Create the node
@@ -108,6 +109,8 @@ public class Graph {
         if(null == curNode) { // new node, how exciting
             if(node.contig != this.contig) {
                 this.destroy();
+                this.contig = node.contig;
+                this.position_start = this.position_end = node.position;
             }
             // Add new queues if necessary
             for(i=position_end;i<=node.position;i++,position_end++) {
@@ -169,12 +172,10 @@ public class Graph {
             position = this.position_start;
         }
 
-        while(null == nodeQueue && position <= this.position_end) {
-            try {
-                nodeQueue = this.nodes.get(position - this.position_start);
+        while(position <= this.position_end) {
+            nodeQueue = this.nodes.get(position - this.position_start);
+            if(0 < nodeQueue.size()) {
                 return nodeQueue;
-            } catch (ArrayIndexOutOfBoundsException e) {
-                // ignore
             }
             position++;
         }
@@ -191,12 +192,10 @@ public class Graph {
             position = this.position_end;
         }
 
-        while(null == nodeQueue && this.position_start <= position) {
-            try {
-                nodeQueue = this.nodes.get(position - this.position_start);
+        while(this.position_start <= position) {
+            nodeQueue = this.nodes.get(position - this.position_start);
+            if(0 < nodeQueue.size()) {
                 return nodeQueue;
-            } catch (ArrayIndexOutOfBoundsException e) {
-                // ignore
             }
             position--;
         }
