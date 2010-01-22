@@ -69,7 +69,7 @@ public class SRMA extends CommandLineProgram {
             for (final SAMRecord rec : in) {
                 // TODO: Make sure that it is sorted
                 // Add only if it is from the same contig
-                if(graph.contig != rec.getReferenceIndex()) {
+                if(graph.contig != rec.getReferenceIndex()+1) {
                     // Process the rest of the reads
                     while(0 < list.size()) {
                         out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
@@ -92,10 +92,8 @@ public class SRMA extends CommandLineProgram {
                 graph.print(graphOut); // HERE
 
                 // TODO: check if we should process ... 
-
                 while(0 < list.size() && list.getFirst().getAlignmentEnd() + OFFSET < list.getLast().getAlignmentStart()) {
                     //graphOut.println("HERE1\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
-                    //System.err.println(list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
                     SAMRecord curSAMRecord = list.removeFirst();
                     // HERE TODO
                     graph.prune(curSAMRecord.getAlignmentStart() - OFFSET); // TODO
