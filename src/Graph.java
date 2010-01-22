@@ -36,9 +36,11 @@ public class Graph {
         alignment = new Alignment(record, sequences);
 
         // HERE
+        /*
            System.err.println(record.toString()); 
            System.err.println("refr:" + new String(alignment.reference));
            System.err.println("read:" + new String(alignment.read));
+           */
 
         int i, j, ref_i, offset, node_type;
         Node prev=null, cur=null;
@@ -48,7 +50,6 @@ public class Graph {
            ref_i - index within 'alignment.reference'
            */
 
-        System.err.println("INSERTING: " + record.toString());
         for(i=j=ref_i=0;
                 i<alignment.length;
                 i++,ref_i+=j,prev=cur) 
