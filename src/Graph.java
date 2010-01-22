@@ -35,24 +35,23 @@ public class Graph {
         // Get the alignment
         alignment = new Alignment(record, sequences);
 
-        /*
+        // HERE
            System.err.println(record.toString()); 
            System.err.println("refr:" + new String(alignment.reference));
            System.err.println("read:" + new String(alignment.read));
-           */
 
-        int i, j, ref_i, read_i, node_type;
+        int i, j, ref_i, offset, node_type;
         Node prev=null, cur=null;
 
         /* Reminders:
            i - index from 0 to 'alignment.length' 
            ref_i - index within 'alignment.reference'
-           read_i = index within 'alignment.read'
            */
 
-        for(i=ref_i=read_i=0;
+        System.err.println("INSERTING: " + record.toString());
+        for(i=j=ref_i=0;
                 i<alignment.length;
-                i++,prev=cur) 
+                i++,ref_i+=j,prev=cur) 
         { // go through the alignment
 
             // Skip over a deletion
@@ -62,22 +61,29 @@ public class Graph {
             }
 
             // Get the node type
+            offset = 0;
             if(alignment.read[i] == alignment.reference[i]) { // match
                 node_type = Node.MATCH;
+                j=1;
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
                 node_type = Node.INSERTION; 
+                j=0; // not advancing the reference
+                if(null != prev && Node.INSERTION == prev.type) {
+                    offset = prev.offset + 1;
+                }
             }
             else { // mismatch
                 node_type = Node.MISMATCH;
+                j=1;
             }
 
             // Create the node
             cur = this.addNode(new Node((char)alignment.read[i], 
                         node_type,
-                        record.getReferenceIndex(),
+                        record.getReferenceIndex() + 1,
                         record.getAlignmentStart() + ref_i,
-                        0,
+                        offset,
                         prev),
                     prev);
         }
@@ -91,7 +97,6 @@ public class Graph {
     {
 
         Node curNode = null;
-        PriorityQueue<Node> nodeQueue = null;
         int i;
 
         // Check if such a node exists
@@ -107,10 +112,8 @@ public class Graph {
             for(i=position_end;i<=node.position;i++,position_end++) {
                 this.nodes.add(new PriorityQueue<Node>(1, new NodeComparator()));
             }
-            // Get the proper queue
-            nodeQueue = this.nodes.get(node.position - this.position_start);
-            // Add the node to the queue
-            nodeQueue.add(node);
+            // Get the proper queue and add
+            this.nodes.get(node.position - this.position_start).add(node);
             curNode = node;
         }
         else { // already contains

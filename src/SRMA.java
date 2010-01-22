@@ -65,7 +65,7 @@ public class SRMA extends CommandLineProgram {
 
         // Go through each SAM record
         try {
-            //PrintStream graphOut = new PrintStream("graph.txt");
+            PrintStream graphOut = new PrintStream("graph.txt");
             for (final SAMRecord rec : in) {
                 // TODO: Make sure that it is sorted
                 // Add only if it is from the same contig
@@ -88,10 +88,8 @@ public class SRMA extends CommandLineProgram {
 
                 //System.err.println("Printing GRAPH:");
                 //graph.print(System.err);
-                /*
                 graphOut.println("GRAPH"); // HERE
                 graph.print(graphOut); // HERE
-                */
 
                 // TODO: check if we should process ... 
 
@@ -109,7 +107,7 @@ public class SRMA extends CommandLineProgram {
                 //graphOut.println("HERE2\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
                 out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
             }
-            //graphOut.close();
+            graphOut.close();
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);
