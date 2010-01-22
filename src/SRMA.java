@@ -111,7 +111,6 @@ public class SRMA extends CommandLineProgram {
             }
             //graphOut.close();
         } catch (Exception e) {
-            System.err.println(e.toString());
             e.printStackTrace();
             System.exit(1);
         }

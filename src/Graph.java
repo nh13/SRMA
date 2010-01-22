@@ -92,6 +92,7 @@ public class Graph {
 
         Node curNode = null;
         PriorityQueue<Node> nodeQueue = null;
+        int i;
 
         // Check if such a node exists
         // - if such a node exists, return it
@@ -102,13 +103,15 @@ public class Graph {
             if(node.contig != this.contig) {
                 this.destroy();
             }
-            try {
-                nodeQueue = this.nodes.get(node.position - this.position_start);
-            } catch (ArrayIndexOutOfBoundsException e) {
-                nodeQueue = new PriorityQueue<Node>(10, new NodeComparator());
-                this.nodes.add(node.position - this.position_start, nodeQueue);
+            // Add new queues if necessary
+            for(i=position_end;i<=node.position;i++,position_end++) {
+                this.nodes.add(new PriorityQueue<Node>(1, new NodeComparator()));
             }
+            // Get the proper queue
+            nodeQueue = this.nodes.get(node.position - this.position_start);
+            // Add the node to the queue
             nodeQueue.add(node);
+            curNode = node;
         }
         else { // already contains
             curNode.coverage++; 
@@ -118,7 +121,7 @@ public class Graph {
             curNode.addToPrev(prev);
             prev.addToNext(curNode);
         }
-        
+
         return curNode;
     }
 
@@ -139,7 +142,7 @@ public class Graph {
         } catch (ArrayIndexOutOfBoundsException e) {
             return null;
         }
-        
+
         // Go through all nodes at this position etc.
         nodeQueueIter = nodeQueue.iterator();
         nodeComparator = new NodeComparator();
@@ -158,6 +161,10 @@ public class Graph {
     {
         PriorityQueue<Node> nodeQueue = null;
 
+        if(position < this.position_start) {
+            position = this.position_start;
+        }
+
         while(null == nodeQueue && position <= this.position_end) {
             try {
                 nodeQueue = this.nodes.get(position - this.position_start);
@@ -170,11 +177,15 @@ public class Graph {
 
         throw new GraphException(GraphException.OTHER, "Could not find an adequate node to start re-alignment.");
     }
-    
+
     public PriorityQueue<Node> getPriorityQueueAtPositionOrBefore(int position)
         throws Exception
     {
         PriorityQueue<Node> nodeQueue = null;
+
+        if(this.position_end < position) {
+            position = this.position_end;
+        }
 
         while(null == nodeQueue && this.position_start <= position) {
             try {
@@ -223,9 +234,9 @@ public class Graph {
         int i;
         PriorityQueue<Node> queue;
         Iterator<Node> iter;
-        
+
         out.println((1+contig)+":"+position_start+"-"+position_end);
-        
+
         for(i=0;i<this.nodes.size();i++) {
             queue = this.nodes.get(i);
             iter = queue.iterator();
