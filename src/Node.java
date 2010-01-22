@@ -86,6 +86,17 @@ public class Node {
         this.print(System.out);
     }
 
+    public void destroy()
+    {
+        // Clear the previous list
+        this.prev.clear();
+        this.prevCov.clear();
+
+        // Clear the next list
+        this.next.clear();
+        this.nextCov.clear();
+    }
+
     public class NodeComparator implements Comparator<Node> {
         public int compare(Node o1, Node o2) 
         {
@@ -109,4 +120,5 @@ public class Node {
             return (0 == this.compare(o1, o2));
         }
     }
+
 }

@@ -58,6 +58,7 @@ public class Alignment {
             cigarElementLength = cigarElement.getLength();
             cigarElementOperator = cigarElement.getOperator();
             for(i=0;i<cigarElementLength;i++) {
+                // TODO: make sure these are upper case
                 switch(cigarElementOperator) {
                     case M:
                         this.reference[index] = referenceBases[alignmentStart - 1 + referenceIndex];

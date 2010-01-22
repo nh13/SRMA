@@ -14,7 +14,7 @@ public class Graph {
     int contig; // one based
     int position_start; // one based
     int position_end;
-    Vector<Node> referenceNodes;
+    Vector<PriorityQueue<Node>> nodes;
     SAMFileHeader header;
     List<ReferenceSequence> sequences;
 
@@ -22,10 +22,10 @@ public class Graph {
     {
         this.header = header;
         this.sequences = sequences;
-        this.contig = 0; 
-        this.position_start = -1; 
-        this.position_end = -1;
-        referenceNodes = new Vector<Node>(); 
+        this.contig = 1; 
+        this.position_start = 1; 
+        this.position_end = 1;
+        this.nodes = new Vector<PriorityQueue<Node>>(); 
     }
 
     public void addSAMRecord(SAMRecord record) throws Exception
@@ -41,148 +41,152 @@ public class Graph {
            System.err.println("read:" + new String(alignment.read));
            */
 
-        int i, j, ref_i, seq_i;
+        int i, j, ref_i, read_i, node_type;
         Node prev=null, cur=null;
 
-        if(this.position_start <= record.getAlignmentStart() && record.getAlignmentStart() <= this.position_end && alignment.reference[0] != Alignment.GAP) {
-            prev = referenceNodes.get(record.getAlignmentStart() - this.position_start);
-        }
+        /* Reminders:
+           i - index from 0 to 'alignment.length' 
+           ref_i - index within 'alignment.reference'
+           read_i = index within 'alignment.read'
+           */
 
-        for(i=ref_i=seq_i=0;i<alignment.length;i++) { // go through the alignment
-            // TODO: lower/upper case?
+        for(i=ref_i=read_i=0;
+                i<alignment.length;
+                i++,prev=cur) 
+        { // go through the alignment
+
+            // Skip over a deletion
+            while(Alignment.GAP == alignment.read[i]) { 
+                i++;
+                ref_i++;
+            }
+
+            // Get the node type
             if(alignment.read[i] == alignment.reference[i]) { // match
-                cur = insertMatch((char)alignment.read[i],
-                        record.getReferenceIndex(),
-                        record.getAlignmentStart() + ref_i,
-                        prev);
-                ref_i++; seq_i++;
+                node_type = Node.MATCH;
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
-                assert Alignment.GAP != alignment.read[i];
-                // begins with an insertion
-                if(null == prev) { 
-                    assert i == 0;
-                    // See if such an insertion exists
-
-                    // Get insertion range
-                    int start=0, end=0, found=0;
-
-                    for(end=0;end<alignment.length;end++) {
-                        if(alignment.reference[end] != Alignment.GAP) {
-                            break;
-                        }
-                    }
-
-                    try {
-
-                        Queue<Node> nodeQueue = new LinkedList<Node>();
-                        Queue<Integer> intQueue = new LinkedList<Integer>(); 
-                        // Get Node and try to see if there is an incoming insertion etc...
-                        nodeQueue.add(this.referenceNodes.get(record.getAlignmentStart() - position_start));
-                        intQueue.add(end);
-
-                        while(0 < nodeQueue.size() && 0 == found) {
-                            // Get element off the queue
-                            Node nodeCur = nodeQueue.poll();
-                            int endCur = intQueue.poll();
-
-                            // Go through all previous
-                            ListIterator<Node> nodeIter = nodeCur.prev.listIterator();
-                            while(nodeIter.hasNext() && 0 == found) {
-                                Node node = nodeIter.next();
-                                // only accept insertions that have the potential to account for the above alignment
-                                if(node.type == Node.INSERTION && node.offset <= endCur - start + 1 && alignment.read[endCur] == node.base) {
-                                    nodeQueue.add(node);
-                                    intQueue.add(endCur-1);
-                                }
-                                else if(endCur == start - 1) {
-                                    prev = node;
-                                    found = 1;
-                                }
-                            }
-                        }
-
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        // unsuccessful retrieval of the reference nodes -> ignore
-                    }
-                    if(0 == found) {
-                        // Must insert from the first reference base (ugh)
-                        throw new GraphException(GraphException.NOT_IMPLEMENTED);
-                    }
-                }
-                // check if the insertion exists
-                for(cur=null,j=0;null != prev && j < prev.next.size();j++) {
-                    Node tmpNode = prev.next.get(j);
-                    if(Node.INSERTION == tmpNode.type &&
-                            alignment.read[i] == tmpNode.base) {
-                        cur = tmpNode;
-                        cur.coverage++;
-                        break; // Found one
-                            }
-                }
-                if(null == cur) { // No such insertion
-                    cur = new Node((char)alignment.read[i],
-                            Node.INSERTION,
-                            prev.contig,
-                            prev.position,
-                            prev.offset+1,
-                            prev);
-                }
-                seq_i++;
-            }
-            else if(alignment.read[i] == Alignment.GAP) { // deletion
-                assert Alignment.GAP != alignment.read[i];
-                cur = prev;
-                // Skip over deletion.  Note: impossible to end with a deletion.
-                while(Alignment.GAP == alignment.read[i]) {
-                    assert i < alignment.length;
-                    assert Alignment.GAP != alignment.reference[i];
-                    i++;
-                    ref_i++;
-                }
-                i--;
+                node_type = Node.INSERTION; 
             }
             else { // mismatch
-                // TODO check mismatch does not exist 
-                cur = new Node((char)alignment.read[i],
-                        Node.MISMATCH,
+                node_type = Node.MISMATCH;
+            }
+
+            // Create the node
+            cur = this.addNode(new Node((char)alignment.read[i], 
+                        node_type,
                         record.getReferenceIndex(),
                         record.getAlignmentStart() + ref_i,
                         0,
-                        prev);
-                if(prev != null) {
-                    ListIterator<Node> iter = prev.next.listIterator();
-                    NodeComparator comp = new NodeComparator();
-                    while(iter.hasNext()) {
-                        Node node = iter.next();
-                        if(0 == comp.compare(node, cur)) {
-                            cur = node; 
-                            break;
-                        }
-                    }
-                }
-                ref_i++; seq_i++;
-            }
-            if(null != prev 
-                    && prev != cur) {
-                prev.addToNext(cur);
-                cur.addToPrev(prev);
-                fixReverseInsertion(cur);
-                    }
-            prev = cur;
+                        prev),
+                    prev);
         }
     }
 
-    public Node getReferenceNode(int position) 
+    /* 
+     * Adds the node to the graph.  Merges if the graph already
+     * contains a similar node.
+     * */
+    private Node addNode(Node node, Node prev)
+    {
+
+        Node curNode = null;
+        PriorityQueue<Node> nodeQueue = null;
+
+        // Check if such a node exists
+        // - if such a node exists, return it
+        // - else insert it
+
+        curNode = this.contains(node);
+        if(null == curNode) { // new node, how exciting
+            if(node.contig != this.contig) {
+                this.destroy();
+            }
+            try {
+                nodeQueue = this.nodes.get(node.position - this.position_start);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                nodeQueue = new PriorityQueue<Node>(10, new NodeComparator());
+                this.nodes.add(node.position - this.position_start, nodeQueue);
+            }
+            nodeQueue.add(node);
+        }
+        else { // already contains
+            curNode.coverage++; 
+        }
+        // Update edges
+        if(null != prev) {
+            curNode.addToPrev(prev);
+            prev.addToNext(curNode);
+        }
+        
+        return curNode;
+    }
+
+    /* 
+     * Returns the Node in the graph if already exists,
+     * null otherwise
+     * */
+    private Node contains(Node node)
+    {
+        PriorityQueue<Node> nodeQueue = null;
+        Iterator<Node> nodeQueueIter = null;
+        NodeComparator nodeComparator = null;
+        Node curNode = null;
+
+        // See if there are any nodes at this position
+        try {
+            nodeQueue = this.nodes.get(node.position - this.position_start);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return null;
+        }
+        
+        // Go through all nodes at this position etc.
+        nodeQueueIter = nodeQueue.iterator();
+        nodeComparator = new NodeComparator();
+        while(nodeQueueIter.hasNext()) {
+            curNode = nodeQueueIter.next();
+            if(nodeComparator.equals(curNode, node)) {
+                return curNode;
+            }
+        }
+
+        return null;
+    }
+
+    public PriorityQueue<Node> getPriorityQueueAtPositionOrGreater(int position)
         throws Exception
     {
-        if(position < this.position_start) {
-            position = this.position_start;
+        PriorityQueue<Node> nodeQueue = null;
+
+        while(null == nodeQueue && position <= this.position_end) {
+            try {
+                nodeQueue = this.nodes.get(position - this.position_start);
+                return nodeQueue;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                // ignore
+            }
+            position++;
         }
-        else if(this.position_end < position) {
-            throw new Exception("Out of range");
+
+        throw new GraphException(GraphException.OTHER, "Could not find an adequate node to start re-alignment.");
+    }
+    
+    public PriorityQueue<Node> getPriorityQueueAtPositionOrBefore(int position)
+        throws Exception
+    {
+        PriorityQueue<Node> nodeQueue = null;
+
+        while(null == nodeQueue && this.position_start <= position) {
+            try {
+                nodeQueue = this.nodes.get(position - this.position_start);
+                return nodeQueue;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                // ignore
+            }
+            position--;
         }
-        return this.referenceNodes.get(position - this.position_start);
+
+        throw new GraphException(GraphException.OTHER, "Could not find an adequate node to start re-alignment.");
     }
 
     public void prune(int start) 
@@ -195,84 +199,18 @@ public class Graph {
     private void destroy()
     {
         int i;
-        Node node;
-        for(i=0;i<this.referenceNodes.size();i++) {
-            node = this.referenceNodes.get(i);
-            destroyNode(node);
-        }
+        PriorityQueue<Node> queue;
 
-        this.contig = 0;
-        this.position_start = this.position_end = -1;
-        this.referenceNodes.clear();
-    }
-
-    private void destroyNode(Node node)
-    {
-        ListIterator iter;
-        Node n;
-
-        // Clear the previous list
-        iter = node.prev.listIterator();
-        node.prev.clear();
-
-        // Clear the next list
-        iter = node.next.listIterator();
-        while(iter.hasNext()) {
-            n = (Node)iter.next();
-            if(Node.MATCH != n.type) {
-                destroyNode(n);
+        for(i=0;i<this.nodes.size();i++) {
+            queue = this.nodes.get(i);
+            while(null != queue.peek()) {
+                queue.poll().destroy();
             }
         }
-        node.next.clear();
-    }
 
-    private Node insertMatch(char base, int contig, int position, Node prev)
-    {
-        Node cur;
-
-        if(contig != this.contig || this.position_end < position) { // Not within the range
-            cur = new Node(base, Node.MATCH, contig, position, 0, prev);
-
-            if(contig != this.contig) {
-                this.destroy();
-            }
-
-            assert this.position_start <= position;
-
-            if(this.referenceNodes.isEmpty()) {
-                this.position_start = position;
-                if(0 == this.referenceNodes.size()) {
-                    this.referenceNodes.setSize(1);
-                }
-                this.referenceNodes.add(0, cur);
-            }
-            else {
-                if(this.referenceNodes.size() < position - this.position_start + 1) {
-                    this.referenceNodes.setSize(position - this.position_start + 1);
-                }
-                this.referenceNodes.add(position - this.position_start, cur);
-            }
-            this.contig = contig;
-            this.position_end = position;
-        }
-        else {
-            cur = this.referenceNodes.get(position - this.position_start);
-            if(null == cur) {
-                cur = new Node(base, Node.MATCH, contig, position, 0, prev);
-                if(this.referenceNodes.size() < position - this.position_start + 1) {
-                    this.referenceNodes.setSize(position - this.position_start + 1);
-                }
-                referenceNodes.set(position - this.position_start, cur);
-            }
-            cur.coverage++;
-        }
-        return cur;
-    }
-
-    private void fixReverseInsertion(Node node)
-    {
-        // TODO
-        // Ignore for now since this is computationally expensive
+        this.contig = 1;
+        this.position_start = this.position_end = 1;
+        this.nodes.clear();
     }
 
     public void print()
@@ -282,27 +220,17 @@ public class Graph {
 
     public void print(PrintStream out)
     {
-        out.println((1+contig)+":"+position_start+"-"+position_end);
-
+        int i;
         PriorityQueue<Node> queue;
-        ListIterator<Node> iter;
-
-        queue = new PriorityQueue<Node>(10, new NodeComparator());
-        Node node = (Node)referenceNodes.get(0);
-        if(null != node) {
-            queue.add(node);
-        }
-
-        // BFS
-        while(null != queue.peek()) {
-            node = queue.poll();
-            node.print(out);
-            iter = node.next.listIterator();
+        Iterator<Node> iter;
+        
+        out.println((1+contig)+":"+position_start+"-"+position_end);
+        
+        for(i=0;i<this.nodes.size();i++) {
+            queue = this.nodes.get(i);
+            iter = queue.iterator();
             while(iter.hasNext()) {
-                Node next = iter.next();
-                if(!queue.contains(next)) {
-                    queue.add(next);
-                }
+                iter.next().print(out);
             }
         }
     }
@@ -316,6 +244,11 @@ public class Graph {
         public GraphException(int type)
         {
             super("Not implemented");
+            this.type = type;
+        }
+
+        public GraphException(int type, String message) {
+            super(message);
             this.type = type;
         }
     }
