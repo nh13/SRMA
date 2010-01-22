@@ -79,6 +79,10 @@ public class Align {
         startNodeQueueIter = startNodeQueue.iterator();
         while(startNodeQueueIter.hasNext()) {
             startNode = startNodeQueueIter.next();
+            // HERE
+            //System.err.print("Adding start node:");
+            //startNode.print(System.err);
+            // HERE END
             heap.add(new AlignHeapNode(null, 
                         startNode,
                         startNode.coverage,
