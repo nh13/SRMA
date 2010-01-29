@@ -27,15 +27,9 @@ public class Align {
         ListIterator<Node> iter=null;
         ListIterator<Integer> iterCov=null;
         AlignHeapNodeComparator comp;
-        int alignmentStart = rec.getAlignmentStart();
+        int alignmentStart = -1;
+        int numStartNodesAdded = 0;
         boolean strand = rec.getReadNegativeStrandFlag(); // false -> forward, true -> reverse
-
-        /*
-           if(strand) {
-        // Reverse
-        throw new Exception("Error.  Reverse alignments not implemented.");
-           }
-           */
 
         assert SRMAUtil.Space.COLORSPACE != space;
 
@@ -50,9 +44,11 @@ public class Align {
                 byte tmp[] = rec.getReadBases();
                 SAMRecordUtil.reverseArray(tmp);
                 read = new String(tmp);
+                SAMRecordUtil.reverseArray(tmp); // reverse back!
                 tmp = rec.getBaseQualities();
                 SAMRecordUtil.reverseArray(tmp);
                 qualities = new String(tmp);
+                SAMRecordUtil.reverseArray(tmp); // reverse back!
             }
             else { // forward
                 read = new String(rec.getReadBases());
@@ -85,38 +81,55 @@ public class Align {
 
         // Add start nodes
         if(strand) { // reverse
+            alignmentStart = rec.getAlignmentEnd();
             for(i=alignmentStart+offset;alignmentStart-offset<=i;) {
                 startNodeQueue = graph.getPriorityQueueAtPositionOrBefore(i);
-                startNodeQueueIter = startNodeQueue.iterator();
-                int prev_i = i;
-                while(startNodeQueueIter.hasNext()) {
-                    startNode = startNodeQueueIter.next();
-                    heap.add(new AlignHeapNode(null, 
-                                startNode,
-                                startNode.coverage,
-                                read.charAt(0),
-                                qualities.charAt(0),
-                                space));
-                    i=startNode.position-1;
+                if(null != startNodeQueue) {
+                    startNodeQueueIter = startNodeQueue.iterator();
+                    int prev_i = i;
+                    while(startNodeQueueIter.hasNext()) {
+                        startNode = startNodeQueueIter.next();
+                        heap.add(new AlignHeapNode(null, 
+                                    startNode,
+                                    startNode.coverage,
+                                    read.charAt(0),
+                                    qualities.charAt(0),
+                                    space));
+                        i=startNode.position-1;
+                        numStartNodesAdded++;
+                    }
+                }
+                else {
+                    i--;
                 }
             }
         }
         else {
+            alignmentStart = rec.getAlignmentStart();
             for(i=alignmentStart-offset;i<=alignmentStart+offset;) {
                 startNodeQueue = graph.getPriorityQueueAtPositionOrGreater(i);
-                startNodeQueueIter = startNodeQueue.iterator();
-                int prev_i = i;
-                while(startNodeQueueIter.hasNext()) {
-                    startNode = startNodeQueueIter.next();
-                    heap.add(new AlignHeapNode(null, 
-                                startNode,
-                                startNode.coverage,
-                                read.charAt(0),
-                                qualities.charAt(0),
-                                space));
-                    i=startNode.position+1;
+                if(null != startNodeQueue) {
+                    startNodeQueueIter = startNodeQueue.iterator();
+                    int prev_i = i;
+                    while(startNodeQueueIter.hasNext()) {
+                        startNode = startNodeQueueIter.next();
+                        heap.add(new AlignHeapNode(null, 
+                                    startNode,
+                                    startNode.coverage,
+                                    read.charAt(0),
+                                    qualities.charAt(0),
+                                    space));
+                        i=startNode.position+1;
+                        numStartNodesAdded++;
+                    }
+                }
+                else {
+                    i++;
                 }
             }
+        }
+        if(numStartNodesAdded == 0) {
+            throw new Exception("Did not add any start nodes!");
         }
 
         while(null != heap.peek()) {
@@ -214,6 +227,7 @@ public class Align {
         int i;
 
         if(null == bestAlignHeapNode) {
+            System.err.println("\nNo alignments!");
             return;
         }
 
@@ -229,9 +243,19 @@ public class Align {
         // base qualities
 
         readBases = new byte[read.length()];
-        readIndex = read.length()-1;
+        if(strand) {
+            readIndex=0;
+        }
+        else {
+            readIndex = read.length()-1;
+        }
         cigarElements = new LinkedList<CigarElement>();
-        alignmentStart=bestAlignHeapNode.startPosition;
+        if(strand) {
+            alignmentStart=bestAlignHeapNode.node.position;
+        }
+        else {
+            alignmentStart=bestAlignHeapNode.startPosition;
+        }
 
         assert null != bestAlignHeapNode;
         curAlignHeapNode = bestAlignHeapNode;
@@ -256,7 +280,12 @@ public class Align {
                 }
                 if(space == SRMAUtil.Space.COLORSPACE) {
                     readBases[readIndex]  = (byte)curAlignHeapNode.node.base;
-                    readIndex--;
+                    if(strand) {
+                        readIndex++;
+                    }
+                    else {
+                        readIndex--;
+                    }
                 }
             }
             if(prevCigarOperator != curCigarOperator) {
@@ -328,8 +357,15 @@ public class Align {
         }
         else {
             readBases = new byte[read.length()];
-            for(i=0;i<read.length();i++) {
-                readBases[i] = (byte)read.charAt(i);
+            if(strand) {
+                for(i=0;i<read.length();i++) {
+                    readBases[i] = (byte)read.charAt(read.length() - i - 1);
+                }
+            }
+            else {
+                for(i=0;i<read.length();i++) {
+                    readBases[i] = (byte)read.charAt(i);
+                }
             }
         }
 
@@ -340,7 +376,7 @@ public class Align {
         rec.setAlignmentStart(alignmentStart);
         if(strand) { // reverse
             // reverse read bases and qualities so it is on the + strand
-            SAMRecordUtil.reverseArray(readBases);
+            //SAMRecordUtil.reverseArray(readBases);
             // TODO: qualities
         }
         rec.setReadBases(readBases);

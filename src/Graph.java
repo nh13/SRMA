@@ -96,6 +96,7 @@ public class Graph {
      * contains a similar node.
      * */
     private Node addNode(Node node, Node prev)
+        throws Exception
     {
 
         Node curNode = null;
@@ -113,11 +114,12 @@ public class Graph {
                 this.position_start = this.position_end = node.position;
             }
             // Add new queues if necessary
-            for(i=position_end;i<=node.position;i++,position_end++) {
+            for(i=this.position_end;i<=node.position;i++) {
                 this.nodes.add(new PriorityQueue<Node>(1, new NodeComparator()));
             }
             // Get the proper queue and add
             this.nodes.get(node.position - this.position_start).add(node);
+            this.position_end = node.position;
             curNode = node;
         }
         else { // already contains
@@ -187,6 +189,7 @@ public class Graph {
         throws Exception
     {
         PriorityQueue<Node> nodeQueue = null;
+        int t = position; // HERE 
 
         if(this.position_end < position) {
             position = this.position_end;
@@ -200,7 +203,7 @@ public class Graph {
             position--;
         }
 
-        throw new GraphException(GraphException.OTHER, "Could not find an adequate node to start re-alignment.");
+        return null;
     }
 
     public void prune(int start) 
@@ -228,11 +231,13 @@ public class Graph {
     }
 
     public void print()
+        throws Exception
     {
         this.print(System.out);
     }
 
     public void print(PrintStream out)
+        throws Exception
     {
         int i;
         PriorityQueue<Node> queue;

@@ -25,6 +25,7 @@ public class Node {
     List<Integer> prevCov;
 
     public Node(char base, int type, int contig, int position, int offset, Node prev)
+        throws Exception
     {
         this.base = base;
         this.type = type;
@@ -36,11 +37,17 @@ public class Node {
         this.nextCov = new ArrayList<Integer>();
         this.prev = new ArrayList<Node>();
         this.prevCov = new ArrayList<Integer>();
-        addToPrev(prev);
+        if(null != prev) {
+            addToPrev(prev);
+        }
     }
 
     public void addToNext(Node node)
+        throws Exception
     {
+        if(null == node) {
+            throw new Exception("addToNext: node was null!");
+        }
         int indexOf = this.next.indexOf(node);
         if(indexOf < 0) {
             this.next.add(node);
@@ -52,7 +59,11 @@ public class Node {
     }
 
     public void addToPrev(Node node) 
+        throws Exception
     {
+        if(null == node) {
+            throw new Exception("addToPrev: node was null!");
+        }
         int indexOf = this.prev.indexOf(node);
         if(indexOf < 0) {
             this.prev.add(node);
@@ -64,6 +75,7 @@ public class Node {
     }
 
     public void print(PrintStream out) 
+        throws Exception
     {
         ListIterator<Node> iter;
         ListIterator<Integer> iterCov;
@@ -82,6 +94,7 @@ public class Node {
     }
 
     public void print()
+        throws Exception
     {
         this.print(System.out);
     }
