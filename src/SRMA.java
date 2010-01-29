@@ -34,9 +34,7 @@ public class SRMA extends CommandLineProgram {
 
     /*
      * Current assumptions:
-     * - single contig
      * - can fit entire partial order graph in memory
-     * - SAM entries are on the forward strand
      * */
     protected int doWork() 
     {
@@ -64,8 +62,9 @@ public class SRMA extends CommandLineProgram {
         Graph graph = new Graph(header, referenceSequences);
 
         // Go through each SAM record
+        System.err.println("");
         try {
-            PrintStream graphOut = new PrintStream("graph.txt");
+            //PrintStream graphOut = new PrintStream("graph.txt");
             for (final SAMRecord rec : in) {
                 // TODO: Make sure that it is sorted
                 // Add only if it is from the same contig
@@ -88,15 +87,18 @@ public class SRMA extends CommandLineProgram {
 
                 //System.err.println("Printing GRAPH:");
                 //graph.print(System.err);
-                graphOut.println("GRAPH"); // HERE
-                graph.print(graphOut); // HERE
+                //graphOut.println("GRAPH"); // HERE
+                //graph.print(graphOut); // HERE
+
+                // HERE
+                System.err.print("\rIN:" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd() + ":" + rec.toString());
 
                 // TODO: check if we should process ... 
                 while(0 < list.size() && list.getFirst().getAlignmentEnd() + OFFSET < list.getLast().getAlignmentStart()) {
-                    //graphOut.println("HERE1\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
                     SAMRecord curSAMRecord = list.removeFirst();
+                    System.err.print("\rAL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
                     // HERE TODO
-                    graph.prune(curSAMRecord.getAlignmentStart() - OFFSET); // TODO
+                    // graph.prune(curSAMRecord.getAlignmentStart() - OFFSET); // TODO
                     out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
                 }
             }
@@ -105,7 +107,7 @@ public class SRMA extends CommandLineProgram {
                 //graphOut.println("HERE2\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
                 out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
             }
-            graphOut.close();
+            //graphOut.close();
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);
