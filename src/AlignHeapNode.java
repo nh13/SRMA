@@ -59,7 +59,7 @@ public class AlignHeapNode {
             this.prev = prev;
             this.coverageSum = prev.coverageSum + curCoverage;
         }
-        // System.err.println("base="+(char)base+" curNode.base="+(char)curNode.base+" score="+((base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual)));
+        //System.err.println("base="+(char)base+" curNode.base="+(char)curNode.base+" score="+((base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual)));
         this.score += (base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual); 
     }
 }

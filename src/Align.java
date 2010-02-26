@@ -31,6 +31,9 @@ public class Align {
         int numStartNodesAdded = 0;
         boolean strand = rec.getReadNegativeStrandFlag(); // false -> forward, true -> reverse
 
+        // Debugging stuff
+        String readName = rec.getReadName();
+
         assert SRMAUtil.Space.COLORSPACE != space;
 
         // TODO:
@@ -136,10 +139,11 @@ public class Align {
             curAlignHeapNode = heap.poll();
 
             // HERE
-            /*
-               System.err.println("size:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
-               curAlignHeapNode.node.print(System.err);
-               */
+                /*
+                    //System.err.println("size:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
+                    System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.startPosition + ":");
+                    curAlignHeapNode.node.print(System.err);
+                */
 
             // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
@@ -147,7 +151,9 @@ public class Align {
                     && null != nextAlignHeapNode 
                     && 0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) 
             {
-                if(curAlignHeapNode.score < nextAlignHeapNode.score) {
+                if(curAlignHeapNode.score < nextAlignHeapNode.score ||
+                        (curAlignHeapNode.score == nextAlignHeapNode.score && 
+                         curAlignHeapNode.coverageSum < nextAlignHeapNode.coverageSum)) {
                     // Update current node
                     curAlignHeapNode = heap.poll();
                 }
@@ -166,9 +172,10 @@ public class Align {
 
                 // HERE
                 /*
-                   System.err.print(curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.score + ":");
-                   curAlignHeapNode.node.print(System.err);
-                   */
+                    System.err.print(curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.score + ":");
+                    System.err.print(curAlignHeapNode.startPosition + ":");
+                    curAlignHeapNode.node.print(System.err);
+                    */
 
                 if(null == bestAlignHeapNode 
                         || bestAlignHeapNode.score < curAlignHeapNode.score 
@@ -195,6 +202,7 @@ public class Align {
                 while(iter.hasNext()) {
                     Node nextNode = iter.next();
                     int nextCoverage = iterCov.next();
+                    
                     if(coverage <= nextCoverage) {
                         heap.add(new AlignHeapNode(curAlignHeapNode, 
                                     nextNode, 
@@ -225,6 +233,7 @@ public class Align {
         byte readBases[];
         byte colorErrors[];
         int i;
+        String readColors=null, readColorQualities=null;
 
         if(null == bestAlignHeapNode) {
             System.err.println("\nNo alignments!");
@@ -240,7 +249,7 @@ public class Align {
         // setInferredInsertSize (invalidates paired end reads)
         // setMappingQuality (?)
         // setFlag
-        // base qualities
+        // update base qualities for color space reads 
 
         readBases = new byte[read.length()];
         if(strand) {
@@ -380,9 +389,17 @@ public class Align {
             // TODO: qualities
         }
         rec.setReadBases(readBases);
+        if(null != rec.getAttribute("CS")) {
+            readColors = (String)rec.getAttribute("CS");
+            readColorQualities = (String)rec.getAttribute("CQ");
+        }
         // Clear attributes
         rec.clearAttributes();
         // Set new attributes
+        if(null != readColors) {
+            rec.setAttribute("CS", readColors);
+            rec.setAttribute("CQ", readColorQualities);
+        }
         rec.setAttribute("AS", bestAlignHeapNode.score);
         rec.setAttribute("XC", bestAlignHeapNode.coverageSum);
         // set the XE attribute for colorError string
