@@ -1,0 +1,13 @@
+=== Features ===
+
+Check the "TODO" comments in the source code.
+
+In particular:
+- assure that all indels are left-justified;
+- update base qualities of color space reads after re-alignment.
+- prune the graph when nodes are no longer needed (based on offset).
+- make sure the SAM/BAM file is sorted.
+- fix mate information in SAM (MRNM, MPOS, ISIZE)
+- update mapping quality (?)
+
+=== BUGS ===
