@@ -13,8 +13,8 @@ import srma.Node;
 public class Graph {
     int contig; // one based
     int position_start; // one based
-    int position_end;
-    Vector<PriorityQueue<Node>> nodes;
+    int position_end; // one based
+    Vector<PriorityQueue<Node>> nodes; // zero based
     SAMFileHeader header;
     List<ReferenceSequence> sequences;
 
@@ -107,8 +107,8 @@ public class Graph {
         // - else insert it
 
         curNode = this.contains(node);
-        if(null == curNode) { // new node, how exciting
-            if(node.contig != this.contig) {
+        if(null == curNode) { // new node, "how exciting!"
+            if(node.contig != this.contig) { // destroy
                 this.destroy();
                 this.contig = node.contig;
                 this.position_start = this.position_end = node.position;
@@ -189,7 +189,6 @@ public class Graph {
         throws Exception
     {
         PriorityQueue<Node> nodeQueue = null;
-        int t = position; // HERE 
 
         if(this.position_end < position) {
             position = this.position_end;
@@ -206,11 +205,38 @@ public class Graph {
         return null;
     }
 
-    public void prune(int start) 
-        throws GraphException
+    public void prune(int referenceIndex, int alignmentStart, int offset)
+        throws Exception
     {
-        // TODO
-        throw new GraphException(GraphException.NOT_IMPLEMENTED);
+        PriorityQueue<Node> queue = null;
+
+        if(this.contig != referenceIndex+1) {
+            throw new Exception("Pruning expects the same contig");
+        }
+
+        while(this.position_start < alignmentStart - offset) {
+            // remove nodes from the queue
+            queue = this.nodes.get(0); 
+            if(null != queue) {
+                while(null != queue.peek()) {
+                    queue.poll().destroy();
+                }
+            }
+            // destroy the first node in the queue
+            queue = null;
+            this.nodes.remove(0); 
+            this.position_start++;
+        }
+        // update position_start further
+        while(this.position_start < alignmentStart) {
+            if(0 < this.position_start) {
+                if(null != this.nodes.get(0)) {
+                    break;
+                }
+                this.nodes.remove(0); // remove empty
+            }
+            this.position_start++;
+        }
     }
 
     private void destroy()
