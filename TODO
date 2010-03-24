@@ -9,5 +9,6 @@ In particular:
 - make sure the SAM/BAM file is sorted.
 - fix mate information in SAM (MRNM, MPOS, ISIZE)
 - update mapping quality (?)
+- bound local alignment using initial alignment.
 
 === BUGS ===
