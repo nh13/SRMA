@@ -56,7 +56,7 @@ public class SRMA extends CommandLineProgram {
 
         // Initialize graph, input/output files
         LinkedList<SAMRecord> list = new LinkedList<SAMRecord>();
-        SAMFileReader in = new SAMFileReader(INPUT);
+        SAMFileReader in = new SAMFileReader(INPUT, true);
         final SAMFileHeader header = in.getFileHeader();
         final SAMFileWriter out = new SAMFileWriterFactory().makeSAMWriter(header, true, System.out);
         Graph graph = new Graph(header, referenceSequences);
@@ -71,7 +71,9 @@ public class SRMA extends CommandLineProgram {
                 if(graph.contig != rec.getReferenceIndex()+1) {
                     // Process the rest of the reads
                     while(0 < list.size()) {
-                        out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
+                        SAMRecord curSAMRecord = list.removeFirst();
+                        System.err.print("\rAL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
+                        out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
                     }
                 }
 
@@ -97,15 +99,16 @@ public class SRMA extends CommandLineProgram {
                 while(0 < list.size() && list.getFirst().getAlignmentEnd() + OFFSET < list.getLast().getAlignmentStart()) {
                     SAMRecord curSAMRecord = list.removeFirst();
                     System.err.print("\rAL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
-                    // HERE TODO
-                    // graph.prune(curSAMRecord.getAlignmentStart() - OFFSET); // TODO
+                    graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), OFFSET); 
                     out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
                 }
             }
             // Process the rest of the reads
             while(0 < list.size()) {
+                SAMRecord curSAMRecord = list.removeFirst();
+                System.err.print("\rAL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
                 //graphOut.println("HERE2\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
-                out.addAlignment(Align.Align(graph, list.removeFirst(), OFFSET, COVERAGE));
+                out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
             }
             //graphOut.close();
         } catch (Exception e) {

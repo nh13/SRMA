@@ -73,7 +73,7 @@ public class Align {
                 throw new Exception("Error.  The current color space alignment has no color qualities.");
             }
         }
-
+        
         heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); // should be set based on strand
         if(strand) { // reverse
             comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MAXHEAP); 
@@ -81,7 +81,7 @@ public class Align {
         else { // forward
             comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); 
         }
-
+        
         // Add start nodes
         if(strand) { // reverse
             alignmentStart = rec.getAlignmentEnd();
@@ -134,16 +134,14 @@ public class Align {
         if(numStartNodesAdded == 0) {
             throw new Exception("Did not add any start nodes!");
         }
-
+        
         while(null != heap.peek()) {
             curAlignHeapNode = heap.poll();
 
             // HERE
-            /*
-            //System.err.println("size:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
-            System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.startPosition + ":");
-            curAlignHeapNode.node.print(System.err);
-            */
+            //System.err.println("strand:" + strand + "\tsize:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
+            //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.startPosition + ":");
+            //curAlignHeapNode.node.print(System.err);
 
             // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
@@ -215,10 +213,10 @@ public class Align {
                 iter=null;
             }
         }
-
+        
         // Recover alignment
         Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
-
+        
         return rec;
     }
 
@@ -239,8 +237,7 @@ public class Align {
         String readName = rec.getReadName();
 
         if(null == bestAlignHeapNode) {
-            System.err.println("\nNo alignments!");
-            return;
+            throw new Exception("No alignments!");
         }
 
         // To generate a new CIGAR
