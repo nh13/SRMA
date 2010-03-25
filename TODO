@@ -10,5 +10,6 @@ In particular:
 - fix mate information in SAM (MRNM, MPOS, ISIZE)
 - update mapping quality (?)
 - bound local alignment using initial alignment.
+- prune graph by moving indels to the 5' side.
 
 === BUGS ===
