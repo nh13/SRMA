@@ -39,6 +39,7 @@ public class SRMA extends CommandLineProgram {
     protected int doWork() 
     {
         List<ReferenceSequence> referenceSequences = new ArrayList();
+        int ctr=0;
 
         IoUtil.assertFileIsReadable(INPUT);
 
@@ -72,7 +73,8 @@ public class SRMA extends CommandLineProgram {
                     // Process the rest of the reads
                     while(0 < list.size()) {
                         SAMRecord curSAMRecord = list.removeFirst();
-                        System.err.print("\rAL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
+                        ctr++;
+                        System.err.print("\rctr: " + ctr + " AL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
                         out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
                     }
                 }
@@ -93,12 +95,13 @@ public class SRMA extends CommandLineProgram {
                 //graph.print(graphOut); // HERE
 
                 // HERE
-                System.err.print("\rIN:" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd() + ":" + rec.toString());
+                //System.err.print("\rIN:" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd() + ":" + rec.toString());
 
                 // TODO: check if we should process ... 
                 while(0 < list.size() && list.getFirst().getAlignmentEnd() + OFFSET < list.getLast().getAlignmentStart()) {
                     SAMRecord curSAMRecord = list.removeFirst();
-                    System.err.print("\rAL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
+                    ctr++;
+                    System.err.print("\rctr:" + ctr + " AL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
                     graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), OFFSET); 
                     out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
                 }
@@ -106,7 +109,8 @@ public class SRMA extends CommandLineProgram {
             // Process the rest of the reads
             while(0 < list.size()) {
                 SAMRecord curSAMRecord = list.removeFirst();
-                System.err.print("\rAL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
+                ctr++;
+                System.err.print("\rctr:" + ctr + " AL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
                 //graphOut.println("HERE2\t" + list.getFirst().getAlignmentEnd() + ":" + list.getLast().getAlignmentStart());
                 out.addAlignment(Align.Align(graph, curSAMRecord, OFFSET, COVERAGE));
             }

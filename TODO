@@ -7,7 +7,7 @@ In particular:
 - update base qualities of color space reads after re-alignment.
 - prune the graph when nodes are no longer needed (based on offset).
 - make sure the SAM/BAM file is sorted.
-- fix mate information in SAM (MRNM, MPOS, ISIZE)
+- fix mate information in SAM (MRNM, MPOS, ISIZE) or at least clear this information
 - update mapping quality (?)
 - bound local alignment using initial alignment.
 - prune graph by moving indels to the 5' side.
