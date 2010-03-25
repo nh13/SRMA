@@ -228,8 +228,8 @@ public class Align {
 
         int alignmentStart = 0;
         int readIndex=-1;
-        byte readBases[];
-        byte colorErrors[];
+        byte readBases[] = null;
+        byte colorErrors[] = null;
         int i;
         String readColors=null, readColorQualities=null;
 
@@ -409,5 +409,6 @@ public class Align {
         rec.setAttribute("AS", bestAlignHeapNode.score);
         rec.setAttribute("XC", bestAlignHeapNode.coverageSum);
         // set the XE attribute for colorError string
+        //rec.setAttribute("CE", colorErrors);
     }
 }
