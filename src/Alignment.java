@@ -127,10 +127,10 @@ public class Alignment {
                     assert (0 < startDel);
                     assert (startDel <= endDel);
                     startDel--;
-                    while(0 <= startDel && /* Bases remaining to examine */
-                            this.read[startDel] != Alignment.GAP && /* Hit another deletion */
-                            this.reference[startDel] != Alignment.GAP && /* Hit an insertion */
-                            this.reference[startDel] == this.reference[endDel]) { /* src ref base matches dest ref base */
+                    while(0 <= startDel && // Bases remaining to examine 
+                            this.read[startDel] != Alignment.GAP && // Hit another deletion 
+                            this.reference[startDel] != Alignment.GAP && // Hit an insertion 
+                            this.reference[startDel] == this.reference[endDel]) { // src ref base matches dest ref base 
                         assert (Alignment.GAP != this.reference[startDel]);
                         assert (Alignment.GAP != this.reference[endDel]);
                         assert (Alignment.GAP != this.read[startDel]);
@@ -140,7 +140,7 @@ public class Alignment {
                         startDel--;
                         endDel--;
                             }
-                    endDel++; /* We decremented when we exited the loop */
+                    endDel++; // We decremented when we exited the loop 
                     i = endDel;
                     assert (Alignment.GAP != this.read[i]);
                     assert (Alignment.GAP != this.reference[i]);
@@ -148,10 +148,10 @@ public class Alignment {
                 else if(1 == prevIns) {
                     assert (startIns <= endIns);
                     startIns--;
-                    while(0 <= startIns && /* Bases remaining to examine */
-                            this.read[startIns] != Alignment.GAP && /* Hit another deletion */
-                            this.reference[startIns] != Alignment.GAP && /* Hit an insertion */
-                            this.read[startIns] == this.read[endIns]) { /* src this.read base matches dest this.read base */
+                    while(0 <= startIns && // Bases remaining to examine 
+                            this.read[startIns] != Alignment.GAP && // Hit another deletion 
+                            this.reference[startIns] != Alignment.GAP && // Hit an insertion 
+                            this.read[startIns] == this.read[endIns]) { // src this.read base matches dest this.read base 
                         assert (Alignment.GAP != this.read[startIns]);
                         assert (Alignment.GAP != this.read[endIns]);
                         assert (Alignment.GAP != this.reference[startIns]);
@@ -161,7 +161,7 @@ public class Alignment {
                         startIns--;
                         endIns--;
                             }
-                    endIns++; /* We decremented when we exited the loop */
+                    endIns++; // We decremented when we exited the loop 
                     i = endIns;
                     assert (Alignment.GAP != this.read[i]);
                     assert (Alignment.GAP != this.reference[i]);
