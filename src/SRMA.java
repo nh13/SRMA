@@ -34,6 +34,7 @@ public class SRMA extends CommandLineProgram {
 
     private List<ReferenceSequence> referenceSequences = null;
     private LinkedList<SAMRecord> samRecordList = null;
+    private LinkedList<Node> samRecordNodeList = null;
     private SAMFileReader in = null;
     private SAMFileHeader header = null;
     private SAMFileWriter out = null;
@@ -68,6 +69,7 @@ public class SRMA extends CommandLineProgram {
 
         // Initialize basic input/output files
         this.samRecordList = new LinkedList<SAMRecord>();
+        this.samRecordNodeList = new LinkedList<Node>();
         this.in = new SAMFileReader(INPUT, true);
         this.header = this.in.getFileHeader();
         this.out = new SAMFileWriterFactory().makeSAMWriter(this.header, true, System.out);
@@ -108,10 +110,11 @@ public class SRMA extends CommandLineProgram {
         // Initialize graph
         this.graph = new Graph(this.header, this.referenceSequences);
 
-        System.err.println("");
         try { // Go through each SAM record
             SAMRecord rec = this.getNextSAMRecord();
             while(null != rec) {
+                Node recNode = null;
+
                 // Make sure that it is sorted
                 if(rec.getReferenceIndex() < prevReferenceIndex || (rec.getReferenceIndex() == prevReferenceIndex && rec.getAlignmentStart() < prevAlignmentStart)) {
                     throw new Exception("SAM/BAM file is not co-ordinate sorted.");
@@ -127,7 +130,7 @@ public class SRMA extends CommandLineProgram {
 
                 // Add to the graph 
                 try {
-                    this.graph.addSAMRecord(rec);
+                    recNode = this.graph.addSAMRecord(rec);
                 } catch (Graph.GraphException e) {
                     if(Graph.GraphException.NOT_IMPLEMENTED != e.type) {
                         throw e;
@@ -136,12 +139,13 @@ public class SRMA extends CommandLineProgram {
                 if(this.useRanges) {
                     // Partition by the alignment start
                     if(this.recordAlignmentStartContained(rec)) {
-                        System.err.println("ADDING " + rec.getAlignmentStart());
                         this.samRecordList.add(rec);
+                        this.samRecordNodeList.add(recNode);
                     }
                 }
                 else {
                     this.samRecordList.add(rec);
+                        this.samRecordNodeList.add(recNode);
                 }
 
                 // Process the available reads
@@ -162,6 +166,8 @@ public class SRMA extends CommandLineProgram {
         this.in.close();
         this.out.close();
 
+        // Newline to end it all
+        System.err.println("");
         return 0;
     }
 
@@ -216,12 +222,13 @@ public class SRMA extends CommandLineProgram {
         while(0 < this.samRecordList.size() && 
                 ((!finish && this.samRecordList.getFirst().getAlignmentEnd() + this.OFFSET < this.samRecordList.getLast().getAlignmentStart()) || finish)) {
             SAMRecord curSAMRecord = this.samRecordList.removeFirst();
+            Node curSAMRecordNode = this.samRecordNodeList.removeFirst();
             ctr++;
             System.err.print("\rctr:" + ctr + " AL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
             if(prune) {
                 this.graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), this.OFFSET); 
             }
-            this.out.addAlignment(Align.Align(this.graph, curSAMRecord, OFFSET, COVERAGE));
+            this.out.addAlignment(Align.align(this.graph, curSAMRecord, curSAMRecordNode, this.referenceSequences, OFFSET, COVERAGE));
         }
         return ctr;
     }

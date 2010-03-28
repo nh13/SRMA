@@ -13,6 +13,8 @@ public class Alignment {
     int length;
     byte read[];
     byte reference[];
+    int positions[]; // one for each read base
+    int positionsIndex[]; // one for each read base, index into read/reference
 
     public Alignment(SAMRecord record, List<ReferenceSequence> sequences) throws Exception
     {
@@ -27,21 +29,33 @@ public class Alignment {
         byte referenceBases[];
         byte readBases[];
         int alignmentStart;
+        int positionsLength;
 
         alignmentStart = record.getAlignmentStart();
         cigar = record.getCigar();
         readBases = record.getReadBases();
 
         // Get alignment length
-        this.length = 0;
+        this.length = positionsLength = 0;
         cigarElements = cigar.getCigarElements();
         iter = cigarElements.iterator();
         while(iter.hasNext()) {
-            this.length += iter.next().getLength();
+            cigarElement = iter.next();
+            this.length += cigarElement.getLength();
+            switch(cigarElement.getOperator()) {
+                case M:
+                case I:
+                    positionsLength += cigarElement.getLength();
+                    break;
+                default:
+                    break;
+            }
         }
 
         this.read = new byte[this.length];
         this.reference = new byte[this.length];
+        this.positions = new int[positionsLength];
+        this.positionsIndex = new int[positionsLength];
 
         // Get reference bases
         referenceIndex = record.getReferenceIndex();
@@ -63,6 +77,8 @@ public class Alignment {
                     case M:
                         this.reference[index] = referenceBases[alignmentStart - 1 + referenceIndex];
                         this.read[index] = readBases[readIndex]; 
+                        this.positions[readIndex] = alignmentStart + referenceIndex;
+                        this.positionsIndex[readIndex] = index;
                         referenceIndex++;
                         readIndex++;
                         break;
@@ -74,6 +90,8 @@ public class Alignment {
                     case I:
                         this.reference[index] = Alignment.GAP; 
                         this.read[index] = readBases[readIndex]; 
+                        this.positions[readIndex] = alignmentStart + referenceIndex - 1;
+                        this.positionsIndex[readIndex] = index;
                         readIndex++;
                         break;
                     default:
@@ -93,7 +111,7 @@ public class Alignment {
         // Left-justify alignment
         int i;
         int prevDel, prevIns, startDel, endDel, startIns, endIns;
-        
+
         i = prevDel = prevIns = 0;
         startDel = endDel = startIns = endIns = -1;
 

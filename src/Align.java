@@ -3,13 +3,18 @@
  */
 package srma;
 
-import net.sf.samtools.*;
 import java.util.*;
+import net.sf.samtools.*;
+import net.sf.picard.reference.*;
 import srma.*;
 
+// dummy class (?)
 public class Align {
 
-    public static SAMRecord Align(Graph graph, SAMRecord rec, int offset, int coverage)
+    public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
+            List<ReferenceSequence> sequences, 
+            int offset, 
+            int coverage)
         throws Exception
     {
 
@@ -73,15 +78,16 @@ public class Align {
                 throw new Exception("Error.  The current color space alignment has no color qualities.");
             }
         }
-        
-        heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); // should be set based on strand
+
         if(strand) { // reverse
             comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MAXHEAP); 
+            heap = new AlignHeap(AlignHeap.HeapType.MAXHEAP); 
         }
         else { // forward
             comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); 
+            heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); 
         }
-        
+
         // Add start nodes
         if(strand) { // reverse
             alignmentStart = rec.getAlignmentEnd();
@@ -92,12 +98,14 @@ public class Align {
                     int prev_i = i;
                     while(startNodeQueueIter.hasNext()) {
                         startNode = startNodeQueueIter.next();
-                        heap.add(new AlignHeapNode(null, 
-                                    startNode,
-                                    startNode.coverage,
-                                    read.charAt(0),
-                                    qualities.charAt(0),
-                                    space));
+                        if(coverage <= startNode.coverage) {
+                            heap.add(new AlignHeapNode(null, 
+                                        startNode,
+                                        startNode.coverage,
+                                        read.charAt(0),
+                                        qualities.charAt(0),
+                                        space));
+                        }
                         i=startNode.position-1;
                         numStartNodesAdded++;
                     }
@@ -116,12 +124,14 @@ public class Align {
                     int prev_i = i;
                     while(startNodeQueueIter.hasNext()) {
                         startNode = startNodeQueueIter.next();
-                        heap.add(new AlignHeapNode(null, 
-                                    startNode,
-                                    startNode.coverage,
-                                    read.charAt(0),
-                                    qualities.charAt(0),
-                                    space));
+                        if(coverage <= startNode.coverage) {
+                            heap.add(new AlignHeapNode(null, 
+                                        startNode,
+                                        startNode.coverage,
+                                        read.charAt(0),
+                                        qualities.charAt(0),
+                                        space));
+                        }
                         i=startNode.position+1;
                         numStartNodesAdded++;
                     }
@@ -134,7 +144,22 @@ public class Align {
         if(numStartNodesAdded == 0) {
             throw new Exception("Did not add any start nodes!");
         }
-        
+
+        // Bound by original alignment if possible
+        bestAlignHeapNode = Align.boundWithOriginalAlignment(rec, recNode, strand, read, qualities, space, sequences, coverage);
+
+        // HERE 
+        /*
+        if(null != bestAlignHeapNode) {
+            System.err.println("FOUND BEST");
+        }
+        else {
+            System.err.println("NOT FOUND (BEST)");
+        }
+        Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
+        return rec;
+        */
+
         while(null != heap.peek()) {
             curAlignHeapNode = heap.poll();
 
@@ -169,11 +194,9 @@ public class Align {
                 // TODO: must guarantee left-most alignment based on strand
 
                 // HERE
-                /*
-                   System.err.print(curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.score + ":");
-                   System.err.print(curAlignHeapNode.startPosition + ":");
-                   curAlignHeapNode.node.print(System.err);
-                   */
+                   //System.err.print(curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.score + ":");
+                   //System.err.print(curAlignHeapNode.startPosition + ":");
+                   //curAlignHeapNode.node.print(System.err);
 
                 if(null == bestAlignHeapNode 
                         || bestAlignHeapNode.score < curAlignHeapNode.score 
@@ -184,9 +207,6 @@ public class Align {
                 }
             }
             else {
-                // Based on strand etc.
-                // Assuming only forward for now
-
                 if(strand) { // reverse
                     // Go to all the "prev" nodes
                     iter = curAlignHeapNode.node.prev.listIterator();
@@ -213,11 +233,155 @@ public class Align {
                 iter=null;
             }
         }
-        
+
         // Recover alignment
         Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
-        
+
         return rec;
+    }
+
+    private static AlignHeapNode boundWithOriginalAlignment(SAMRecord rec, 
+            Node recNode, 
+            boolean strand, 
+            String read, 
+            String qualities, 
+            SRMAUtil.Space space,
+            List<ReferenceSequence> sequences, 
+            int coverage)
+        throws Exception
+    {
+        PriorityQueue<Node> startNodeQueue = null;
+        Iterator<Node> startNodeQueueIter = null;
+        Alignment alignment = null;
+        AlignHeapNode curAlignHeapNode = null;
+        ListIterator<Node> iter=null;
+        ListIterator<Integer> iterCov=null;
+        AlignHeap heap = null;
+
+        // Not enough coverage to bound
+        if(recNode.coverage < coverage) { 
+            return null;
+        }
+
+        // Get original alignment
+        alignment = new Alignment(rec, sequences);
+
+        // Initialize heap
+        if(strand) { // reverse
+            heap = new AlignHeap(AlignHeap.HeapType.MAXHEAP); 
+        }
+        else { // forward
+            heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); 
+        }
+        heap.add(new AlignHeapNode(null, 
+                recNode,
+                recNode.coverage,
+                read.charAt(0),
+                qualities.charAt(0),
+                space));
+
+        // HERE
+        /*
+        System.err.println("\n" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd());
+        System.err.println("refr:" + new String(alignment.reference));
+        System.err.println("read:" + new String(alignment.read));
+        int i;
+        for(i=0;i<alignment.positions.length;i++) {
+            System.err.print("\t" + alignment.positions[i]);
+        }
+        System.err.print("\n");
+        System.err.println("reverse:" + strand);
+        recNode.print(System.err);
+        */
+
+        while(null != heap.peek()) {
+            curAlignHeapNode = heap.poll();
+            
+            // Check if alignment was found
+            if(curAlignHeapNode.readOffset == read.length() - 1) { // Found
+                return curAlignHeapNode;
+            }
+
+            if(strand) { // reverse
+                // Go to all the "prev" nodes
+                iter = curAlignHeapNode.node.prev.listIterator();
+                iterCov = curAlignHeapNode.node.prevCov.listIterator();
+            }
+            else { // forward
+                // Go to all "next" nodes
+                iter = curAlignHeapNode.node.next.listIterator();
+                iterCov = curAlignHeapNode.node.nextCov.listIterator();
+            }
+
+            // We should find original alignment
+            if(!iter.hasNext()) {
+                continue;
+            }
+
+            // Get the expected next position in the alignment
+            int nextReadOffset = (strand) ? (read.length() - 1 - curAlignHeapNode.readOffset - 1) : (curAlignHeapNode.readOffset + 1);
+            int nextPosition = alignment.positions[nextReadOffset];
+            int nextIndex = alignment.positionsIndex[nextReadOffset];
+            char nextBase = (char)alignment.read[nextIndex];
+            int nextType = -1;
+
+            if(Alignment.GAP == alignment.reference[nextIndex]) {
+                nextType = Node.INSERTION;
+            }
+            else if(alignment.read[nextIndex] == alignment.reference[nextIndex]) {
+                nextType = Node.MATCH;
+            }
+            else {
+                // HERE
+                if(Alignment.GAP == alignment.read[nextIndex]) {
+                    throw new Exception("Alignment error");
+                }
+                nextType = Node.MISMATCH;
+            }
+
+            // HERE
+            if(nextBase == Alignment.GAP) {
+                throw new Error("Alignment error");
+            }
+
+            // HERE
+            /*
+            System.err.println("nextReadOffset: " + nextReadOffset
+                    + "\tnextPosition: " + nextPosition
+                    + "\tnextBase: " + nextBase
+                    + "\tnextType: " + nextType);
+            */
+
+            while(iter.hasNext()) {
+                Node nextNode = iter.next();
+                int nextCoverage = iterCov.next();
+
+                // HERE
+                /*
+                System.err.println("Found nextNode.position: " + nextNode.position
+                        + "\tnextNode.type: " + nextNode.type
+                        + "\tnextNode.base: " + nextNode.base);
+                */
+
+                // TODO: check nextType
+                if(nextNode.position == nextPosition && nextNode.type == nextType && nextNode.base == nextBase) { // bases match
+                    if(nextCoverage < coverage) { // not enough coverage
+                        return null;
+                    }
+                    else {
+                        heap.add(new AlignHeapNode(curAlignHeapNode, 
+                                nextNode, 
+                                nextCoverage,
+                                read.charAt(curAlignHeapNode.readOffset+1), 
+                                qualities.charAt(curAlignHeapNode.readOffset+1), 
+                                space));
+                    }
+                }
+            }
+            iter=null;
+        }
+
+        throw new Exception("Control reached unexpected point");
     }
 
     private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, boolean strand)
@@ -265,7 +429,7 @@ public class Align {
         else {
             alignmentStart=bestAlignHeapNode.startPosition;
         }
-        
+
         // Adjust position on the (-) strand if we end with an insertion
         if(strand && Node.INSERTION == bestAlignHeapNode.node.type) { // reverse
             alignmentStart++;
@@ -273,7 +437,7 @@ public class Align {
 
         assert null != bestAlignHeapNode;
         curAlignHeapNode = bestAlignHeapNode;
-        
+
         while(null != curAlignHeapNode) {
             // Get the current cigar operator
             if(null != prevAlignHeapNode && CigarOperator.DELETION != prevCigarOperator && 1 < Math.abs(curAlignHeapNode.node.position - prevAlignHeapNode.node.position)) {

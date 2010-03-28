@@ -9,6 +9,11 @@ import srma.*;
 public class AlignHeapNodeComparator implements Comparator {
     private AlignHeap.HeapType type;
 
+
+    /*
+     * MAX heap sorts by maximum genomic coordinate (use with '-' strand)
+     * MIN heap sorts by minimum genomic coordinate (use with '+' strand)
+     * */
     public AlignHeapNodeComparator(AlignHeap.HeapType type) {
         this.type = type;
     }
@@ -18,34 +23,55 @@ public class AlignHeapNodeComparator implements Comparator {
         AlignHeapNode a = (AlignHeapNode)o1;
         AlignHeapNode b = (AlignHeapNode)o2;
 
-        // compare: contig, position, read offset, type, and base
+        int coordinate;
+
+        // sort by:
+        // - MIN/MAX genomic coordinate
+        // - MIN reaad offset
+        // - min node type
+        // - min base
+        // - min score
+
         if(null == a ||
                 a.node.contig < b.node.contig ||
                 (a.node.contig == b.node.contig &&
-                 a.node.position < b.node.position) ||
-                (a.node.contig == b.node.contig &&
-                 a.node.position == b.node.position &&
+                 a.node.position < b.node.position)) {
+            coordinate = -1;
+        }
+        else if(null != b &&
+                a.node.contig == b.node.contig &&
+                a.node.position == b.node.position) {
+            coordinate = 0;
+        }
+        else {
+            coordinate = 1;
+        }
+        // check if we are to sort by maximum genomic coordinate
+        if(AlignHeap.HeapType.MAXHEAP == this.type) {
+            coordinate *= -1;
+        }
+
+
+        // compare: contig, position, read offset, type, and base
+        if(coordinate < 0 ||
+                (coordinate == 0 &&
                  a.readOffset < b.readOffset) ||
-                (a.node.contig == b.node.contig &&
-                 a.node.position == b.node.position &&
+                (coordinate == 0 &&
                  a.readOffset == b.readOffset &&
                  a.node.type < b.node.type) ||
-                (a.node.contig == b.node.contig &&
-                 a.node.position == b.node.position &&
+                (coordinate == 0 &&
                  a.readOffset == b.readOffset &&
                  a.node.type == b.node.type &&
                  a.node.base < b.node.base) ||
-                (a.node.contig == b.node.contig &&
-                 a.node.position == b.node.position &&
+                (coordinate == 0 &&
                  a.readOffset == b.readOffset &&
                  a.node.type == b.node.type &&
                  a.node.base == b.node.base &&
                  a.score < b.score)) {
-            return (AlignHeap.HeapType.MINHEAP == type) ? -1 : 1;
+            return -1;
                  }
         else if(null != b &&
-                a.node.contig == b.node.contig &&
-                a.node.position == b.node.position &&
+                coordinate == 0 &&
                 a.readOffset == b.readOffset &&
                 a.node.type == b.node.type &&
                 a.node.base == b.node.base &&
@@ -53,7 +79,7 @@ public class AlignHeapNodeComparator implements Comparator {
             return 0;
                 }
         else {
-            return (AlignHeap.HeapType.MINHEAP == type) ? 1 : -1;
+            return 1;
         }
     }
 }
