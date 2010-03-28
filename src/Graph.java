@@ -28,22 +28,24 @@ public class Graph {
         this.nodes = new Vector<PriorityQueue<Node>>(); 
     }
 
-    public void addSAMRecord(SAMRecord record) throws Exception
+    // Returns start/end node in the alignment graph with respect to strand
+    public Node addSAMRecord(SAMRecord record) throws Exception
     {
         Alignment alignment;
 
+        int i, j, ref_i, offset, node_type;
+        Node prev=null, cur=null, ret=null;
+        boolean strand = false;
+
         // Get the alignment
         alignment = new Alignment(record, sequences);
+        strand = record.getReadNegativeStrandFlag(); 
 
-        // HERE
         /*
            System.err.println(record.toString()); 
            System.err.println("refr:" + new String(alignment.reference));
            System.err.println("read:" + new String(alignment.read));
            */
-
-        int i, j, ref_i, offset, node_type;
-        Node prev=null, cur=null;
 
         /* Reminders:
            i - index from 0 to 'alignment.length' 
@@ -88,7 +90,18 @@ public class Graph {
                         offset,
                         prev),
                     prev);
+            
+            // save return node
+            if(null == prev && !strand) { // first node and forward strand
+                ret = cur;
+            }
         }
+
+        if(strand) { // negative strand
+            ret = cur;
+        }
+
+        return ret;
     }
 
     /* 
@@ -160,6 +173,22 @@ public class Graph {
             if(nodeComparator.equals(curNode, node)) {
                 return curNode;
             }
+        }
+
+        return null;
+    }
+
+    public PriorityQueue<Node> getPriorityQueueAtPosition(int position)
+    {
+        PriorityQueue<Node> nodeQueue = null;
+
+        if(position < this.position_start || this.position_end < position) {
+            return null;
+        }
+
+        nodeQueue = this.nodes.get(position - this.position_start);
+        if(0 < nodeQueue.size()) {
+            return nodeQueue;
         }
 
         return null;
