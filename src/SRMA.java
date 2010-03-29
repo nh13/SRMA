@@ -16,21 +16,21 @@ import java.util.*;
 
 public class SRMA extends CommandLineProgram { 
 
-    public static final String OFFSET_SHORT_NAME = "O"; 
-    public static final String COVERAGE_SHORT_NAME = "C";
-    public static final String RANGES_SHORT_NAME = "X";
-
-    @Usage public final String USAGE = getStandardUsagePreamble() + "Prints a SAM or BAM file to the screen.";
-    @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The SAM or BAM file to view.")
-        public File INPUT;
+    @Usage public final String USAGE = getStandardUsagePreamble() + "Short read micro assembler.";
+    @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The input SAM or BAM file.")
+        public File INPUT=null;
+    @Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output SAM or BAM file.", optional=true)
+        public File OUTPUT=null;
     @Option(shortName=StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference FASTA file.")
-        public File REFERENCE;
-    @Option(shortName=OFFSET_SHORT_NAME, doc="The alignment offset.", optional=true)
-        public int OFFSET=0;
-    @Option(shortName=COVERAGE_SHORT_NAME, doc="The minimum haploid coverage for the consensus.", optional=true)
-        public int COVERAGE=1;
-    @Option(shortName=RANGES_SHORT_NAME, doc="The file containing ranges to examine.", optional=true)
+        public File REFERENCE=null;
+    @Option(doc="The alignment offset.", optional=true)
+        public int OFFSET=20;
+    @Option(doc="The minimum haploid coverage for the consensus.", optional=true)
+        public int COVERAGE=0;
+    @Option(doc="The file containing ranges to examine.", optional=true)
         public File RANGES=null;
+    @Option(doc="A range to examine.", optional=true)
+        public String RANGE=null;
 
     private List<ReferenceSequence> referenceSequences = null;
     private LinkedList<SAMRecord> samRecordList = null;
@@ -60,6 +60,8 @@ public class SRMA extends CommandLineProgram {
     {
         int ctr=0;
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
+        
+        try { 
 
         referenceSequences = new ArrayList();
 
@@ -72,24 +74,36 @@ public class SRMA extends CommandLineProgram {
         this.samRecordNodeList = new LinkedList<Node>();
         this.in = new SAMFileReader(INPUT, true);
         this.header = this.in.getFileHeader();
-        this.out = new SAMFileWriterFactory().makeSAMWriter(this.header, true, System.out);
+        if(null == OUTPUT) { // to STDOUT as a SAM
+            this.out = new SAMFileWriterFactory().makeSAMWriter(this.header, true, System.out);
+        }
+        else { // to BAM file
+            this.out = new SAMFileWriterFactory().makeSAMOrBAMWriter(this.header, true, OUTPUT);
+        }
 
         // Get references
         this.getReferences(REFERENCE);
 
         // Get ranges
-        if(null == RANGES) {
+        if(null == RANGES && null == RANGE) {
             this.useRanges = false;
             // initialize SAM iter
             this.recordIter = this.in.iterator();
         }
+        else if(null != RANGES && null != RANGE) {
+            throw new Exception("RANGES and RANGE were both specified.\n");
+        }
         else {
             this.useRanges = true;
-            // check file
-            IoUtil.assertFileIsReadable(RANGES);
+            if(null != RANGES) {
+                IoUtil.assertFileIsReadable(RANGES);
+                this.ranges = new Ranges(RANGES, this.referenceSequences);
+            }
+            else {
+                this.ranges = new Ranges(RANGE, this.referenceSequences);
+            }
 
             // initialize this.recordIter
-            this.ranges = new Ranges(RANGES, this.referenceSequences);
             this.rangeIterator = ranges.iterator();
             if(!this.rangeIterator.hasNext()) {
                 return 0;
@@ -110,7 +124,6 @@ public class SRMA extends CommandLineProgram {
         // Initialize graph
         this.graph = new Graph(this.header, this.referenceSequences);
 
-        try { // Go through each SAM record
             SAMRecord rec = this.getNextSAMRecord();
             while(null != rec) {
                 if(!rec.getReadUnmappedFlag()) { // only mapped reads
@@ -159,10 +172,6 @@ public class SRMA extends CommandLineProgram {
             // Process the rest of the reads
             ctr = this.processList(ctr, true, true);
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
 
         // Close input/output files
         this.in.close();
@@ -170,6 +179,11 @@ public class SRMA extends CommandLineProgram {
 
         // Newline to end it all
         System.err.println("");
+        
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
         return 0;
     }
 
