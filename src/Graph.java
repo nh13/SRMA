@@ -32,10 +32,32 @@ public class Graph {
     public Node addSAMRecord(SAMRecord record) throws Exception
     {
         Alignment alignment;
-
+        PriorityQueue<Node> nodeQueue = null;
         int i, j, ref_i, offset, node_type;
         Node prev=null, cur=null, ret=null;
         boolean strand = false;
+
+        // Remove empty nodes from the start
+        if(0 < this.nodes.size()) {
+            nodeQueue = this.nodes.get(0);
+            while(null != nodeQueue && 0 == nodeQueue.size()) {
+                // destroy the first node in the queue
+                this.nodes.remove(0); 
+                this.position_start++;
+                if(0 < this.nodes.size()) {
+                    nodeQueue = this.nodes.get(0);
+                }
+                else {
+                    nodeQueue = null;
+                }
+            }
+            nodeQueue= null;
+        }
+
+        // Move start if there are no nodes
+        if(0 == this.nodes.size()) {
+            this.position_start = record.getAlignmentStart();
+        }
 
         // Get the alignment
         alignment = new Alignment(record, sequences);
@@ -90,7 +112,7 @@ public class Graph {
                         offset,
                         prev),
                     prev);
-            
+
             // save return node
             if(null == prev && !strand) { // first node and forward strand
                 ret = cur;
