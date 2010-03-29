@@ -6,6 +6,7 @@
 # -man option.
 
 # TODO:
+# - guarantee tmp files do not collide
 # - documentation
 # - documentation: split size == 0 means it wont split
 
