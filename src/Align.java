@@ -22,8 +22,8 @@ public class Align {
         PriorityQueue<Node> startNodeQueue = null;
         Iterator<Node> startNodeQueueIter = null;
         Node startNode;
-        AlignHeapNode curAlignHeapNode=null;
-        AlignHeapNode nextAlignHeapNode=null;
+        AlignHeapNode curAlignHeapNode = null;
+        AlignHeapNode nextAlignHeapNode = null;
         AlignHeapNode bestAlignHeapNode=null;
         AlignHeap heap=null;
         String read=null;
@@ -78,6 +78,21 @@ public class Align {
                 throw new Exception("Error.  The current color space alignment has no color qualities.");
             }
         }
+
+        // Bound by original alignment if possible
+        bestAlignHeapNode = Align.boundWithOriginalAlignment(rec, recNode, strand, read, qualities, space, sequences, coverage);
+
+        // HERE 
+        /*
+        if(null != bestAlignHeapNode) {
+            System.err.println("FOUND BEST");
+        }
+        else {
+            System.err.println("NOT FOUND (BEST)");
+        }
+        Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
+        return rec;
+        */
 
         if(strand) { // reverse
             comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MAXHEAP); 
@@ -145,24 +160,11 @@ public class Align {
             throw new Exception("Did not add any start nodes!");
         }
 
-        // Bound by original alignment if possible
-        bestAlignHeapNode = Align.boundWithOriginalAlignment(rec, recNode, strand, read, qualities, space, sequences, coverage);
+        // Get first node off the heap
+        curAlignHeapNode = heap.poll();
 
-        // HERE 
-        /*
-        if(null != bestAlignHeapNode) {
-            System.err.println("FOUND BEST");
-        }
-        else {
-            System.err.println("NOT FOUND (BEST)");
-        }
-        Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
-        return rec;
-        */
-
-        while(null != heap.peek()) {
-            curAlignHeapNode = heap.poll();
-
+        while(null != curAlignHeapNode) {
+            
             // HERE
             //System.err.println("strand:" + strand + "\tsize:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
             //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.coverageSum + ":" + curAlignHeapNode.startPosition + ":");
@@ -232,6 +234,8 @@ public class Align {
                 }
                 iter=null;
             }
+            // Get next node
+            curAlignHeapNode = heap.poll();
         }
 
         // Recover alignment
@@ -294,8 +298,8 @@ public class Align {
         recNode.print(System.err);
         */
 
-        while(null != heap.peek()) {
-            curAlignHeapNode = heap.poll();
+        curAlignHeapNode = heap.poll();
+        while(null != curAlignHeapNode) {
             
             // Check if alignment was found
             if(curAlignHeapNode.readOffset == read.length() - 1) { // Found
@@ -379,6 +383,9 @@ public class Align {
                 }
             }
             iter=null;
+            
+            // Get next
+            curAlignHeapNode = heap.poll();
         }
 
         throw new Exception("Control reached unexpected point");
