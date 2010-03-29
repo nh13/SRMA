@@ -13,7 +13,7 @@ public class Ranges {
 
     private LinkedList<Range> ranges = null;
 
-    public Ranges(File file, List<ReferenceSequence> referenceSequences)
+    public Ranges(File file, List<ReferenceSequence> referenceSequences, int offset)
     {
         BufferedReader br = null;
         String line = null;
@@ -32,7 +32,7 @@ public class Ranges {
 
             // read the file
             while(null != (line = br.readLine())) {
-                this.addRange(line, lineNumber, hm, referenceSequences);
+                this.addRange(line, lineNumber, hm, referenceSequences, offset);
                 lineNumber++;
             }
 
@@ -44,7 +44,12 @@ public class Ranges {
         }
     }
 
-    public Ranges(String range, List<ReferenceSequence> referenceSequences)
+    public Ranges(File file, List<ReferenceSequence> referenceSequences)
+    {
+        this(file, referenceSequences, 0);
+    }
+
+    public Ranges(String range, List<ReferenceSequence> referenceSequences, int offset)
         throws Exception
     {
         Map<String, Integer> hm = new HashMap<String, Integer>();
@@ -68,22 +73,36 @@ public class Ranges {
             throw new Exception("Could not find reference name " + chrName + " in RANGE");
         }
         referenceIndex = (int)hm.get(chrName);
-        int start = Integer.parseInt(range.substring(colon+1, dash));
-        int end = Integer.parseInt(range.substring(dash+1));
-        if(start <= 0 || referenceSequences.get(referenceIndex).length() < start) {
-            throw new Exception("start was out of bounds in RANGE");
+        int startPosition = Integer.parseInt(range.substring(colon+1, dash));
+        int endPosition = Integer.parseInt(range.substring(dash+1));
+        if(startPosition <= 0 || referenceSequences.get(referenceIndex).length() < startPosition) {
+            throw new Exception("startPosition was out of bounds in RANGE");
         }
-        else if(end <= 0 || referenceSequences.get(referenceIndex).length() < end) {
-            throw new Exception("end was out of bounds in RANGE");
+        else if(endPosition <= 0 || referenceSequences.get(referenceIndex).length() < endPosition) {
+            throw new Exception("endPosition was out of bounds in RANGE");
         }
-        else if(end < start) {
-            throw new Exception("end < start in RANGE");
+        else if(endPosition < startPosition) {
+            throw new Exception("endPosition < startPosition in RANGE");
+        }
+        startPosition -= offset;
+        if(startPosition <= 0) {
+            startPosition = 1;
+        }
+        endPosition += offset;
+        if(referenceSequences.get(referenceIndex).length() < endPosition) {
+            endPosition = referenceSequences.get(referenceIndex).length();
         }
 
-        this.ranges.add(new Range(referenceIndex, start, end));
+        this.ranges.add(new Range(referenceIndex, startPosition, endPosition));
     }
 
-    private void addRange(String line, int lineNumber, Map<String, Integer> m, List<ReferenceSequence> referenceSequences)
+    public Ranges(String range, List<ReferenceSequence> referenceSequences)
+        throws Exception
+    {
+        this(range, referenceSequences, 0);
+    }
+
+    private void addRange(String line, int lineNumber, Map<String, Integer> m, List<ReferenceSequence> referenceSequences, int offset)
         throws Exception
     {
         StringTokenizer st = new StringTokenizer(line);
@@ -105,11 +124,21 @@ public class Ranges {
                 if(startPosition <= 0 || referenceSequences.get(referenceIndex).length() < startPosition) {
                     throw new Exception("start position was out of bounds in RANGES on line " + lineNumber);
                 }
+                // add offset
+                startPosition -= offset;
+                if(startPosition <= 0) {
+                    startPosition = 1;
+                }
             }
             else if(2 == i) {
                 endPosition = Integer.parseInt(new String(st.nextToken()));
                 if(endPosition <= 0 || referenceSequences.get(referenceIndex).length() < endPosition) {
                     throw new Exception("end position was out of bounds in RANGES on line " + lineNumber);
+                }
+                // add offset
+                endPosition += offset;
+                if(referenceSequences.get(referenceIndex).length() < endPosition) {
+                    endPosition = referenceSequences.get(referenceIndex).length();
                 }
             }
             else {

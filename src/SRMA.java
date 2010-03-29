@@ -44,10 +44,13 @@ public class SRMA extends CommandLineProgram {
 
     // for RANGES
     private boolean useRanges = false;
-    private Ranges ranges = null;
-    private Iterator<Range> rangeIterator = null;
+    // for inputting within RANGES
+    private Ranges inputRanges = null;
+    private Iterator<Range> inputRangesIterator = null;
+    private Range inputRange = null;
     // for outputting within RANGES
-    private int outputRangesIndex = -1;
+    private Ranges outputRanges = null;
+    private Iterator<Range> outputRangesIterator = null;
     private Range outputRange = null;
 
     public static void main(final String[] args) {
@@ -99,28 +102,27 @@ public class SRMA extends CommandLineProgram {
                 this.useRanges = true;
                 if(null != RANGES) {
                     IoUtil.assertFileIsReadable(RANGES);
-                    this.ranges = new Ranges(RANGES, this.referenceSequences);
+                    this.inputRanges = new Ranges(RANGES, this.referenceSequences, OFFSET);
+                    this.outputRanges = new Ranges(RANGES, this.referenceSequences);
                 }
                 else {
-                    this.ranges = new Ranges(RANGE, this.referenceSequences);
+                    this.inputRanges = new Ranges(RANGE, this.referenceSequences, OFFSET);
+                    this.outputRanges = new Ranges(RANGE, this.referenceSequences);
                 }
 
-                // initialize this.recordIter
-                this.rangeIterator = ranges.iterator();
-                if(!this.rangeIterator.hasNext()) {
+                this.inputRangesIterator = this.inputRanges.iterator();
+                this.outputRangesIterator = this.outputRanges.iterator();
+                if(!this.inputRangesIterator.hasNext()) {
                     return 0;
                 }
 
-                // initialize SAM iter
-                Range r = this.rangeIterator.next();
-                this.recordIter = this.in.query(this.referenceSequences.get(r.referenceIndex).getName(),
-                        r.startPosition,
-                        r.endPosition,
+                this.inputRange = this.inputRangesIterator.next();
+                this.recordIter = this.in.query(this.referenceSequences.get(this.inputRange.referenceIndex).getName(),
+                        this.inputRange.startPosition,
+                        this.inputRange.endPosition,
                         false);
+                this.outputRange = this.outputRangesIterator.next();
 
-                // initialize output ranges
-                this.outputRangesIndex = 0;
-                this.outputRange = this.ranges.get(this.outputRangesIndex);
             }
 
             // Initialize graph
@@ -154,7 +156,7 @@ public class SRMA extends CommandLineProgram {
                     }
                     if(this.useRanges) {
                         // Partition by the alignment start
-                        if(this.recordAlignmentStartContained(rec)) {
+                        if(this.recordAlignmentStartContained(rec)) { // only add if it will be outputted
                             this.toProcessSAMRecordList.add(rec);
                             this.toProcesSAMRecordNodeList.add(recNode);
                         }
@@ -209,15 +211,15 @@ public class SRMA extends CommandLineProgram {
         }
         else if(this.useRanges) {
             do {
-                if(this.rangeIterator.hasNext()) {
+                if(this.inputRangesIterator.hasNext()) {
                     // close previous iterator
                     this.recordIter.close();
                     // get new range
-                    Range r = this.rangeIterator.next();
+                    this.inputRange = this.inputRangesIterator.next();
                     // seek in the SAM file
-                    this.recordIter = this.in.query(this.referenceSequences.get(r.referenceIndex).getName(),
-                            r.startPosition,
-                            r.endPosition,
+                    this.recordIter = this.in.query(this.referenceSequences.get(this.inputRange.referenceIndex).getName(),
+                            this.inputRange.startPosition,
+                            this.inputRange.endPosition,
                             false);
                 }
                 else {
@@ -273,19 +275,18 @@ public class SRMA extends CommandLineProgram {
     {
         int recAlignmentStart = -1;
 
-        if(this.ranges.size() <= this.outputRangesIndex) { // no more ranges
+        if(!this.outputRangesIterator.hasNext()) { // no more ranges
             return false;
         }
 
         recAlignmentStart = rec.getAlignmentStart();
         while(this.outputRange.endPosition < recAlignmentStart) { // find a new range
-            this.outputRangesIndex++;
-            if(this.ranges.size() <= this.outputRangesIndex) {
+            if(!this.outputRangesIterator.hasNext()) { // no more ranges
                 return false;
             }
-            this.outputRange = this.ranges.get(this.outputRangesIndex);
+            this.outputRange = this.outputRangesIterator.next();
         }
-        if(recAlignmentStart < this.outputRange.startPosition) {
+        if(recAlignmentStart < this.outputRange.startPosition) { // before range
             // not within range
             return false;
         }
