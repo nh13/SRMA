@@ -33,8 +33,9 @@ public class SRMA extends CommandLineProgram {
         public String RANGE=null;
 
     private List<ReferenceSequence> referenceSequences = null;
-    private LinkedList<SAMRecord> samRecordList = null;
-    private LinkedList<Node> samRecordNodeList = null;
+    private LinkedList<SAMRecord> toProcessSAMRecordList = null;
+    private LinkedList<Node> toProcesSAMRecordNodeList = null;
+    private PriorityQueue<SAMRecord> toOutputSAMRecordPriorityQueue = null;
     private SAMFileReader in = null;
     private SAMFileHeader header = null;
     private SAMFileWriter out = null;
@@ -70,8 +71,9 @@ public class SRMA extends CommandLineProgram {
             IoUtil.assertFileIsReadable(REFERENCE);
 
             // Initialize basic input/output files
-            this.samRecordList = new LinkedList<SAMRecord>();
-            this.samRecordNodeList = new LinkedList<Node>();
+            this.toProcessSAMRecordList = new LinkedList<SAMRecord>();
+            this.toProcesSAMRecordNodeList = new LinkedList<Node>();
+            this.toOutputSAMRecordPriorityQueue = new PriorityQueue(40, new SAMRecordCoordinateComparator()); 
             this.in = new SAMFileReader(INPUT, true);
             this.header = this.in.getFileHeader();
             if(null == OUTPUT) { // to STDOUT as a SAM
@@ -153,13 +155,13 @@ public class SRMA extends CommandLineProgram {
                     if(this.useRanges) {
                         // Partition by the alignment start
                         if(this.recordAlignmentStartContained(rec)) {
-                            this.samRecordList.add(rec);
-                            this.samRecordNodeList.add(recNode);
+                            this.toProcessSAMRecordList.add(rec);
+                            this.toProcesSAMRecordNodeList.add(recNode);
                         }
                     }
                     else {
-                        this.samRecordList.add(rec);
-                        this.samRecordNodeList.add(recNode);
+                        this.toProcessSAMRecordList.add(rec);
+                        this.toProcesSAMRecordNodeList.add(recNode);
                     }
 
                     // Process the available reads
@@ -235,17 +237,35 @@ public class SRMA extends CommandLineProgram {
     private int processList(int ctr, boolean prune, boolean finish)
         throws Exception
     {
-        while(0 < this.samRecordList.size() && 
-                ((!finish && this.samRecordList.getFirst().getAlignmentEnd() + this.OFFSET < this.samRecordList.getLast().getAlignmentStart()) || finish)) {
-            SAMRecord curSAMRecord = this.samRecordList.removeFirst();
-            Node curSAMRecordNode = this.samRecordNodeList.removeFirst();
+        SAMRecord curSAMRecord = null;
+
+        // Process alignments
+        while(0 < this.toProcessSAMRecordList.size() && ((!finish && this.toProcessSAMRecordList.getFirst().getAlignmentEnd() + this.OFFSET < this.toProcessSAMRecordList.getLast().getAlignmentStart()) || finish)) {
+            curSAMRecord = this.toProcessSAMRecordList.removeFirst();
+            Node curSAMRecordNode = this.toProcesSAMRecordNodeList.removeFirst();
             ctr++;
             System.err.print("\rctr:" + ctr + " AL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
             if(prune) {
                 this.graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), this.OFFSET); 
             }
-            this.out.addAlignment(Align.align(this.graph, curSAMRecord, curSAMRecordNode, this.referenceSequences, OFFSET, COVERAGE));
-                }
+
+            // Align - this will overwrite/change the alignment
+            curSAMRecord = Align.align(this.graph, curSAMRecord, curSAMRecordNode, this.referenceSequences, OFFSET, COVERAGE);
+            // Add to a heap/priority-queue to assure output is sorted
+            this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
+        }
+
+        // Output alignments
+        while(0 < this.toOutputSAMRecordPriorityQueue.size()) {
+            curSAMRecord = this.toOutputSAMRecordPriorityQueue.peek();
+            if(finish || curSAMRecord.getAlignmentStart() < graph.position_start) { // other alignments will not be less than
+                this.out.addAlignment(this.toOutputSAMRecordPriorityQueue.poll());
+            }
+            else { // other alignments could be less than
+                break;
+            }
+        }
+
         return ctr;
     }
 
