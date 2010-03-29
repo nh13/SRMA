@@ -113,43 +113,45 @@ public class SRMA extends CommandLineProgram {
         try { // Go through each SAM record
             SAMRecord rec = this.getNextSAMRecord();
             while(null != rec) {
-                Node recNode = null;
+                if(!rec.getReadUnmappedFlag()) { // only mapped reads
+                    Node recNode = null;
 
-                // Make sure that it is sorted
-                if(rec.getReferenceIndex() < prevReferenceIndex || (rec.getReferenceIndex() == prevReferenceIndex && rec.getAlignmentStart() < prevAlignmentStart)) {
-                    throw new Exception("SAM/BAM file is not co-ordinate sorted.");
-                }
-                prevReferenceIndex = rec.getReferenceIndex();
-                prevAlignmentStart = rec.getAlignmentStart();
-
-                // Add only if it is from the same contig
-                if(this.graph.contig != rec.getReferenceIndex()+1) {
-                    // Process the rest of the reads
-                    ctr = this.processList(ctr, false, false);
-                }
-
-                // Add to the graph 
-                try {
-                    recNode = this.graph.addSAMRecord(rec);
-                } catch (Graph.GraphException e) {
-                    if(Graph.GraphException.NOT_IMPLEMENTED != e.type) {
-                        throw e;
+                    // Make sure that it is sorted
+                    if(rec.getReferenceIndex() < prevReferenceIndex || (rec.getReferenceIndex() == prevReferenceIndex && rec.getAlignmentStart() < prevAlignmentStart)) {
+                        throw new Exception("SAM/BAM file is not co-ordinate sorted.");
                     }
-                }
-                if(this.useRanges) {
-                    // Partition by the alignment start
-                    if(this.recordAlignmentStartContained(rec)) {
+                    prevReferenceIndex = rec.getReferenceIndex();
+                    prevAlignmentStart = rec.getAlignmentStart();
+
+                    // Add only if it is from the same contig
+                    if(this.graph.contig != rec.getReferenceIndex()+1) {
+                        // Process the rest of the reads
+                        ctr = this.processList(ctr, false, false);
+                    }
+
+                    // Add to the graph 
+                    try {
+                        recNode = this.graph.addSAMRecord(rec);
+                    } catch (Graph.GraphException e) {
+                        if(Graph.GraphException.NOT_IMPLEMENTED != e.type) {
+                            throw e;
+                        }
+                    }
+                    if(this.useRanges) {
+                        // Partition by the alignment start
+                        if(this.recordAlignmentStartContained(rec)) {
+                            this.samRecordList.add(rec);
+                            this.samRecordNodeList.add(recNode);
+                        }
+                    }
+                    else {
                         this.samRecordList.add(rec);
                         this.samRecordNodeList.add(recNode);
                     }
-                }
-                else {
-                    this.samRecordList.add(rec);
-                        this.samRecordNodeList.add(recNode);
-                }
 
-                // Process the available reads
-                ctr = this.processList(ctr, true, false);
+                    // Process the available reads
+                    ctr = this.processList(ctr, true, false);
+                }
 
                 // get new record
                 rec = this.getNextSAMRecord();
@@ -229,14 +231,14 @@ public class SRMA extends CommandLineProgram {
                 this.graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), this.OFFSET); 
             }
             this.out.addAlignment(Align.align(this.graph, curSAMRecord, curSAMRecordNode, this.referenceSequences, OFFSET, COVERAGE));
-        }
+                }
         return ctr;
     }
-                    
+
     private boolean recordAlignmentStartContained(SAMRecord rec) 
     {
         int recAlignmentStart = -1;
-            
+
         if(this.ranges.size() <= this.outputRangesIndex) { // no more ranges
             return false;
         }

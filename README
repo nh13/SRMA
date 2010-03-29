@@ -8,4 +8,4 @@ Download sam-1.12.jar and picard-1.12.jar and place them in a folder
 called lib.
 
 Run:
-ant
+ant jar

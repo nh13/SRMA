@@ -10,5 +10,6 @@ In particular:
 - fix artifacts imposed by coverage constraints around low-coverage regions and 
 ends of chromosomes.  Maybe use "minor allele frequency", minimum total coverage before
 the filter is applied, or Poisson likelihood (?). 
+- output unmapped reads
 
 === BUGS ===
