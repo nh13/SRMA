@@ -14,6 +14,10 @@ import net.sf.picard.reference.*;
 import java.io.*;
 import java.util.*;
 
+/* Documentation:
+ * - allow if MINIMUM_ALLELE_FREQUENCY or MINIMUM_ALLELE_COVERAGE
+ * */
+
 public class SRMA extends CommandLineProgram { 
 
     @Usage public final String USAGE = getStandardUsagePreamble() + "Short read micro assembler.";
@@ -25,12 +29,17 @@ public class SRMA extends CommandLineProgram {
         public File REFERENCE=null;
     @Option(doc="The alignment offset.", optional=true)
         public int OFFSET=20;
+    @Option(doc="The minimum allele frequency for the conensus.", optional=true)
+        public double MINIMUM_ALLELE_FREQUENCY=0.0;
     @Option(doc="The minimum haploid coverage for the consensus.", optional=true)
-        public int COVERAGE=0;
+        public int MINIMUM_ALLELE_COVERAGE=0;
     @Option(doc="The file containing ranges to examine.", optional=true)
         public File RANGES=null;
     @Option(doc="A range to examine.", optional=true)
         public String RANGE=null;
+
+    private final static int SRMA_OUTPUT_CTR = 100;
+    private int maxOutputStringLength = 0;
 
     private List<ReferenceSequence> referenceSequences = null;
     private LinkedList<SAMRecord> toProcessSAMRecordList = null;
@@ -122,7 +131,6 @@ public class SRMA extends CommandLineProgram {
                         this.inputRange.endPosition,
                         false);
                 this.outputRange = this.outputRangesIterator.next();
-
             }
 
             // Initialize graph
@@ -236,6 +244,23 @@ public class SRMA extends CommandLineProgram {
         }
     }
 
+    private void outputProgress(SAMRecord rec, int ctr)
+    {
+        if(0 == (ctr % SRMA_OUTPUT_CTR)) {
+            // TODO: enforce column width ?
+            String outputString = new String("ctr:" + ctr + " AL:" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd() + ":" + rec.toString());
+            int outputStringLength = outputString.length();
+            if(this.maxOutputStringLength < outputStringLength) {
+                this.maxOutputStringLength = outputStringLength;
+            }
+            System.err.print("\r" + outputString);
+            int i;
+            for(i=outputStringLength;i < this.maxOutputStringLength;i++) { // pad with blanks
+                System.err.print(" ");
+            }
+        }
+    }
+
     private int processList(int ctr, boolean prune, boolean finish)
         throws Exception
     {
@@ -245,14 +270,20 @@ public class SRMA extends CommandLineProgram {
         while(0 < this.toProcessSAMRecordList.size() && ((!finish && this.toProcessSAMRecordList.getFirst().getAlignmentEnd() + this.OFFSET < this.toProcessSAMRecordList.getLast().getAlignmentStart()) || finish)) {
             curSAMRecord = this.toProcessSAMRecordList.removeFirst();
             Node curSAMRecordNode = this.toProcesSAMRecordNodeList.removeFirst();
-            ctr++;
-            System.err.print("\rctr:" + ctr + " AL:" + curSAMRecord.getAlignmentStart() + ":" + curSAMRecord.getAlignmentEnd() + ":" + curSAMRecord.toString());
             if(prune) {
                 this.graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), this.OFFSET); 
             }
+            this.outputProgress(curSAMRecord, ctr);
+            ctr++;
 
             // Align - this will overwrite/change the alignment
-            curSAMRecord = Align.align(this.graph, curSAMRecord, curSAMRecordNode, this.referenceSequences, OFFSET, COVERAGE);
+            curSAMRecord = Align.align(this.graph, 
+                    curSAMRecord, 
+                    curSAMRecordNode, 
+                    this.referenceSequences, 
+                    OFFSET, 
+                    MINIMUM_ALLELE_FREQUENCY,
+                    MINIMUM_ALLELE_COVERAGE); 
             // Add to a heap/priority-queue to assure output is sorted
             this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
         }
@@ -275,13 +306,14 @@ public class SRMA extends CommandLineProgram {
     {
         int recAlignmentStart = -1;
 
-        if(!this.outputRangesIterator.hasNext()) { // no more ranges
+        if(null == this.outputRange) { // no more ranges
             return false;
         }
 
         recAlignmentStart = rec.getAlignmentStart();
         while(this.outputRange.endPosition < recAlignmentStart) { // find a new range
             if(!this.outputRangesIterator.hasNext()) { // no more ranges
+                this.outputRange = null;
                 return false;
             }
             this.outputRange = this.outputRangesIterator.next();
