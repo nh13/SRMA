@@ -60,69 +60,69 @@ public class SRMA extends CommandLineProgram {
     {
         int ctr=0;
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
-        
+
         try { 
 
-        referenceSequences = new ArrayList();
+            referenceSequences = new ArrayList();
 
-        // Check input files
-        IoUtil.assertFileIsReadable(INPUT);
-        IoUtil.assertFileIsReadable(REFERENCE);
+            // Check input files
+            IoUtil.assertFileIsReadable(INPUT);
+            IoUtil.assertFileIsReadable(REFERENCE);
 
-        // Initialize basic input/output files
-        this.samRecordList = new LinkedList<SAMRecord>();
-        this.samRecordNodeList = new LinkedList<Node>();
-        this.in = new SAMFileReader(INPUT, true);
-        this.header = this.in.getFileHeader();
-        if(null == OUTPUT) { // to STDOUT as a SAM
-            this.out = new SAMFileWriterFactory().makeSAMWriter(this.header, true, System.out);
-        }
-        else { // to BAM file
-            this.out = new SAMFileWriterFactory().makeSAMOrBAMWriter(this.header, true, OUTPUT);
-        }
+            // Initialize basic input/output files
+            this.samRecordList = new LinkedList<SAMRecord>();
+            this.samRecordNodeList = new LinkedList<Node>();
+            this.in = new SAMFileReader(INPUT, true);
+            this.header = this.in.getFileHeader();
+            if(null == OUTPUT) { // to STDOUT as a SAM
+                this.out = new SAMFileWriterFactory().makeSAMWriter(this.header, true, System.out);
+            }
+            else { // to BAM file
+                this.out = new SAMFileWriterFactory().makeSAMOrBAMWriter(this.header, true, OUTPUT);
+            }
 
-        // Get references
-        this.getReferences(REFERENCE);
+            // Get references
+            this.getReferences(REFERENCE);
 
-        // Get ranges
-        if(null == RANGES && null == RANGE) {
-            this.useRanges = false;
-            // initialize SAM iter
-            this.recordIter = this.in.iterator();
-        }
-        else if(null != RANGES && null != RANGE) {
-            throw new Exception("RANGES and RANGE were both specified.\n");
-        }
-        else {
-            this.useRanges = true;
-            if(null != RANGES) {
-                IoUtil.assertFileIsReadable(RANGES);
-                this.ranges = new Ranges(RANGES, this.referenceSequences);
+            // Get ranges
+            if(null == RANGES && null == RANGE) {
+                this.useRanges = false;
+                // initialize SAM iter
+                this.recordIter = this.in.iterator();
+            }
+            else if(null != RANGES && null != RANGE) {
+                throw new Exception("RANGES and RANGE were both specified.\n");
             }
             else {
-                this.ranges = new Ranges(RANGE, this.referenceSequences);
+                this.useRanges = true;
+                if(null != RANGES) {
+                    IoUtil.assertFileIsReadable(RANGES);
+                    this.ranges = new Ranges(RANGES, this.referenceSequences);
+                }
+                else {
+                    this.ranges = new Ranges(RANGE, this.referenceSequences);
+                }
+
+                // initialize this.recordIter
+                this.rangeIterator = ranges.iterator();
+                if(!this.rangeIterator.hasNext()) {
+                    return 0;
+                }
+
+                // initialize SAM iter
+                Range r = this.rangeIterator.next();
+                this.recordIter = this.in.query(this.referenceSequences.get(r.referenceIndex).getName(),
+                        r.startPosition,
+                        r.endPosition,
+                        false);
+
+                // initialize output ranges
+                this.outputRangesIndex = 0;
+                this.outputRange = this.ranges.get(this.outputRangesIndex);
             }
 
-            // initialize this.recordIter
-            this.rangeIterator = ranges.iterator();
-            if(!this.rangeIterator.hasNext()) {
-                return 0;
-            }
-
-            // initialize SAM iter
-            Range r = this.rangeIterator.next();
-            this.recordIter = this.in.query(this.referenceSequences.get(r.referenceIndex).getName(),
-                    r.startPosition,
-                    r.endPosition,
-                    false);
-
-            // initialize output ranges
-            this.outputRangesIndex = 0;
-            this.outputRange = this.ranges.get(this.outputRangesIndex);
-        }
-
-        // Initialize graph
-        this.graph = new Graph(this.header, this.referenceSequences);
+            // Initialize graph
+            this.graph = new Graph(this.header, this.referenceSequences);
 
             SAMRecord rec = this.getNextSAMRecord();
             while(null != rec) {
@@ -173,13 +173,13 @@ public class SRMA extends CommandLineProgram {
             ctr = this.processList(ctr, true, true);
 
 
-        // Close input/output files
-        this.in.close();
-        this.out.close();
+            // Close input/output files
+            this.in.close();
+            this.out.close();
 
-        // Newline to end it all
-        System.err.println("");
-        
+            // Newline to end it all
+            System.err.println("");
+
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);
