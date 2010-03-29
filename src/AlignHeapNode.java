@@ -12,7 +12,7 @@ public class AlignHeapNode {
     Node node;
     int readOffset; // # of bases from the beginning of the read
     int score; // alignment score
-    int coverageSum; // coverage sum 
+    int alleleCoverageSum; // allele coverage sum 
     int startPosition; // one-based
     SRMAUtil.Space space;
 
@@ -46,7 +46,7 @@ public class AlignHeapNode {
             this.score = 0;
             this.startPosition = curNode.position;
             this.prev = null;
-            this.coverageSum = curCoverage;
+            this.alleleCoverageSum = curCoverage;
         }
         else {
             assert(prev.space == space);
@@ -57,7 +57,7 @@ public class AlignHeapNode {
             this.score = prev.score;
             this.startPosition = prev.startPosition;
             this.prev = prev;
-            this.coverageSum = prev.coverageSum + curCoverage;
+            this.alleleCoverageSum = prev.alleleCoverageSum + curCoverage;
         }
         //System.err.println("base="+(char)base+" curNode.base="+(char)curNode.base+" score="+((base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual)));
         this.score += (base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual); 

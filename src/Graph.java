@@ -15,6 +15,7 @@ public class Graph {
     int position_start; // one based
     int position_end; // one based
     ArrayList<PriorityQueue<Node>> nodes; // zero based
+    ArrayList<Integer> coverage; // does not count insertions with offset > 0
     SAMFileHeader header;
     List<ReferenceSequence> sequences;
 
@@ -26,6 +27,7 @@ public class Graph {
         this.position_start = 1; 
         this.position_end = 1;
         this.nodes = new ArrayList<PriorityQueue<Node>>(); 
+        this.coverage = new ArrayList<Integer>();
     }
 
     // Returns start/end node in the alignment graph with respect to strand
@@ -136,9 +138,13 @@ public class Graph {
             // Add new queues if necessary
             for(i=this.position_end;i<=node.position;i++) {
                 this.nodes.add(new PriorityQueue<Node>(1, new NodeComparator()));
+                this.coverage.add(new Integer(0));
             }
             // Get the proper queue and add
             this.nodes.get(node.position - this.position_start).add(node);
+            if(node.offset == 0) { // do not include insertions that extend an insertion
+                this.coverage.set(node.position - this.position_start, node.coverage + this.coverage.get(node.position - this.position_start)); // set coverage
+            }
             this.position_end = node.position;
             curNode = node;
         }
@@ -185,23 +191,23 @@ public class Graph {
         return null;
     }
 
-    public PriorityQueue<Node> getPriorityQueueAtPosition(int position)
+    public int getPriorityQueueIndexAtPosition(int position)
     {
         PriorityQueue<Node> nodeQueue = null;
 
         if(position < this.position_start || this.position_end < position) {
-            return null;
+            return 0;
         }
 
         nodeQueue = this.nodes.get(position - this.position_start);
         if(0 < nodeQueue.size()) {
-            return nodeQueue;
+            return position;
         }
 
-        return null;
+        return 0;
     }
 
-    public PriorityQueue<Node> getPriorityQueueAtPositionOrGreater(int position)
+    public int getPriorityQueueIndexAtPositionOrGreater(int position)
         throws Exception
     {
         PriorityQueue<Node> nodeQueue = null;
@@ -213,15 +219,15 @@ public class Graph {
         while(position <= this.position_end) {
             nodeQueue = this.nodes.get(position - this.position_start);
             if(0 < nodeQueue.size()) {
-                return nodeQueue;
+                return position;
             }
             position++;
         }
 
-        throw new GraphException(GraphException.OTHER, "Could not find an adequate node to start re-alignment.");
+        return 0;
     }
 
-    public PriorityQueue<Node> getPriorityQueueAtPositionOrBefore(int position)
+    public int getPriorityQueueIndexAtPositionOrBefore(int position)
         throws Exception
     {
         PriorityQueue<Node> nodeQueue = null;
@@ -233,12 +239,30 @@ public class Graph {
         while(this.position_start <= position) {
             nodeQueue = this.nodes.get(position - this.position_start);
             if(0 < nodeQueue.size()) {
-                return nodeQueue;
+                return position;
             }
             position--;
         }
 
-        return null;
+        return 0;
+    }
+
+    public PriorityQueue<Node> getPriorityQueue(int position)
+    {
+        try {
+            return this.nodes.get(position - this.position_start);
+        } catch (IndexOutOfBoundsException e) {
+            return null;
+        }
+    }
+
+    public int getCoverage(int position)
+    {
+        try {
+            return this.coverage.get(position - this.position_start);
+        } catch (IndexOutOfBoundsException e) {
+            return 0;
+        }
     }
 
     public void prune(int referenceIndex, int alignmentStart, int offset)
@@ -261,6 +285,7 @@ public class Graph {
             // destroy the first node in the queue
             queue = null;
             this.nodes.remove(0); 
+            this.coverage.remove(0);
             this.position_start++;
         }
         // update position_start further
@@ -270,6 +295,7 @@ public class Graph {
                     break;
                 }
                 this.nodes.remove(0); // remove empty
+                this.coverage.remove(0);
             }
             this.position_start++;
         }
@@ -290,6 +316,7 @@ public class Graph {
         this.contig = 1;
         this.position_start = this.position_end = 1;
         this.nodes.clear();
+        this.coverage.clear();
     }
 
     public void print()
