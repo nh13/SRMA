@@ -37,26 +37,11 @@ public class Graph {
         Node prev=null, cur=null, ret=null;
         boolean strand = false;
 
-        // Remove empty nodes from the start
-        if(0 < this.nodes.size()) {
-            nodeQueue = this.nodes.get(0);
-            while(null != nodeQueue && 0 == nodeQueue.size()) {
-                // destroy the first node in the queue
-                this.nodes.remove(0); 
-                this.position_start++;
-                if(0 < this.nodes.size()) {
-                    nodeQueue = this.nodes.get(0);
-                }
-                else {
-                    nodeQueue = null;
-                }
-            }
-            nodeQueue= null;
-        }
-
-        // Move start if there are no nodes
+        // Reset if there are no nodes
         if(0 == this.nodes.size()) {
             this.position_start = record.getAlignmentStart();
+            this.position_end = this.position_start;
+            this.contig = record.getReferenceIndex() + 1;
         }
 
         // Get the alignment
