@@ -8,6 +8,7 @@ import java.util.*;
 
 public class NodeComparator implements Comparator<Node> 
 {
+    // TODO: optimize this
     public int compare(Node o1, Node o2)
     {
         if(o1.contig < o2.contig 

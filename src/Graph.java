@@ -14,7 +14,7 @@ public class Graph {
     int contig; // one based
     int position_start; // one based
     int position_end; // one based
-    Vector<PriorityQueue<Node>> nodes; // zero based
+    ArrayList<PriorityQueue<Node>> nodes; // zero based
     SAMFileHeader header;
     List<ReferenceSequence> sequences;
 
@@ -25,7 +25,7 @@ public class Graph {
         this.contig = 1; 
         this.position_start = 1; 
         this.position_end = 1;
-        this.nodes = new Vector<PriorityQueue<Node>>(); 
+        this.nodes = new ArrayList<PriorityQueue<Node>>(); 
     }
 
     // Returns start/end node in the alignment graph with respect to strand
@@ -168,7 +168,7 @@ public class Graph {
         // See if there are any nodes at this position
         try {
             nodeQueue = this.nodes.get(node.position - this.position_start);
-        } catch (ArrayIndexOutOfBoundsException e) {
+        } catch (IndexOutOfBoundsException e) {
             return null;
         }
 
