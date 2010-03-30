@@ -8,7 +8,6 @@ import net.sf.samtools.*;
 import net.sf.picard.reference.*;
 import srma.*;
 
-// dummy class (?)
 public class Align {
 
     public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
@@ -116,7 +115,7 @@ public class Align {
             alignmentStart = rec.getAlignmentEnd();
             for(i=alignmentStart+offset;alignmentStart-offset<=i;) {
                 int position = graph.getPriorityQueueIndexAtPositionOrBefore(i);
-                PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(i);
+                PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(position);
                 if(0 != position && null != startNodeQueue) {
                     Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
                     int prev_i = i;
@@ -146,7 +145,7 @@ public class Align {
             alignmentStart = rec.getAlignmentStart();
             for(i=alignmentStart-offset;i<=alignmentStart+offset;) {
                 int position = graph.getPriorityQueueIndexAtPositionOrGreater(i);
-                PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(i);
+                PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(position);
                 if(0 != position && null != startNodeQueue) {
                     Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
                     int prev_i = i;
