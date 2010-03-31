@@ -99,6 +99,7 @@ sub Schema {
 				  </xs:restriction>
 				</xs:simpleType>
 			  </xs:element>
+			  <xs:element name="cleanUpTmpDirectory" type="xs:integer"/>
 			  <xs:element name="qsubQueue" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			</xs:sequence>
@@ -108,7 +109,6 @@ sub Schema {
 		  <xs:complexType>
 			<xs:sequence>
 			  <xs:element name="picardBin" type="directoryPath"/>
-			  <xs:element name="maximumMemory" type="positiveInteger"/>
 			  <xs:element name="qsubQueue" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			</xs:sequence>
@@ -163,7 +163,7 @@ sub ValidateData {
 	# picard
 	if(defined($data->{'samOptions'})) {
 		ValidatePath($data->{'samOptions'},       'picardBin',                                OPTIONAL); 
-		ValidateOption($data->{'samOptions'},     'maximumMemory',                            OPTIONAL);
+		ValidateOption($data->{'samOptions'},     'cleanUpTmpDirectory',                      OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'qsubQueue',                                OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'qsubArgs',                                 OPTIONAL);
 	}
@@ -369,9 +369,9 @@ sub CreateJobsSAM {
 	}
 
 	# Run merge or copy
-	$outputID = "merge";
-	$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
 	if(1 < scalar(@qsubIDs)) {
+		$outputID = "merge";
+		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
 		if(!defined($data->{'samOptions'}->{'picardBin'})) { die("Picard bin required") };
 		$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
 		$cmd .= " -Xmx2g";
@@ -386,7 +386,8 @@ sub CreateJobsSAM {
 		$cmd .= " VALIDATION_STRINGENCY=SILENT";
 	}
 	else {
-		print "SIZE:".scalar(@qsubIDs)."\n";
+		$outputID = "copy";
+		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
 		my $bam = $tmpOutputBAMFiles[0];
 		$cmd = "cp -v $bam ".$data->{'srmaOptions'}->{'outputBAMFile'};
 	}
@@ -397,6 +398,15 @@ sub CreateJobsSAM {
 	else {
 		# currently it must be submitted
 		die;
+	}
+
+	# Clean up
+	if(defined($data->{'srmaOptions'}->{'cleanUpTmpDirectory'}) && 1 == defined($data->{'srmaOptions'}->{'cleanUpTmpDirectory'})) {
+		my @a = (); push(@a, $qsub_id); # push the merge/copy
+		$outputID = "cleanup.tmpdirectory";
+		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$outputID.sh";
+		$cmd = "rm -rv ".$data->{'srmaOptions'}->{'tmpDirectory'};
+		$qsub_id = SubmitJob($run_file , $quiet, 1, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
 	}
 }
 
