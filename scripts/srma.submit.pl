@@ -354,7 +354,7 @@ sub CreateJobsSAM {
 				push(@dependent_jobs, $curIDs[$j]);
 			}
 			# Create the command
-			$outputID = "merge.$mergeLevel.$ctr";
+			$outputID = "dummy.merge.$mergeLevel.$ctr";
 			$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
 			$cmd = "echo \"Merging $mergeLevel / $ctr\"\n";
 			$qsub_id = SubmitJob($run_file, $quiet, 1, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependent_jobs);
