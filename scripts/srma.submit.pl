@@ -205,10 +205,13 @@ sub ValidateOptions {
 sub getGenomeInfo {
 	my ($fasta, $genomeInfo) = @_;
 
-	open(FH, "$fasta.fai") || die("Could not open FASTA index: $fasta.fai");
+	open(FH, "$fasta.dict") || die("Could not open FASTA dictionary: $fasta.dict");
 	while(defined(my $line = <FH>)) {
-		my @a = split(/\s+/, $line);
-		$genomeInfo->{$a[0]} = $a[1];
+		if($line =~ m/\@SQ\tSN:(\S+)\tLN:(\d+)\t/) {
+			my @a = ();
+			push(@a, $1); push(@a, $2);
+			push(@$genomeInfo, \@a);
+		}
 	}
 	close(FH);
 
@@ -284,12 +287,13 @@ sub CreateJobsSRMA {
 	else {
 		my $start = 1;
 		my $splitSize = $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'};
-		my %genomeInfo = ();
+		my @genomeInfo = ();
 
-		getGenomeInfo($data->{'srmaOptions'}->{'referenceFasta'}->{'content'}, \%genomeInfo);
+		getGenomeInfo($data->{'srmaOptions'}->{'referenceFasta'}->{'content'}, \@genomeInfo);
 
-		foreach my $chrName (keys %genomeInfo) {
-			my $chrSize = $genomeInfo{$chrName};
+		for(my $i=0;$i<scalar(@genomeInfo);$i++) {
+			my $chrName = $genomeInfo[$i]->[0];
+			my $chrSize = $genomeInfo[$i]->[1];
 			for(my $start=1;$start <= $chrSize;$start+=$splitSize) {
 				my $end = $start + $splitSize - 1;
 				if($chrSize < $end) { $end = $chrSize; }
