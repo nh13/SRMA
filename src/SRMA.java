@@ -105,7 +105,6 @@ public class SRMA extends CommandLineProgram {
                 // Try manually
                 String dictionaryName = new String(REFERENCE.getAbsolutePath());
                 dictionaryName += ".dict";
-                System.err.println("DICT: " + dictionaryName);
                 final File dictionary = new File(dictionaryName);
                 if (dictionary.exists()) {
                     IoUtil.assertFileIsReadable(dictionary);
