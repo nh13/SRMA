@@ -100,7 +100,7 @@ sub Schema {
 				</xs:simpleType>
 			  </xs:element>
 			  <xs:element name="cleanUpTmpDirectory" type="xs:integer"/>
-			  <xs:element name="qsubQueue" type="xs:string"/>
+			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
@@ -109,7 +109,7 @@ sub Schema {
 		  <xs:complexType>
 			<xs:sequence>
 			  <xs:element name="picardBin" type="directoryPath"/>
-			  <xs:element name="qsubQueue" type="xs:string"/>
+			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
@@ -146,6 +146,7 @@ sub ValidateData {
 	die("The global options were not found.\n") unless (defined($data->{'srmaOptions'})); 
 	ValidatePath($data->{'srmaOptions'},         'srmaBin',                                  OPTIONAL); 
 	ValidatePath($data->{'srmaOptions'},         'javaBin',                                  OPTIONAL); 
+	ValidateFile($data->{'srmaOptions'},         'javaArgs',							     OPTIONAL);
 	ValidatePath($data->{'srmaOptions'},         'qsubBin',                                  OPTIONAL); 
 	ValidateOptions($data->{'srmaOptions'},      'queueType',          \%QUEUETYPES,         REQUIRED);
 	ValidateOption($data->{'srmaOptions'},	     'offset',									 OPTIONAL);
@@ -164,7 +165,6 @@ sub ValidateData {
 	if(defined($data->{'samOptions'})) {
 		ValidatePath($data->{'samOptions'},       'picardBin',                                OPTIONAL); 
 		ValidateOption($data->{'samOptions'},     'cleanUpTmpDirectory',                      OPTIONAL);
-		ValidateOption($data->{'samOptions'},     'qsubQueue',                                OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'qsubArgs',                                 OPTIONAL);
 	}
 }
@@ -258,7 +258,15 @@ sub CreateJobsSRMA {
 		my $runFile = CreateRunFile($data, 'srma', "");
 		my $cmd = "";
 		$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
-		$cmd .= " -Xmx2g";
+		if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
+			$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
+			if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+				$cmd .= " -Xmx2g";
+			}
+		}
+		else {
+			$cmd .= " -Xmx2g";
+		}
 		$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaBin'}."srma.jar";
 		$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
 		$cmd .= " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
@@ -291,7 +299,15 @@ sub CreateJobsSRMA {
 
 				my $cmd = "";
 				$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
-				$cmd .= " -Xmx2g";
+				if(defined($data->{'samOptions'}->{'javaArgs'})) {
+					$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
+					if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+						$cmd .= " -Xmx2g";
+					}
+				}
+				else {
+					$cmd .= " -Xmx2g";
+				}
 				$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaBin'}."srma.jar";
 				$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
 				$cmd .= " O=$outputFile";
@@ -374,7 +390,15 @@ sub CreateJobsSAM {
 		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
 		if(!defined($data->{'samOptions'}->{'picardBin'})) { die("Picard bin required") };
 		$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
-		$cmd .= " -Xmx2g";
+		if(defined($data->{'samOptions'}->{'javaArgs'})) {
+			$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
+			if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+				$cmd .= " -Xmx2g";
+			}
+		}
+		else {
+			$cmd .= " -Xmx2g";
+		}
 		$cmd .= " -jar ".$data->{'samOptions'}->{'picardBin'}."MergeSamFiles.jar";
 		foreach my $bam (@tmpOutputBAMFiles) {
 			$cmd .= " I=$bam";
@@ -449,7 +473,6 @@ END_OUTPUT
 		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'});
 		$qsub .= " -W depend=afterok:".join(":", @$dependent_jobIDs) if ("PBS" eq $data->{'srmaOptions'}->{'queueType'});
 	}
-	$qsub .= " -q ".$data->{$type}->{'qsubQueue'} if defined($data->{$type}->{'qsubQueue'});
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
 
