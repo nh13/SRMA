@@ -11,6 +11,7 @@ import net.sf.picard.cmdline.*;
 import net.sf.picard.io.IoUtil;
 import net.sf.picard.reference.*;
 
+//import java.lang.Runtime;
 import java.io.*;
 import java.util.*;
 
@@ -21,7 +22,8 @@ import java.util.*;
 
 public class SRMA extends CommandLineProgram { 
 
-    @Usage public final String USAGE = getStandardUsagePreamble() + "Short read micro assembler.";
+    @Usage (programVersion="0.0.1")
+        public final String USAGE = getStandardUsagePreamble() + "Short read micro assembler.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The input SAM or BAM file.")
         public File INPUT=null;
     @Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output SAM or BAM file.", optional=true)
@@ -38,6 +40,9 @@ public class SRMA extends CommandLineProgram {
         public File RANGES=null;
     @Option(doc="A range to examine.", optional=true)
         public String RANGE=null;
+
+    private long startTime;
+    private long endTime;
 
     private final static int SRMA_OUTPUT_CTR = 100;
     private int maxOutputStringLength = 0;
@@ -79,6 +84,10 @@ public class SRMA extends CommandLineProgram {
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
 
         try { 
+            // this is annoying
+            QUIET = true;
+
+            this.startTime = System.nanoTime();
 
             // Check input files
             IoUtil.assertFileIsReadable(INPUT);
@@ -227,8 +236,33 @@ public class SRMA extends CommandLineProgram {
             this.in.close();
             this.out.close();
 
-            // Newline to end it all
+            this.endTime = System.nanoTime();
+
+            // to end it all
             System.err.println("");
+            System.err.println("SRMA complete");
+            // Memory
+            double totalMemory = (double)Runtime.getRuntime().totalMemory();
+            double totalMemoryLog2 = Math.log(totalMemory) / ((double)Math.log(2.0));
+            if(totalMemoryLog2 < 10) {
+                System.err.println("Total memory usage: " + (int)totalMemory + "B");
+            } 
+            else if(totalMemoryLog2 < 20) {
+                System.err.println("Total memory usage: " + (totalMemory / Math.pow(2, 10)) + "KB");
+            }
+            else if(totalMemoryLog2 < 30) {
+                System.err.println("Total memory usage: " + (totalMemory / Math.pow(2, 20)) + "MB");
+            }
+            else {
+                System.err.println("Total memory usage: " + (totalMemory / Math.pow(2, 30)) + "GB");
+            }
+            // Run time
+            long seconds = (this.endTime - this.startTime) / 1000000000;
+            long hours = seconds / 3600; seconds -= hours * 3600; 
+            long minutes = seconds / 60; seconds -= minutes* 3600; 
+            System.err.print("Total execution time: " + hours + "h : " + minutes + "m : " + seconds + "s");
+            System.err.println("");
+
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -281,7 +315,7 @@ public class SRMA extends CommandLineProgram {
 
     private void outputProgress(SAMRecord rec, int ctr)
     {
-        if(0 == (ctr % SRMA_OUTPUT_CTR)) {
+        if(0 == (ctr % SRMA_OUTPUT_CTR) || ctr < 0) {
             // TODO: enforce column width ?
             String outputString = new String("ctr:" + ctr + " AL:" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd() + ":" + rec.toString());
             int outputStringLength = outputString.length();
@@ -322,6 +356,10 @@ public class SRMA extends CommandLineProgram {
             // Add to a heap/priority-queue to assure output is sorted
             this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
         }
+        if(finish && null != curSAMRecord) {
+            this.outputProgress(curSAMRecord, ctr);
+        }
+
 
         // Output alignments
         while(0 < this.toOutputSAMRecordPriorityQueue.size()) {
