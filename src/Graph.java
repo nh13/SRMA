@@ -33,25 +33,28 @@ public class Graph {
     {
         Alignment alignment;
         PriorityQueue<Node> nodeQueue = null;
-        int i, j, ref_i, offset, node_type;
+        int i, ref_i, offset, node_type;
         Node prev=null, cur=null, ret=null;
         boolean strand = false;
-
-        // Reset if there are no nodes
-        if(0 == this.nodes.size()) {
-            this.position_start = record.getAlignmentStart();
-            this.position_end = this.position_start;
-            this.contig = record.getReferenceIndex() + 1;
-        }
 
         // Get the alignment
         alignment = new Alignment(record, sequence);
         strand = record.getReadNegativeStrandFlag(); 
+        
+        // Reset if there are no nodes
+        if(0 == this.nodes.size()) {
+            this.position_start = record.getAlignmentStart();
+            if(Alignment.GAP == alignment.reference[0]) { // insertion
+                this.position_start--;
+            }
+            // TOD0: could be insertions then deletions at the start, which will cause errors, not implemented yet
+            this.position_end = this.position_start;
+            this.contig = record.getReferenceIndex() + 1;
+        }
 
         /*
            System.err.println(record.toString()); 
-           System.err.println("refr:" + new String(alignment.reference));
-           System.err.println("read:" + new String(alignment.read));
+           alignment.print(System.err);
            */
 
         /* Reminders:
@@ -59,7 +62,7 @@ public class Graph {
            ref_i - index within 'alignment.reference'
            */
 
-        for(i=j=0,ref_i=-1;
+        for(i=0,ref_i=-1;
                 i<alignment.length;
                 i++,prev=cur) 
         { // go through the alignment
@@ -78,14 +81,12 @@ public class Graph {
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
                 node_type = Node.INSERTION; 
-                j=0; // not advancing the reference
                 if(null != prev && Node.INSERTION == prev.type) {
                     offset = prev.offset + 1;
                 }
             }
             else { // mismatch
                 node_type = Node.MISMATCH;
-                j=1;
                 ref_i++;
             }
 

@@ -7,6 +7,7 @@ import net.sf.picard.reference.ReferenceSequence;
 import net.sf.samtools.*;
 
 import java.util.*;
+import java.io.PrintStream;
 
 public class Alignment {
     public static final int GAP = '-';
@@ -195,5 +196,33 @@ public class Alignment {
                 endIns = -1;
             }
         }
+    }
+
+    public void print(PrintStream out)
+    {
+        int i;
+
+        for(i=0;i<this.length;i++) {
+            out.print((char)this.reference[i]);
+        }
+        out.println("");
+        for(i=0;i<this.length;i++) {
+            out.print((char)this.read[i]);
+        }
+        out.println("");
+        for(i=0;i<this.length;i++) {
+            if(0 < i) {
+                out.print(",");
+            }
+            out.print(this.positions[i]);
+        }
+        out.println("");
+        for(i=0;i<this.length;i++) {
+            if(0 < i) {
+                out.print(",");
+            }
+            out.print(this.positionsIndex[i]);
+        }
+        out.println("");
     }
 }
