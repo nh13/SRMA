@@ -6,10 +6,7 @@ In particular:
 - update base qualities of color space reads after re-alignment.
 - fix mate information in SAM (MRNM, MPOS, ISIZE) or at least clear this information
 - update mapping quality (?)
-- allow for RANGES to be a string like "chr1:250-2500".
-- fix artifacts imposed by coverage constraints around low-coverage regions and 
-ends of chromosomes.  Maybe use "minor allele frequency", minimum total coverage before
-the filter is applied, or Poisson likelihood (?). 
 - output unmapped reads
+- custom Exception handling
 
 === BUGS ===

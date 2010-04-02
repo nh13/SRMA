@@ -3,6 +3,7 @@ package srma;
 import java.io.*;
 import java.util.*;
 import net.sf.picard.reference.*;
+import net.sf.samtools.*;
 
 // TODO:
 // - need to check references are in order
@@ -13,7 +14,7 @@ public class Ranges {
 
     private LinkedList<Range> ranges = null;
 
-    public Ranges(File file, List<ReferenceSequence> referenceSequences, int offset)
+    public Ranges(File file, SAMSequenceDictionary referenceDictionary, int offset)
     {
         BufferedReader br = null;
         String line = null;
@@ -26,13 +27,13 @@ public class Ranges {
 
             // init
             this.ranges = new LinkedList<Range>();
-            for(i=0;i<referenceSequences.size();i++) {
-                hm.put(referenceSequences.get(i).getName(), new Integer(i));
+            for(i=0;i<referenceDictionary.size();i++) {
+                hm.put(referenceDictionary.getSequence(i).getSequenceName(), new Integer(i));
             }
 
             // read the file
             while(null != (line = br.readLine())) {
-                this.addRange(line, lineNumber, hm, referenceSequences, offset);
+                this.addRange(line, lineNumber, hm, referenceDictionary, offset);
                 lineNumber++;
             }
 
@@ -44,12 +45,12 @@ public class Ranges {
         }
     }
 
-    public Ranges(File file, List<ReferenceSequence> referenceSequences)
+    public Ranges(File file, SAMSequenceDictionary referenceDictionary)
     {
-        this(file, referenceSequences, 0);
+        this(file, referenceDictionary, 0);
     }
 
-    public Ranges(String range, List<ReferenceSequence> referenceSequences, int offset)
+    public Ranges(String range, SAMSequenceDictionary referenceDictionary, int offset)
         throws Exception
     {
         Map<String, Integer> hm = new HashMap<String, Integer>();
@@ -57,8 +58,8 @@ public class Ranges {
 
         // init
         this.ranges = new LinkedList<Range>();
-        for(i=0;i<referenceSequences.size();i++) {
-            hm.put(referenceSequences.get(i).getName(), new Integer(i));
+        for(i=0;i<referenceDictionary.size();i++) {
+            hm.put(referenceDictionary.getSequence(i).getSequenceName(), new Integer(i));
         }
 
         // get delimiters
@@ -75,10 +76,10 @@ public class Ranges {
         referenceIndex = (int)hm.get(chrName);
         int startPosition = Integer.parseInt(range.substring(colon+1, dash));
         int endPosition = Integer.parseInt(range.substring(dash+1));
-        if(startPosition <= 0 || referenceSequences.get(referenceIndex).length() < startPosition) {
+        if(startPosition <= 0 || referenceDictionary.getSequence(referenceIndex).getSequenceLength() < startPosition) {
             throw new Exception("startPosition was out of bounds in RANGE");
         }
-        else if(endPosition <= 0 || referenceSequences.get(referenceIndex).length() < endPosition) {
+        else if(endPosition <= 0 || referenceDictionary.getSequence(referenceIndex).getSequenceLength() < endPosition) {
             throw new Exception("endPosition was out of bounds in RANGE");
         }
         else if(endPosition < startPosition) {
@@ -89,20 +90,20 @@ public class Ranges {
             startPosition = 1;
         }
         endPosition += offset;
-        if(referenceSequences.get(referenceIndex).length() < endPosition) {
-            endPosition = referenceSequences.get(referenceIndex).length();
+        if(referenceDictionary.getSequence(referenceIndex).getSequenceLength() < endPosition) {
+            endPosition = referenceDictionary.getSequence(referenceIndex).getSequenceLength();
         }
 
         this.ranges.add(new Range(referenceIndex, startPosition, endPosition));
     }
 
-    public Ranges(String range, List<ReferenceSequence> referenceSequences)
+    public Ranges(String range, SAMSequenceDictionary referenceDictionary)
         throws Exception
     {
-        this(range, referenceSequences, 0);
+        this(range, referenceDictionary, 0);
     }
 
-    private void addRange(String line, int lineNumber, Map<String, Integer> m, List<ReferenceSequence> referenceSequences, int offset)
+    private void addRange(String line, int lineNumber, Map<String, Integer> m, SAMSequenceDictionary referenceDictionary, int offset)
         throws Exception
     {
         StringTokenizer st = new StringTokenizer(line);
@@ -121,7 +122,7 @@ public class Ranges {
             }
             else if(1 == i) {
                 startPosition = Integer.parseInt(new String(st.nextToken()));
-                if(startPosition <= 0 || referenceSequences.get(referenceIndex).length() < startPosition) {
+                if(startPosition <= 0 || referenceDictionary.getSequence(referenceIndex).getSequenceLength() < startPosition) {
                     throw new Exception("start position was out of bounds in RANGES on line " + lineNumber);
                 }
                 // add offset
@@ -132,13 +133,13 @@ public class Ranges {
             }
             else if(2 == i) {
                 endPosition = Integer.parseInt(new String(st.nextToken()));
-                if(endPosition <= 0 || referenceSequences.get(referenceIndex).length() < endPosition) {
+                if(endPosition <= 0 || referenceDictionary.getSequence(referenceIndex).getSequenceLength() < endPosition) {
                     throw new Exception("end position was out of bounds in RANGES on line " + lineNumber);
                 }
                 // add offset
                 endPosition += offset;
-                if(referenceSequences.get(referenceIndex).length() < endPosition) {
-                    endPosition = referenceSequences.get(referenceIndex).length();
+                if(referenceDictionary.getSequence(referenceIndex).getSequenceLength() < endPosition) {
+                    endPosition = referenceDictionary.getSequence(referenceIndex).getSequenceLength();
                 }
             }
             else {

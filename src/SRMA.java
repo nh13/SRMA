@@ -16,6 +16,7 @@ import java.util.*;
 
 /* Documentation:
  * - allow if MINIMUM_ALLELE_FREQUENCY or MINIMUM_ALLELE_COVERAGE
+ * - requires a ".dict" file for the FASTA
  * */
 
 public class SRMA extends CommandLineProgram { 
@@ -41,7 +42,10 @@ public class SRMA extends CommandLineProgram {
     private final static int SRMA_OUTPUT_CTR = 100;
     private int maxOutputStringLength = 0;
 
-    private List<ReferenceSequence> referenceSequences = null;
+    ReferenceSequenceFile referenceSequenceFile = null; 
+    private ReferenceSequence referenceSequence = null;
+    private SAMSequenceDictionary referenceDictionary = null;
+
     private LinkedList<SAMRecord> toProcessSAMRecordList = null;
     private LinkedList<Node> toProcesSAMRecordNodeList = null;
     private PriorityQueue<SAMRecord> toOutputSAMRecordPriorityQueue = null;
@@ -76,8 +80,6 @@ public class SRMA extends CommandLineProgram {
 
         try { 
 
-            referenceSequences = new ArrayList();
-
             // Check input files
             IoUtil.assertFileIsReadable(INPUT);
             IoUtil.assertFileIsReadable(REFERENCE);
@@ -96,13 +98,35 @@ public class SRMA extends CommandLineProgram {
             }
 
             // Get references
-            this.getReferences(REFERENCE);
+            ReferenceSequenceFileFactory referenceSequenceFileFactory = new ReferenceSequenceFileFactory();
+            this.referenceSequenceFile = referenceSequenceFileFactory.getReferenceSequenceFile(REFERENCE);
+            this.referenceDictionary = this.referenceSequenceFile.getSequenceDictionary();
+            if(null == this.referenceDictionary) {
+                // Try manually
+                String dictionaryName = new String(REFERENCE.getAbsolutePath());
+                dictionaryName += ".dict";
+                System.err.println("DICT: " + dictionaryName);
+                final File dictionary = new File(dictionaryName);
+                if (dictionary.exists()) {
+                    IoUtil.assertFileIsReadable(dictionary);
+                    final SAMTextHeaderCodec codec = new SAMTextHeaderCodec();
+                    final SAMFileHeader header = codec.decode(new AsciiLineReader(new FileInputStream(dictionary)),
+                            dictionary.toString());
+                    if (header.getSequenceDictionary() != null && header.getSequenceDictionary().size() > 0) {
+                        this.referenceDictionary = header.getSequenceDictionary();
+                    }
+                }
+                else {
+                    throw new Exception("Could not open sequence dictionary file: " + dictionaryName);
+                }
+            }
 
             // Get ranges
             if(null == RANGES && null == RANGE) {
                 this.useRanges = false;
                 // initialize SAM iter
                 this.recordIter = this.in.iterator();
+                this.referenceSequence = this.referenceSequenceFile.nextSequence();
             }
             else if(null != RANGES && null != RANGE) {
                 throw new Exception("RANGES and RANGE were both specified.\n");
@@ -111,12 +135,12 @@ public class SRMA extends CommandLineProgram {
                 this.useRanges = true;
                 if(null != RANGES) {
                     IoUtil.assertFileIsReadable(RANGES);
-                    this.inputRanges = new Ranges(RANGES, this.referenceSequences, OFFSET);
-                    this.outputRanges = new Ranges(RANGES, this.referenceSequences);
+                    this.inputRanges = new Ranges(RANGES, this.referenceDictionary, OFFSET);
+                    this.outputRanges = new Ranges(RANGES, this.referenceDictionary);
                 }
                 else {
-                    this.inputRanges = new Ranges(RANGE, this.referenceSequences, OFFSET);
-                    this.outputRanges = new Ranges(RANGE, this.referenceSequences);
+                    this.inputRanges = new Ranges(RANGE, this.referenceDictionary, OFFSET);
+                    this.outputRanges = new Ranges(RANGE, this.referenceDictionary);
                 }
 
                 this.inputRangesIterator = this.inputRanges.iterator();
@@ -126,7 +150,18 @@ public class SRMA extends CommandLineProgram {
                 }
 
                 this.inputRange = this.inputRangesIterator.next();
-                this.recordIter = this.in.query(this.referenceSequences.get(this.inputRange.referenceIndex).getName(),
+
+                do {
+                    this.referenceSequence = this.referenceSequenceFile.nextSequence();
+                } while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < this.inputRange.referenceIndex);
+                if(null == this.referenceSequence) {
+                    throw new Exception("Premature EOF in the reference sequence");
+                }
+                else if(this.referenceSequence.getContigIndex() != this.inputRange.referenceIndex) {
+                    throw new Exception("Could not find the reference sequence");
+                }
+
+                this.recordIter = this.in.query(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName(),
                         this.inputRange.startPosition,
                         this.inputRange.endPosition,
                         false);
@@ -134,7 +169,7 @@ public class SRMA extends CommandLineProgram {
             }
 
             // Initialize graph
-            this.graph = new Graph(this.header, this.referenceSequences);
+            this.graph = new Graph(this.header);
 
             SAMRecord rec = this.getNextSAMRecord();
             while(null != rec) {
@@ -156,7 +191,7 @@ public class SRMA extends CommandLineProgram {
 
                     // Add to the graph 
                     try {
-                        recNode = this.graph.addSAMRecord(rec);
+                        recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
                     } catch (Graph.GraphException e) {
                         if(Graph.GraphException.NOT_IMPLEMENTED != e.type) {
                             throw e;
@@ -176,6 +211,10 @@ public class SRMA extends CommandLineProgram {
 
                     // Process the available reads
                     ctr = this.processList(ctr, true, false);
+                }
+                else {
+                    // TODO
+                    // Print this out somehow in some order somewhere
                 }
 
                 // get new record
@@ -199,20 +238,8 @@ public class SRMA extends CommandLineProgram {
         return 0;
     }
 
-    private void getReferences(File REFERENCE)
-    {
-        ReferenceSequenceFileFactory referenceSequenceFileFactory = new ReferenceSequenceFileFactory();
-        ReferenceSequenceFile referenceSequenceFile = referenceSequenceFileFactory.getReferenceSequenceFile(REFERENCE);
-        ReferenceSequence referenceSequence = null;
-        do {
-            referenceSequence = referenceSequenceFile.nextSequence();
-            if(null != referenceSequence) {
-                this.referenceSequences.add(referenceSequence);
-            }
-        } while(null != referenceSequence);
-    }
-
     private SAMRecord getNextSAMRecord()
+        throws Exception
     {
         if(this.recordIter.hasNext()) {
             return this.recordIter.next();
@@ -225,7 +252,7 @@ public class SRMA extends CommandLineProgram {
                     // get new range
                     this.inputRange = this.inputRangesIterator.next();
                     // seek in the SAM file
-                    this.recordIter = this.in.query(this.referenceSequences.get(this.inputRange.referenceIndex).getName(),
+                    this.recordIter = this.in.query(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName(),
                             this.inputRange.startPosition,
                             this.inputRange.endPosition,
                             false);
@@ -235,6 +262,15 @@ public class SRMA extends CommandLineProgram {
                     return null;
                 }
             } while(false == this.recordIter.hasNext());
+            while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < this.inputRange.referenceIndex) {
+                this.referenceSequence = this.referenceSequenceFile.nextSequence();
+            }
+            if(null == this.referenceSequence) {
+                throw new Exception("Premature EOF in the reference sequence");
+            }
+            else if(this.referenceSequence.getContigIndex() != this.inputRange.referenceIndex) {
+                throw new Exception("Could not find the reference sequence");
+            }
 
             return this.recordIter.next();
         }
@@ -280,7 +316,7 @@ public class SRMA extends CommandLineProgram {
             curSAMRecord = Align.align(this.graph, 
                     curSAMRecord, 
                     curSAMRecordNode, 
-                    this.referenceSequences, 
+                    this.referenceSequence,
                     OFFSET, 
                     MINIMUM_ALLELE_FREQUENCY,
                     MINIMUM_ALLELE_COVERAGE); 

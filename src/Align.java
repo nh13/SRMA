@@ -11,7 +11,7 @@ import srma.*;
 public class Align {
 
     public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
-            List<ReferenceSequence> sequences, 
+            ReferenceSequence sequence, 
             int offset, 
             double minimumAlleleFrequency,
             int minimumAlleleCoverage)
@@ -85,7 +85,7 @@ public class Align {
                 read, 
                 qualities, 
                 space, 
-                sequences, 
+                sequence, 
                 minimumAlleleFrequency,
                 minimumAlleleCoverage);
 
@@ -295,7 +295,7 @@ public class Align {
             String read, 
             String qualities, 
             SRMAUtil.Space space,
-            List<ReferenceSequence> sequences, 
+            ReferenceSequence sequence, 
             double minimumAlleleFrequency,
             int minimumAlleleCoverage)
         throws Exception
@@ -315,7 +315,7 @@ public class Align {
         }
 
         // Get original alignment
-        alignment = new Alignment(rec, sequences);
+        alignment = new Alignment(rec, sequence);
 
         // Initialize heap
         if(strand) { // reverse
