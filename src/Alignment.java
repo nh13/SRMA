@@ -16,7 +16,7 @@ public class Alignment {
     int positions[]; // one for each read base
     int positionsIndex[]; // one for each read base, index into read/reference
 
-    public Alignment(SAMRecord record, List<ReferenceSequence> sequences) throws Exception
+    public Alignment(SAMRecord record, ReferenceSequence sequence) throws Exception
     {
         Cigar cigar;
         List<CigarElement> cigarElements;
@@ -62,7 +62,7 @@ public class Alignment {
         if(referenceIndex < 0) {
             throw new Exception("Reference index out of range: " + referenceIndex);
         }
-        referenceBases = sequences.get(referenceIndex).getBases();
+        referenceBases = sequence.getBases();
 
         // Copy over alignment
         iter = cigarElements.iterator();

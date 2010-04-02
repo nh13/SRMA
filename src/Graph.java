@@ -17,12 +17,10 @@ public class Graph {
     ArrayList<PriorityQueue<Node>> nodes; // zero based
     ArrayList<Integer> coverage; // does not count insertions with offset > 0
     SAMFileHeader header;
-    List<ReferenceSequence> sequences;
 
-    public Graph(SAMFileHeader header, List<ReferenceSequence> sequences)
+    public Graph(SAMFileHeader header)
     {
         this.header = header;
-        this.sequences = sequences;
         this.contig = 1; 
         this.position_start = 1; 
         this.position_end = 1;
@@ -31,7 +29,7 @@ public class Graph {
     }
 
     // Returns start/end node in the alignment graph with respect to strand
-    public Node addSAMRecord(SAMRecord record) throws Exception
+    public Node addSAMRecord(SAMRecord record, ReferenceSequence sequence) throws Exception
     {
         Alignment alignment;
         PriorityQueue<Node> nodeQueue = null;
@@ -47,7 +45,7 @@ public class Graph {
         }
 
         // Get the alignment
-        alignment = new Alignment(record, sequences);
+        alignment = new Alignment(record, sequence);
         strand = record.getReadNegativeStrandFlag(); 
 
         /*
