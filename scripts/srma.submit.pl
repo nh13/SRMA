@@ -109,6 +109,7 @@ sub Schema {
 		  <xs:complexType>
 			<xs:sequence>
 			  <xs:element name="picardBin" type="directoryPath"/>
+			  <xs:element name="mergeLogBase" type="xs:integer"/>
 			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			</xs:sequence>
@@ -164,6 +165,7 @@ sub ValidateData {
 	# picard
 	if(defined($data->{'samOptions'})) {
 		ValidatePath($data->{'samOptions'},       'picardBin',                                OPTIONAL); 
+		ValidatePath($data->{'samOptions'},       'mergeLogBase',                             OPTIONAL); 
 		ValidateOption($data->{'samOptions'},     'cleanUpTmpDirectory',                      OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'qsubArgs',                                 OPTIONAL);
 	}
@@ -339,7 +341,7 @@ sub CreateJobsSAM {
 	my ($cmd, $run_file, $outputID, $qsub_id);
 
 	my $type = 'picard';
-	my @tmpOutputBAMFiles = ();
+	my @outputBAMs = ();
 
 	if(!defined($data->{'samOptions'})) {
 		# Delete the dependent jobs
@@ -354,32 +356,79 @@ sub CreateJobsSAM {
 	for(my $i=0;$i<scalar(@$dependentOutputIDs);$i++) {
 		my $outputID = $dependentOutputIDs->[$i];
 		my $tmpBAMFile = CreateTmpOutputFile($data, 'srma', $outputID);
-		push(@tmpOutputBAMFiles, $tmpBAMFile);
+		push(@outputBAMs, $tmpBAMFile);
 		push(@qsubIDs, $dependentQsubIDs->[$i]);
 	}
 
+	my $mergeLogBase = MERGE_LOG_BASE;
+	if(defined($data->{'samOptions'}->{'mergeLogBase'}) && 1 < $data->{'samOptions'}->{'mergeLogBase'}) {
+		$mergeLogBase = $data->{'samOptions'}->{'mergeLogBase'};
+	}
+
 	# Merge script(s)
-	# Note: there could be too many dependencies, so lets just create dummy jobs to "merge" the dependencies
+	# Note: there could be too many dependencies, as well as too many output BAMs to merge.
+	# Therefore, a hierarchical merge is required.
 	my $mergeLevel = 0;
-	while(MERGE_LOG_BASE < scalar(@qsubIDs)) { # while we must merge
+	while(1 < scalar(@qsubIDs)) { # while merging is necessary
 		$mergeLevel++;
 		my $ctr = 0;
 		my @curIDs = @qsubIDs;
+		my @curBAMs = @outputBAMs;
 		@qsubIDs = ();
-		for(my $i=0;$i<scalar(@curIDs);$i+=MERGE_LOG_BASE) {
+		@outputBAMs = ();
+		my $finalIter = 1;
+		for(my $i=0;$i<scalar(@curIDs);$i+=$mergeLogBase) {
+			$ctr++;
+		}
+		if(1 < $ctr) {
+			$finalIter = 0;
+		}
+		$ctr=0;
+		for(my $i=0;$i<scalar(@curIDs);$i+=$mergeLogBase) {
 			$ctr++;
 			# Get the subset of dependent jobs
-			my @dependent_jobs = ();
-			for(my $j=$i;$j<scalar(@curIDs) && $j<$i+MERGE_LOG_BASE;$j++) {
-				push(@dependent_jobs, $curIDs[$j]);
+			my @dependentIDs = ();
+			my @dependentBAMs = ();
+			for(my $j=$i;$j<scalar(@curIDs) && $j<$i+$mergeLogBase;$j++) {
+				push(@dependentIDs, $curIDs[$j]);
+				push(@dependentBAMs, $curBAMs[$j]);
+			}
+			# Set up ouptut ID, run file, and output BAM
+			$outputID = "merge.$mergeLevel.$ctr";
+			$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
+			my $outputBAM = "";
+			if(0 == $finalIter) {
+				$outputBAM = CreateTmpOutputFile($data, $type, $outputID);
+			}
+			else {
+				$outputBAM = " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
 			}
 			# Create the command
-			$outputID = "dummy.merge.$mergeLevel.$ctr";
-			$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
-			$cmd = "echo \"Merging $mergeLevel / $ctr\"\n";
-			$qsub_id = SubmitJob($run_file, $quiet, 1, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependent_jobs);
+			if(!defined($data->{'samOptions'}->{'picardBin'})) { die("Picard bin required") };
+			$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
+			if(defined($data->{'samOptions'}->{'javaArgs'})) {
+				$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
+				if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+					$cmd .= " -Xmx2g";
+				}
+			}
+			else {
+				$cmd .= " -Xmx2g";
+			}
+			$cmd .= " -jar ".$data->{'samOptions'}->{'picardBin'}."MergeSamFiles.jar";
+			foreach my $bam (@dependentBAMs) {
+				$cmd .= " I=$bam";
+			}
+			$cmd .= " O=$outputBAM";
+			$cmd .= " SO=coordinate";
+			$cmd .= " AS=true";
+			$cmd .= " TMP_DIR=".$data->{'srmaOptions'}->{'tmpDirectory'};
+			$cmd .= " VALIDATION_STRINGENCY=SILENT";
+			# Submit
+			$qsub_id = SubmitJob($run_file, $quiet, 1, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependentIDs);
 			if(QSUBNOJOB ne $qsub_id) {
 				push(@qsubIDs, $qsub_id);
+				push(@outputBAMs, $outputBAM);
 			}
 			else {
 				# currently it must be submitted
@@ -388,47 +437,8 @@ sub CreateJobsSAM {
 		}
 	}
 
-	# Run merge or copy
-	if(1 < scalar(@qsubIDs)) {
-		$outputID = "merge";
-		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
-		if(!defined($data->{'samOptions'}->{'picardBin'})) { die("Picard bin required") };
-		$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
-		if(defined($data->{'samOptions'}->{'javaArgs'})) {
-			$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
-			if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
-				$cmd .= " -Xmx2g";
-			}
-		}
-		else {
-			$cmd .= " -Xmx2g";
-		}
-		$cmd .= " -jar ".$data->{'samOptions'}->{'picardBin'}."MergeSamFiles.jar";
-		foreach my $bam (@tmpOutputBAMFiles) {
-			$cmd .= " I=$bam";
-		}
-		$cmd .= " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
-		$cmd .= " SO=coordinate";
-		$cmd .= " AS=true";
-		$cmd .= " TMP_DIR=".$data->{'srmaOptions'}->{'tmpDirectory'};
-		$cmd .= " VALIDATION_STRINGENCY=SILENT";
-	}
-	else {
-		$outputID = "copy";
-		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
-		my $bam = $tmpOutputBAMFiles[0];
-		$cmd = "cp -v $bam ".$data->{'srmaOptions'}->{'outputBAMFile'};
-	}
-	$qsub_id = SubmitJob($run_file , $quiet, 1, $dryrun, $cmd, $data, 'samOptions', $outputID, \@qsubIDs);
-	if(QSUBNOJOB ne $qsub_id) {
-		push(@qsubIDs, $qsub_id);
-	}
-	else {
-		# currently it must be submitted
-		die;
-	}
 
-	# Clean up
+# Clean up
 	if(defined($data->{'srmaOptions'}->{'cleanUpTmpDirectory'}) && 1 == defined($data->{'srmaOptions'}->{'cleanUpTmpDirectory'})) {
 		my @a = (); push(@a, $qsub_id); # push the merge/copy
 		$outputID = "cleanup.tmpdirectory";
