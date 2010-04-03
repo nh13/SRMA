@@ -285,7 +285,6 @@ sub CreateJobsSRMA {
 		# Submit the job
 		my @a = (); # empty array for job dependencies
 		my $qsubID = SubmitJob($runFile, $quiet, 0, $dryrun, $cmd, $data, 'srmaOptions', 'srma', \@a);
-		# No need to merge
 	}
 	else {
 		my $start = 1;
