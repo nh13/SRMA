@@ -40,7 +40,7 @@ public class AlignHeapNode {
 
         if(null == prev) { // first base
             if(SRMAUtil.Space.COLORSPACE == space) {
-                base = SRMAUtil.colorSpaceNextBase(SRMAUtil.COLORSPACE_ADAPTOR, (char)base);
+                base = SRMAUtil.colorSpaceNextBase(SRMAUtil.COLORSPACE_ADAPTOR, base);
             }
             this.readOffset = 0;
             this.score = 0;
@@ -51,7 +51,7 @@ public class AlignHeapNode {
         else {
             assert(prev.space == space);
             if(SRMAUtil.Space.COLORSPACE == space) {
-                base = SRMAUtil.colorSpaceNextBase((char)prev.node.base, (char)base);
+                base = SRMAUtil.colorSpaceNextBase(prev.node.base, base);
             }
             this.readOffset = prev.readOffset + 1;
             this.score = prev.score;

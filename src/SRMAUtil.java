@@ -48,7 +48,7 @@ public class SRMAUtil {
             case 'n':
                 return 'N'; 
             default:
-                throw new Exception("Error: could not understand the base: " + (char)base);
+                throw new Exception("Error: could not understand the base: " + base);
         }
 
         switch(color) {

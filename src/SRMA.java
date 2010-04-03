@@ -96,7 +96,7 @@ public class SRMA extends CommandLineProgram {
             // Initialize basic input/output files
             this.toProcessSAMRecordList = new LinkedList<SAMRecord>();
             this.toProcesSAMRecordNodeList = new LinkedList<Node>();
-            this.toOutputSAMRecordPriorityQueue = new PriorityQueue(40, new SAMRecordCoordinateComparator()); 
+            this.toOutputSAMRecordPriorityQueue = new PriorityQueue<SAMRecord>(40, new SAMRecordCoordinateComparator()); 
             this.in = new SAMFileReader(INPUT, true);
             this.header = this.in.getFileHeader();
             if(null == OUTPUT) { // to STDOUT as a SAM
@@ -198,13 +198,8 @@ public class SRMA extends CommandLineProgram {
                     }
 
                     // Add to the graph 
-                    try {
-                        recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
-                    } catch (Graph.GraphException e) {
-                        if(Graph.GraphException.NOT_IMPLEMENTED != e.type) {
-                            throw e;
-                        }
-                    }
+                    recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
+                    
                     if(this.useRanges) {
                         // Partition by the alignment start
                         if(this.recordAlignmentStartContained(rec)) { // only add if it will be outputted
@@ -243,7 +238,7 @@ public class SRMA extends CommandLineProgram {
             System.err.println("SRMA complete");
             // Memory
             double totalMemory = (double)Runtime.getRuntime().totalMemory();
-            double totalMemoryLog2 = Math.log(totalMemory) / ((double)Math.log(2.0));
+            double totalMemoryLog2 = Math.log(totalMemory) / Math.log(2.0);
             if(totalMemoryLog2 < 10) {
                 System.err.println("Total memory usage: " + (int)totalMemory + "B");
             } 

@@ -341,22 +341,4 @@ public class Graph {
             }
         }
     }
-
-    public class GraphException extends Exception
-    {
-        int type;
-        public static final int NOT_IMPLEMENTED = 0;
-        public static final int OTHER = 1;
-
-        public GraphException(int type)
-        {
-            super("Not implemented");
-            this.type = type;
-        }
-
-        public GraphException(int type, String message) {
-            super(message);
-            this.type = type;
-        }
-    }
 }
