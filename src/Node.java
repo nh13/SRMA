@@ -79,7 +79,7 @@ public class Node {
     {
         ListIterator<Node> iter;
         ListIterator<Integer> iterCov;
-        out.print("[" + (char)this.base + ":" + this.type + ":" + this.contig + ":" + 
+        out.print("[" + this.base + ":" + this.type + ":" + this.contig + ":" + 
                 this.position + ":" + this.offset + ":" + this.coverage + "]");
         iter = this.next.listIterator();
         iterCov = this.nextCov.listIterator();
@@ -87,7 +87,7 @@ public class Node {
         while(iter.hasNext()) {
             Node next = iter.next();
             Integer nextCov = iterCov.next();
-            out.print("\t" + (char)next.base + ":" + next.type + ":" + next.contig + 
+            out.print("\t" + next.base + ":" + next.type + ":" + next.contig + 
                     ":" + next.position + ":" + next.offset + ":" + next.coverage + ":" + nextCov); 
         }
         out.println("");

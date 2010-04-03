@@ -6,7 +6,7 @@ package srma;
 import java.util.*;
 import srma.*;
 
-public class AlignHeapNodeComparator implements Comparator {
+public class AlignHeapNodeComparator implements Comparator<AlignHeapNode> {
     private AlignHeap.HeapType type;
 
     /*
@@ -17,11 +17,8 @@ public class AlignHeapNodeComparator implements Comparator {
         this.type = type;
     }
 
-    public int compare(Object o1, Object o2) 
+    public int compare(AlignHeapNode a, AlignHeapNode b)
     {
-        AlignHeapNode a = (AlignHeapNode)o1;
-        AlignHeapNode b = (AlignHeapNode)o2;
-        
         int coordinate;
 
         // sort by:
