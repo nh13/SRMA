@@ -334,13 +334,6 @@ public class Align {
         // HERE
         /*
            System.err.println("\n" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd());
-           System.err.println("refr:" + new String(alignment.reference));
-           System.err.println("read:" + new String(alignment.read));
-           int i;
-           for(i=0;i<alignment.positions.length;i++) {
-           System.err.print("\t" + alignment.positions[i]);
-           }
-           System.err.print("\n");
            System.err.println("reverse:" + strand);
            recNode.print(System.err);
            */
@@ -373,6 +366,10 @@ public class Align {
                 int nextIndex = alignment.positionsIndex[nextReadOffset];
                 char nextBase = (char)alignment.read[nextIndex];
                 int nextType = -1;
+
+                /*
+                System.err.println("HERE BOUND: " + nextPosition + ":" + nextIndex + ":" + (char)alignment.reference[nextIndex] + ":" + (char)alignment.read[nextIndex]);
+                */
 
                 if(Alignment.GAP == alignment.reference[nextIndex]) {
                     nextType = Node.INSERTION;
@@ -409,7 +406,9 @@ public class Align {
                     /*
                        System.err.println("Found nextNode.position: " + nextNode.position
                        + "\tnextNode.type: " + nextNode.type
-                       + "\tnextNode.base: " + nextNode.base);
+                       + "\tnextNode.offset: " + nextNode.offset
+                       + "\tnextNode.base: " + nextNode.base
+                       + "\tnextNode.position: " + nextNode.position);
                        */
 
                     if(nextNode.position == nextPosition && nextNode.type == nextType && nextNode.base == nextBase) { // bases match

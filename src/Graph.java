@@ -40,7 +40,7 @@ public class Graph {
         // Get the alignment
         alignment = new Alignment(record, sequence);
         strand = record.getReadNegativeStrandFlag(); 
-        
+
         // Reset if there are no nodes
         if(0 == this.nodes.size()) {
             this.position_start = record.getAlignmentStart();
@@ -52,19 +52,19 @@ public class Graph {
             this.contig = record.getReferenceIndex() + 1;
         }
 
+        // HERE
         /*
-           System.err.println(record.toString()); 
-           alignment.print(System.err);
-           */
+        System.err.println(record.toString()); 
+        alignment.print(System.err);
+        System.err.println("HERE: " + record.getAlignmentStart() + "-" + record.getAlignmentEnd());
+        */
 
         /* Reminders:
            i - index from 0 to 'alignment.length' 
            ref_i - index within 'alignment.reference'
            */
-
-        for(i=0,ref_i=-1;
-                i<alignment.length;
-                i++,prev=cur) 
+            
+        for(i=0,ref_i=-1;i<alignment.length;i++,prev=cur) 
         { // go through the alignment
 
             // Skip over a deletion
@@ -77,7 +77,6 @@ public class Graph {
             offset = 0;
             if(alignment.read[i] == alignment.reference[i]) { // match
                 node_type = Node.MATCH;
-                ref_i++;
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
                 node_type = Node.INSERTION; 
@@ -87,6 +86,8 @@ public class Graph {
             }
             else { // mismatch
                 node_type = Node.MISMATCH;
+            }
+            if(null == prev || Node.INSERTION != prev.type) { // previous was an insertion, already on the position
                 ref_i++;
             }
 
