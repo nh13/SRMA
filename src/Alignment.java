@@ -78,8 +78,6 @@ public class Alignment {
                     case M:
                         this.reference[index] = referenceBases[alignmentStart - 1 + referenceIndex];
                         this.read[index] = readBases[readIndex]; 
-                        this.positions[readIndex] = alignmentStart + referenceIndex;
-                        this.positionsIndex[readIndex] = index;
                         referenceIndex++;
                         readIndex++;
                         break;
@@ -91,8 +89,6 @@ public class Alignment {
                     case I:
                         this.reference[index] = Alignment.GAP; 
                         this.read[index] = readBases[readIndex]; 
-                        this.positions[readIndex] = alignmentStart + referenceIndex - 1;
-                        this.positionsIndex[readIndex] = index;
                         readIndex++;
                         break;
                     default:
@@ -105,6 +101,33 @@ public class Alignment {
         // left justify
         this.leftJustify();
 
+        // Set positions etc;
+        index = readIndex = 0;
+
+        referenceIndex = alignmentStart - 1;
+        while(index < this.length) {
+            if(Alignment.GAP == read[index]) { // D
+                // ignore
+                referenceIndex++;
+            }
+            else if(Alignment.GAP == reference[index]) { // I
+                if(0 == index || Alignment.GAP != reference[index-1]) { // previous not an ins
+                    referenceIndex++;
+                }
+                this.positions[readIndex] = referenceIndex;
+                this.positionsIndex[readIndex] = index;
+                readIndex++;
+            }
+            else { // M
+                if(0 == index || Alignment.GAP != reference[index-1]) { // previous not an ins 
+                    referenceIndex++;
+                }
+                this.positions[readIndex] = referenceIndex;
+                this.positionsIndex[readIndex] = index;
+                readIndex++;
+            }
+            index++;
+        }
     }
 
     private void leftJustify()
@@ -200,7 +223,7 @@ public class Alignment {
 
     public void print(PrintStream out)
     {
-        int i;
+        int i, j;
 
         for(i=0;i<this.length;i++) {
             out.print((char)this.reference[i]);
@@ -210,18 +233,24 @@ public class Alignment {
             out.print((char)this.read[i]);
         }
         out.println("");
-        for(i=0;i<this.length;i++) {
-            if(0 < i) {
-                out.print(",");
+        for(i=j=0;i<this.length;i++) {
+            if(Alignment.GAP != this.read[i]) {
+                if(0 < j) {
+                    out.print(",");
+                }
+                out.print(this.positions[j]);
+                j++;
             }
-            out.print(this.positions[i]);
         }
         out.println("");
-        for(i=0;i<this.length;i++) {
-            if(0 < i) {
-                out.print(",");
+        for(i=j=0;i<this.length;i++) {
+            if(Alignment.GAP != this.read[i]) {
+                if(0 < j) {
+                    out.print(",");
+                }
+                out.print(this.positionsIndex[j]);
+                j++;
             }
-            out.print(this.positionsIndex[i]);
         }
         out.println("");
     }
