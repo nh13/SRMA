@@ -259,7 +259,7 @@ public class SRMA extends CommandLineProgram {
             // Run time
             long seconds = (this.endTime - this.startTime) / 1000000000;
             long hours = seconds / 3600; seconds -= hours * 3600; 
-            long minutes = seconds / 60; seconds -= minutes* 3600; 
+            long minutes = seconds / 60; seconds -= minutes* 60; 
             System.err.print("Total execution time: " + hours + "h : " + minutes + "m : " + seconds + "s");
             System.err.println("");
 
