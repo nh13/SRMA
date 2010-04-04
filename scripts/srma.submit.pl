@@ -42,7 +42,7 @@ GetOptions('help|?' => \$help,
 	man => \$man, 
 	'schema' => \$print_schema, 
 	'quiet' => \$quiet, 
-	'startstep' => \$start_step,
+	'startstep=s' => \$start_step,
 	'dryrun' => \$dryrun,
 	'config=s' => \$config)
 	or pod2usage(1);
@@ -51,7 +51,7 @@ pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 pod2usage(1) if ($help or !defined($config));
 
 if(!defined($STARTSTEP{$start_step})) {
-	print STDERR "Error. Illegal value to the option -startstep.\n";
+	print STDERR "Error. Illegal value to the option \"$start_step\" -startstep.\n";
 	pod2usage(1);
 }
 $start_step = $STARTSTEP{$start_step};
@@ -389,6 +389,7 @@ sub CreateJobsSAM {
 	# Note: there could be too many dependencies, as well as too many output BAMs to merge.
 	# Therefore, a hierarchical merge is required.
 	my $mergeLevel = 0;
+	my $shouldDepend = ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0;
 	while(1 < scalar(@qsubIDs)) { # while merging is necessary
 		$mergeLevel++;
 		my $ctr = 0;
@@ -445,7 +446,7 @@ sub CreateJobsSAM {
 			$cmd .= " TMP_DIR=".$data->{'srmaOptions'}->{'tmpDirectory'};
 			$cmd .= " VALIDATION_STRINGENCY=SILENT";
 			# Submit
-			$qsub_id = SubmitJob($run_file, $quiet, ($start_step <= $STARTSTEP{"sam"}) ? 1 : 0, 1, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependentIDs);
+			$qsub_id = SubmitJob($run_file, $quiet, ($start_step <= $STARTSTEP{"sam"}) ? 1 : 0, $shouldDepend, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependentIDs);
 			if(QSUBNOJOB ne $qsub_id) {
 				push(@qsubIDs, $qsub_id);
 				push(@outputBAMs, $outputBAM);
@@ -455,6 +456,7 @@ sub CreateJobsSAM {
 				die;
 			}
 		}
+		$shouldDepend = 1; # always depend on the next loops
 	}
 
 
@@ -480,6 +482,7 @@ sub SubmitJob {
 	if(!$quiet) {
 		print STDERR "[srma submit] RUNFILE=$run_file\n";
 	}
+	
 	if(1 == $should_run) {
 		my $output = <<END_OUTPUT;
 run ()
