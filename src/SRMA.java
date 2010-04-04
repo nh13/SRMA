@@ -128,7 +128,7 @@ public class SRMA extends CommandLineProgram {
                     throw new Exception("Could not open sequence dictionary file: " + dictionaryName);
                 }
             }
-
+            
             // Get ranges
             if(null == RANGES && null == RANGE) {
                 this.useRanges = false;

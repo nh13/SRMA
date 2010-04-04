@@ -54,16 +54,16 @@ public class Graph {
 
         // HERE
         /*
-        System.err.println(record.toString()); 
-        alignment.print(System.err);
-        System.err.println("HERE: " + record.getAlignmentStart() + "-" + record.getAlignmentEnd());
-        */
+           System.err.println(record.toString()); 
+           alignment.print(System.err);
+           System.err.println("HERE: " + record.getAlignmentStart() + "-" + record.getAlignmentEnd());
+           */
 
         /* Reminders:
            i - index from 0 to 'alignment.length' 
            ref_i - index within 'alignment.reference'
            */
-            
+
         for(i=0,ref_i=-1;i<alignment.length;i++,prev=cur) 
         { // go through the alignment
 
@@ -142,6 +142,7 @@ public class Graph {
             }
             // Get the proper queue and add
             this.nodes.get(node.position - this.position_start).add(node);
+
             if(node.offset == 0) { // do not include insertions that extend an insertion
                 this.coverage.set(node.position - this.position_start, node.coverage + this.coverage.get(node.position - this.position_start)); // set coverage
             }
@@ -288,17 +289,6 @@ public class Graph {
             this.coverage.remove(0);
             this.position_start++;
         }
-        // update position_start further
-        while(this.position_start < alignmentStart) {
-            if(0 < this.position_start) {
-                if(null != this.nodes.get(0)) {
-                    break;
-                }
-                this.nodes.remove(0); // remove empty
-                this.coverage.remove(0);
-            }
-            this.position_start++;
-        }
     }
 
     private void destroy()
@@ -339,6 +329,26 @@ public class Graph {
             iter = queue.iterator();
             while(iter.hasNext()) {
                 iter.next().print(out);
+            }
+        }
+    }
+
+    // DEBUG FUNCTION
+    public void check()
+        throws Exception
+    {
+        if(0 < this.nodes.size()) {
+            int i;
+            for(i=this.position_start;i<=this.position_end;i++) {
+                PriorityQueue<Node> q = this.nodes.get(i - this.position_start);
+                Iterator<Node> iter = q.iterator();
+                while(iter.hasNext()) {
+                    Node n = iter.next();
+                    if(i != n.position) {
+                        System.err.println("i="+i+"\tn.position="+n.position);
+                        throw new Exception("Inconsistent graph");
+                    }
+                }
             }
         }
     }
