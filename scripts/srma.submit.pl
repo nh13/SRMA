@@ -23,6 +23,7 @@ use Cwd;
 
 my %QUEUETYPES = ("SGE" => 0, "PBS" => 1);
 my %SPACE = ("NT" => 0, "CS" => 1);
+my %STARTSTEP = ("srma", "sam");
 my $FAKEQSUBID = 0;
 
 use constant {
@@ -34,19 +35,26 @@ use constant {
 };
 
 my $config;
-my ($man, $print_schema, $help, $quiet, $dryrun) = (0, 0, 0, 0, 0);
+my ($man, $print_schema, $help, $quiet, $start_step, $dryrun) = (0, 0, 0, 0, "srma", 0);
 my $version = "0.1.1";
 
 GetOptions('help|?' => \$help, 
 	man => \$man, 
 	'schema' => \$print_schema, 
 	'quiet' => \$quiet, 
+	'startstep' => \$start_step,
 	'dryrun' => \$dryrun,
 	'config=s' => \$config)
 	or pod2usage(1);
 Schema() if ($print_schema);
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 pod2usage(1) if ($help or !defined($config));
+
+if(!defined($STARTSTEP{$start_step})) {
+	print STDERR "Error. Illegal value to the option -startstep.\n";
+	pod2usage(1);
+}
+$start_step = $STARTSTEP{$start_step};
 
 if(!$quiet) {
 	print STDOUT BREAKLINE;
@@ -55,12 +63,13 @@ if(!$quiet) {
 # Read in from the config file
 my $xml = new XML::Simple;
 my $data = $xml->XMLin("$config");
+my @qsubGlobalIDs = ();
 
 # Validate data
 ValidateData($data);
 
 # Submit jobs
-CreateJobs($data, $quiet, $dryrun);
+CreateJobs($data, $quiet, $start_step, $dryrun);
 
 if(!$quiet) {
 	print STDOUT BREAKLINE;
@@ -223,7 +232,7 @@ sub getGenomeInfo {
 }
 
 sub CreateJobs {
-	my ($data, $quiet, $dryrun) = @_;
+	my ($data, $quiet, $start_step, $dryrun) = @_;
 
 	my @srmaJobIDs = ();
 	my @srmaOutputIDs = ();
@@ -234,9 +243,18 @@ sub CreateJobs {
 	mkpath([$data->{'srmaOptions'}->{'runDirectory'}],    ($quiet) ? 0 : 1, 0755);
 	mkpath([$data->{'srmaOptions'}->{'tmpDirectory'}],    ($quiet) ? 0 : 1, 0755);
 
-	CreateJobsSRMA($data, $quiet, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
+	CreateJobsSRMA($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
 	if(0 < scalar(@srmaJobIDs)) {
-		CreateJobsSAM($data, $quiet, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
+		CreateJobsSAM($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
+	}
+
+	# remove holds
+	foreach my $qsubID (@qsubGlobalIDs) {
+		my $outID=`qalter $qsubID -h U`;
+		if($outID=~ m/Your job (\d+)/) {
+			$outID= $1;
+		}
+		die unless (0 < length($outID));
 	}
 }
 
@@ -257,7 +275,7 @@ sub CreateTmpOutputFile {
 }
 
 sub CreateJobsSRMA {
-	my ($data, $quiet, $dryrun, $qsubIDs, $outputIDs) = @_;
+	my ($data, $quiet, $start_step, $dryrun, $qsubIDs, $outputIDs) = @_;
 	my @read_files = ();
 
 	if(0 == $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}) { # do not split
@@ -284,7 +302,7 @@ sub CreateJobsSRMA {
 
 		# Submit the job
 		my @a = (); # empty array for job dependencies
-		my $qsubID = SubmitJob($runFile, $quiet, 0, $dryrun, $cmd, $data, 'srmaOptions', 'srma', \@a);
+		my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', 'srma', \@a);
 	}
 	else {
 		my $start = 1;
@@ -326,7 +344,7 @@ sub CreateJobsSRMA {
 
 				# Submit the job
 				my @a = (); # empty array for job dependencies
-				my $qsubID = SubmitJob($runFile, $quiet, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
+				my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
 				push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
 				push(@$outputIDs, $outputID);
 			}
@@ -336,7 +354,7 @@ sub CreateJobsSRMA {
 
 
 sub CreateJobsSAM {
-	my ($data, $quiet, $dryrun, $dependentQsubIDs, $dependentOutputIDs) = @_;
+	my ($data, $quiet, $start_step, $dryrun, $dependentQsubIDs, $dependentOutputIDs) = @_;
 	my @qsubIDs = ();
 	my ($cmd, $run_file, $outputID, $qsub_id);
 
@@ -425,7 +443,7 @@ sub CreateJobsSAM {
 			$cmd .= " TMP_DIR=".$data->{'srmaOptions'}->{'tmpDirectory'};
 			$cmd .= " VALIDATION_STRINGENCY=SILENT";
 			# Submit
-			$qsub_id = SubmitJob($run_file, $quiet, 1, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependentIDs);
+			$qsub_id = SubmitJob($run_file, $quiet, ($start_step <= $STARTSTEP{"sam"}) ? 1 : 0, 1, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependentIDs);
 			if(QSUBNOJOB ne $qsub_id) {
 				push(@qsubIDs, $qsub_id);
 				push(@outputBAMs, $outputBAM);
@@ -444,12 +462,12 @@ sub CreateJobsSAM {
 		$outputID = "cleanup.tmpdirectory";
 		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$outputID.sh";
 		$cmd = "rm -rv ".$data->{'srmaOptions'}->{'tmpDirectory'};
-		$qsub_id = SubmitJob($run_file , $quiet, 1, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
+		$qsub_id = SubmitJob($run_file , $quiet, ($start_step <= $STARTSTEP{"sam"}) ? 1 : 0, 1, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
 	}
 }
 
 sub SubmitJob {
-	my ($run_file, $quiet, $should_depend, $dryrun, $command, $data, $type, $outputID, $dependent_jobIDs) = @_;
+	my ($run_file, $quiet, $should_run, $should_depend, $dryrun, $command, $data, $type, $outputID, $dependent_jobIDs) = @_;
 	if(0 < length($outputID)) {
 		$outputID = "$type.$outputID"; $outputID =~ s/Options//g;
 	}
@@ -460,7 +478,8 @@ sub SubmitJob {
 	if(!$quiet) {
 		print STDERR "[srma submit] RUNFILE=$run_file\n";
 	}
-	my $output = <<END_OUTPUT;
+	if(1 == $should_run) {
+		my $output = <<END_OUTPUT;
 run ()
 {
 	echo "running: \$*" 2>&1;
@@ -471,17 +490,18 @@ run ()
 	fi
 }
 END_OUTPUT
-	$output .= "\nrun \"hostname\";\n";
-	$output .= "run \"$command\";\n";
-	$output .= "exit 0;\n";
-	open(FH, ">$run_file") or die("Error.  Could not open $run_file for writing!\n");
-	print FH "$output";
-	close(FH);
+		$output .= "\nrun \"hostname\";\n";
+		$output .= "run \"$command\";\n";
+		$output .= "exit 0;\n";
+		open(FH, ">$run_file") or die("Error.  Could not open $run_file for writing!\n");
+		print FH "$output";
+		close(FH);
+	}
 
 	# Create qsub command
 	my $qsub = "";
 	$qsub .= $data->{'srmaOptions'}->{'qsubBin'} if defined($data->{'srmaOptions'}->{'qsubBin'});
-	$qsub .= "qsub";
+	$qsub .= "qsub -h u"; # with a user hold
 
 	if(0 < scalar(@$dependent_jobIDs) && 1 == $should_depend) {
 		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'});
@@ -490,31 +510,36 @@ END_OUTPUT
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
 
-	if(1 == $dryrun) {
-		$FAKEQSUBID++;
-		print STDERR "[srma submit] NAME=$outputID QSUBID=$FAKEQSUBID\n";
-		return $FAKEQSUBID;
-	}
+	if(1 == $should_run) {
+		if(1 == $dryrun) {
+			$FAKEQSUBID++;
+			print STDERR "[srma submit] NAME=$outputID QSUBID=$FAKEQSUBID\n";
+			return $FAKEQSUBID;
+		}
 
-	# Submit the qsub command
-	my $qsub_id=`$qsub`;
-	$qsub_id = "$qsub_id";
-	chomp($qsub_id);
+		# Submit the qsub command
+		my $qsub_id=`$qsub`;
+		$qsub_id = "$qsub_id";
+		chomp($qsub_id);
 
-	# There has to be a better way to get the job ids (?)
-	if($qsub_id =~ m/Your job (\d+)/) {
-		$qsub_id = $1;
-	}
-	die("Error submitting QSUB_COMMAND=$qsub\nQSUB_ID=$qsub_id\n") unless (0 < length($qsub_id));
-	if($qsub_id !~ m/^\S+$/) {
+		# There has to be a better way to get the job ids (?)
+		if($qsub_id =~ m/Your job (\d+)/) {
+			$qsub_id = $1;
+		}
 		die("Error submitting QSUB_COMMAND=$qsub\nQSUB_ID=$qsub_id\n") unless (0 < length($qsub_id));
-	}
+		if($qsub_id !~ m/^\S+$/) {
+			die("Error submitting QSUB_COMMAND=$qsub\nQSUB_ID=$qsub_id\n") unless (0 < length($qsub_id));
+		}
 
-	if(!$quiet) {
-		print STDERR "[srma submit] NAME=$outputID QSUBID=$qsub_id\n";
-	}
+		# save qsub id
+		push(@qsubGlobalIDs, $qsub_id);
 
-	return $qsub_id;
+		if(!$quiet) {
+			print STDERR "[srma submit] NAME=$outputID QSUBID=$qsub_id\n";
+		}
+
+		return $qsub_id;
+	}
 }
 
 __END__
@@ -537,6 +562,10 @@ Prints the manual page and exits.
 
 =item B<-quiet>
 Do not print any submit messages.
+
+=item B<-startstep>
+Specifies on which step of the alignment process to start (default: srma). The
+values can be "srma" or "sam".
 
 =item B<-dryrun>
 Do everything but submit the jobs.
