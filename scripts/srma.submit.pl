@@ -23,7 +23,7 @@ use Cwd;
 
 my %QUEUETYPES = ("SGE" => 0, "PBS" => 1);
 my %SPACE = ("NT" => 0, "CS" => 1);
-my %STARTSTEP = ("srma", "sam");
+my %STARTSTEP = ("srma" => 0, "sam" => 1);
 my $FAKEQSUBID = 0;
 
 use constant {
@@ -255,6 +255,7 @@ sub CreateJobs {
 			$outID= $1;
 		}
 		die unless (0 < length($outID));
+		print STDERR "[srma submit] hold removed QSUBID=$outID\n";
 	}
 }
 
@@ -501,7 +502,7 @@ END_OUTPUT
 	# Create qsub command
 	my $qsub = "";
 	$qsub .= $data->{'srmaOptions'}->{'qsubBin'} if defined($data->{'srmaOptions'}->{'qsubBin'});
-	$qsub .= "qsub -h u"; # with a user hold
+	$qsub .= "qsub -h"; # with a user hold
 
 	if(0 < scalar(@$dependent_jobIDs) && 1 == $should_depend) {
 		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'});
