@@ -251,11 +251,12 @@ sub CreateJobs {
 	# remove holds
 	foreach my $qsubID (@qsubGlobalIDs) {
 		my $outID=`qalter $qsubID -h U`;
+		chomp($outID);
 		if($outID=~ m/Your job (\d+)/) {
 			$outID= $1;
 		}
 		die unless (0 < length($outID));
-		print STDERR "[srma submit] hold removed QSUBID=$outID\n";
+		print STDERR "[srma submit] hold removed QSUBID=$outID";
 	}
 }
 
@@ -420,7 +421,7 @@ sub CreateJobsSAM {
 				$outputBAM = CreateTmpOutputFile($data, $type, $outputID);
 			}
 			else {
-				$outputBAM = " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
+				$outputBAM = "".$data->{'srmaOptions'}->{'outputBAMFile'};
 			}
 			# Create the command
 			if(!defined($data->{'samOptions'}->{'picardBin'})) { die("Picard bin required") };
