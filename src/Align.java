@@ -10,6 +10,8 @@ import srma.*;
 
 public class Align {
 
+    private static final int MAX_HEAP_SIZE = 8192;
+
     public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
             ReferenceSequence sequence, 
             int offset, 
@@ -37,7 +39,6 @@ public class Align {
         //String readName = rec.getReadName();
 
         assert SRMAUtil.Space.COLORSPACE != space;
-
 
         // TODO:
         // - remove/fix paired end reads?
@@ -176,10 +177,16 @@ public class Align {
 
         while(null != curAlignHeapNode) {
 
+            if(Align.MAX_HEAP_SIZE <= heap.size()) {
+                // too many to consider
+                return rec;
+            }
+
             // HERE
             //System.err.println("strand:" + strand + "\tsize:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
-            //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.startPosition + ":");
+            //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.startPosition + "\t");
             //curAlignHeapNode.node.print(System.err);
+            //System.err.print("\rposition:" + curAlignHeapNode.node.position + "\treadOffset:" + curAlignHeapNode.readOffset);
 
             // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
@@ -253,7 +260,7 @@ public class Align {
 
         // Recover alignment
         Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
-
+        
         return rec;
     }
 
