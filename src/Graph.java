@@ -74,15 +74,11 @@ public class Graph {
             }
 
             // Get the node type
-            offset = 0;
             if(alignment.read[i] == alignment.reference[i]) { // match
                 node_type = Node.MATCH;
             }
             else if(alignment.reference[i] == Alignment.GAP) { // insertion
                 node_type = Node.INSERTION; 
-                if(null != prev && Node.INSERTION == prev.type) {
-                    offset = prev.offset + 1;
-                }
             }
             else { // mismatch
                 node_type = Node.MISMATCH;
@@ -96,7 +92,6 @@ public class Graph {
                         node_type,
                         record.getReferenceIndex() + 1,
                         record.getAlignmentStart() + ref_i,
-                        offset,
                         prev),
                     prev);
 
@@ -157,6 +152,7 @@ public class Graph {
             curNode.addToPrev(prev);
             prev.addToNext(curNode);
         }
+
 
         return curNode;
     }
@@ -333,7 +329,7 @@ public class Graph {
         }
     }
 
-    // DEBUG FUNCTION
+    // Debugging function
     public void check()
         throws Exception
     {

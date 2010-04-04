@@ -24,14 +24,14 @@ public class Node {
     List<Node> prev; // upstream nodes
     List<Integer> prevCov;
 
-    public Node(char base, int type, int contig, int position, int offset, Node prev)
+    public Node(char base, int type, int contig, int position, Node prev)
         throws Exception
     {
         this.base = base;
         this.type = type;
         this.contig = contig;
         this.position = position;
-        this.offset = offset;
+        this.offset = 0;
         this.coverage = 1;
         this.next = new ArrayList<Node>();
         this.nextCov = new ArrayList<Integer>();
@@ -39,6 +39,9 @@ public class Node {
         this.prevCov = new ArrayList<Integer>();
         if(null != prev) {
             addToPrev(prev);
+            if(Node.INSERTION == prev.type && Node.INSERTION == this.type) {
+                this.offset = prev.offset + 1;
+            }
         }
     }
 
