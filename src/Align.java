@@ -19,7 +19,6 @@ public class Align {
     {
 
         int i;
-        Node startNode;
         AlignHeapNode curAlignHeapNode = null;
         AlignHeapNode nextAlignHeapNode = null;
         AlignHeapNode bestAlignHeapNode=null;
@@ -38,6 +37,7 @@ public class Align {
         //String readName = rec.getReadName();
 
         assert SRMAUtil.Space.COLORSPACE != space;
+
 
         // TODO:
         // - remove/fix paired end reads?
@@ -99,167 +99,162 @@ public class Align {
            }
         //Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
         //return rec;
-        /*/
+        */
 
-          if(strand) { // reverse
-          comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MAXHEAP); 
-          heap = new AlignHeap(AlignHeap.HeapType.MAXHEAP); 
-          }
-          else { // forward
-          comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); 
-          heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); 
-          }
+        if(strand) { // reverse
+            comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MAXHEAP); 
+            heap = new AlignHeap(AlignHeap.HeapType.MAXHEAP); 
+        }
+        else { // forward
+            comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); 
+            heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); 
+        }
 
         // Add start nodes
         if(strand) { // reverse
-        alignmentStart = rec.getAlignmentEnd();
-        for(i=alignmentStart+offset;alignmentStart-offset<=i;) {
-        int position = graph.getPriorityQueueIndexAtPositionOrBefore(i);
-        PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(position);
-        if(0 != position && null != startNodeQueue) {
-        Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
-        int prev_i = i;
-        while(startNodeQueueIter.hasNext()) {
-        startNode = startNodeQueueIter.next();
-        if(passFilters(graph,
-        startNode,
-        minimumAlleleFrequency,
-        minimumAlleleCoverage)) {
-        heap.add(new AlignHeapNode(null, 
-        startNode,
-        startNode.coverage,
-        read.charAt(0),
-        qualities.charAt(0),
-        space));
-        }
-        i=startNode.position-1;
-        numStartNodesAdded++;
-        }
-        }
-        else {
-        i--;
-        }
-        }
-        }
-        else {
-        alignmentStart = rec.getAlignmentStart();
-        for(i=alignmentStart-offset;i<=alignmentStart+offset;) {
-        int position = graph.getPriorityQueueIndexAtPositionOrGreater(i);
-        PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(position);
-        if(0 != position && null != startNodeQueue) {
-        Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
-        int prev_i = i;
-        while(startNodeQueueIter.hasNext()) {
-        startNode = startNodeQueueIter.next();
-        if(passFilters(graph,
-        startNode,
-        minimumAlleleFrequency,
-        minimumAlleleCoverage)) {
-        heap.add(new AlignHeapNode(null, 
-        startNode,
-        startNode.coverage,
-        read.charAt(0),
-        qualities.charAt(0),
-        space));
-        }
-        i=startNode.position+1;
-        numStartNodesAdded++;
-        }
-        }
-        else {
-        i++;
-        }
-        }
-        }
-    if(numStartNodesAdded == 0) {
-        throw new Exception("Did not add any start nodes!");
-    }
-
-    // Get first node off the heap
-    curAlignHeapNode = heap.poll();
-
-    while(null != curAlignHeapNode) {
-
-        // HERE
-        //System.err.println("strand:" + strand + "\tsize:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
-        //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.startPosition + ":");
-        //curAlignHeapNode.node.print(System.err);
-
-        // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
-        nextAlignHeapNode = heap.peek();
-        while(Node.INSERTION != curAlignHeapNode.node.type 
-                && null != nextAlignHeapNode 
-                && 0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) 
-        {
-            if(curAlignHeapNode.score < nextAlignHeapNode.score ||
-                    (curAlignHeapNode.score == nextAlignHeapNode.score && 
-                     curAlignHeapNode.alleleCoverageSum < nextAlignHeapNode.alleleCoverageSum)) {
-                // Update current node
-                curAlignHeapNode = heap.poll();
-                     }
-            else {
-                // Ignore next node
-                heap.poll();
-            }
-            nextAlignHeapNode = heap.peek();
-        }
-        nextAlignHeapNode=null;
-
-        // Check if the alignment is complete
-        if(curAlignHeapNode.readOffset == read.length() - 1) {
-            // Complete, store if has the best alignment.
-            // TODO: must guarantee left-most alignment based on strand
-
-            // HERE
-            //System.err.print(curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.score + ":");
-            //System.err.print(curAlignHeapNode.startPosition + ":");
-            //curAlignHeapNode.node.print(System.err);
-
-            if(null == bestAlignHeapNode 
-                    || bestAlignHeapNode.score < curAlignHeapNode.score 
-                    || (bestAlignHeapNode.score == curAlignHeapNode.score 
-                        && bestAlignHeapNode.alleleCoverageSum < curAlignHeapNode.alleleCoverageSum)) 
-            {
-                bestAlignHeapNode = curAlignHeapNode;
-            }
-        }
-        else {
-            if(strand) { // reverse
-                // Go to all the "prev" nodes
-                iter = curAlignHeapNode.node.prev.listIterator();
-                iterCov = curAlignHeapNode.node.prevCov.listIterator();
-            }
-            else { // forward
-                // Go to all "next" nodes
-                iter = curAlignHeapNode.node.next.listIterator();
-                iterCov = curAlignHeapNode.node.nextCov.listIterator();
-            }
-            while(iter.hasNext()) {
-                Node nextNode = iter.next();
-                int nextCoverage = iterCov.next();
-                if(passFilters(graph,
-                            nextNode,
-                            nextCoverage,
-                            minimumAlleleFrequency,
-                            minimumAlleleCoverage)) {
-                    heap.add(new AlignHeapNode(curAlignHeapNode, 
-                                nextNode, 
-                                nextCoverage,
-                                read.charAt(curAlignHeapNode.readOffset+1), 
-                                qualities.charAt(curAlignHeapNode.readOffset+1), 
-                                space));
+            alignmentStart = rec.getAlignmentEnd();
+            for(i=alignmentStart+offset;alignmentStart-offset<=i;i--) {
+                int position = graph.getPriorityQueueIndexAtPositionOrBefore(i);
+                PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(position);
+                if(0 != position && null != startNodeQueue) {
+                    Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
+                    while(startNodeQueueIter.hasNext()) {
+                        Node startNode = startNodeQueueIter.next();
+                        if(passFilters(graph,
+                                    startNode,
+                                    minimumAlleleFrequency,
+                                    minimumAlleleCoverage)) {
+                            heap.add(new AlignHeapNode(null, 
+                                        startNode,
+                                        startNode.coverage,
+                                        read.charAt(0),
+                                        qualities.charAt(0),
+                                        space));
+                        }
+                        if(startNode.position < i) {
+                            i = startNode.position;
+                        }
+                        numStartNodesAdded++;
+                    }
                 }
             }
-            iter=null;
         }
-        // Get next node
+        else {
+            alignmentStart = rec.getAlignmentStart();
+            for(i=alignmentStart-offset;i<=alignmentStart+offset;i++) {
+                int position = graph.getPriorityQueueIndexAtPositionOrGreater(i);
+                PriorityQueue<Node> startNodeQueue = graph.getPriorityQueue(position);
+                if(0 != position && null != startNodeQueue) {
+                    Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
+                    while(startNodeQueueIter.hasNext()) {
+                        Node startNode = startNodeQueueIter.next();
+                        if(passFilters(graph,
+                                    startNode,
+                                    minimumAlleleFrequency,
+                                    minimumAlleleCoverage)) {
+                            heap.add(new AlignHeapNode(null, 
+                                        startNode,
+                                        startNode.coverage,
+                                        read.charAt(0),
+                                        qualities.charAt(0),
+                                        space));
+                        }
+                        if(i < startNode.position) {
+                            i = startNode.position;
+                        }
+                        numStartNodesAdded++;
+                    }
+                }
+            }
+        }
+        if(numStartNodesAdded == 0) {
+            throw new Exception("Did not add any start nodes!");
+        }
+
+        // Get first node off the heap
         curAlignHeapNode = heap.poll();
-    }
 
-    // Recover alignment
-    Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
+        while(null != curAlignHeapNode) {
 
-    return rec;
+            // HERE
+            //System.err.println("strand:" + strand + "\tsize:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
+            //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.startPosition + ":");
+            //curAlignHeapNode.node.print(System.err);
+
+            // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
+            nextAlignHeapNode = heap.peek();
+            while(Node.INSERTION != curAlignHeapNode.node.type 
+                    && null != nextAlignHeapNode 
+                    && 0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) 
+            {
+                if(curAlignHeapNode.score < nextAlignHeapNode.score ||
+                        (curAlignHeapNode.score == nextAlignHeapNode.score && 
+                         curAlignHeapNode.alleleCoverageSum < nextAlignHeapNode.alleleCoverageSum)) {
+                    // Update current node
+                    curAlignHeapNode = heap.poll();
+                         }
+                else {
+                    // Ignore next node
+                    heap.poll();
+                }
+                nextAlignHeapNode = heap.peek();
+            }
+            nextAlignHeapNode=null;
+
+            // Check if the alignment is complete
+            if(curAlignHeapNode.readOffset == read.length() - 1) {
+                // Complete, store if has the best alignment.
+
+                // HERE
+                //System.err.print(curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.score + ":");
+                //System.err.print(curAlignHeapNode.startPosition + ":");
+                //curAlignHeapNode.node.print(System.err);
+
+                if(null == bestAlignHeapNode 
+                        || bestAlignHeapNode.score < curAlignHeapNode.score 
+                        || (bestAlignHeapNode.score == curAlignHeapNode.score 
+                            && bestAlignHeapNode.alleleCoverageSum < curAlignHeapNode.alleleCoverageSum)) 
+                {
+                    bestAlignHeapNode = curAlignHeapNode;
+                }
+            }
+            else {
+                if(strand) { // reverse
+                    // Go to all the "prev" nodes
+                    iter = curAlignHeapNode.node.prev.listIterator();
+                    iterCov = curAlignHeapNode.node.prevCov.listIterator();
+                }
+                else { // forward
+                    // Go to all "next" nodes
+                    iter = curAlignHeapNode.node.next.listIterator();
+                    iterCov = curAlignHeapNode.node.nextCov.listIterator();
+                }
+                while(iter.hasNext()) {
+                    Node nextNode = iter.next();
+                    int nextCoverage = iterCov.next();
+                    if(passFilters(graph,
+                                nextNode,
+                                nextCoverage,
+                                minimumAlleleFrequency,
+                                minimumAlleleCoverage)) {
+                        heap.add(new AlignHeapNode(curAlignHeapNode, 
+                                    nextNode, 
+                                    nextCoverage,
+                                    read.charAt(curAlignHeapNode.readOffset+1), 
+                                    qualities.charAt(curAlignHeapNode.readOffset+1), 
+                                    space));
+                    }
+                }
+                iter=null;
+            }
+            // Get next node
+            curAlignHeapNode = heap.poll();
+        }
+
+        // Recover alignment
+        Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
+
+        return rec;
     }
 
     private static boolean passFilters(Graph graph,
@@ -336,6 +331,7 @@ public class Align {
            System.err.println("\n" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd());
            System.err.println("reverse:" + strand);
            recNode.print(System.err);
+           alignment.print(System.err); 
            */
 
         curAlignHeapNode = heap.poll();
@@ -368,8 +364,8 @@ public class Align {
                 int nextType = -1;
 
                 /*
-                System.err.println("HERE BOUND: " + nextPosition + ":" + nextIndex + ":" + (char)alignment.reference[nextIndex] + ":" + (char)alignment.read[nextIndex]);
-                */
+                   System.err.println("HERE BOUND: " + nextPosition + ":" + nextIndex + ":" + (char)alignment.reference[nextIndex] + ":" + (char)alignment.read[nextIndex]);
+                   */
 
                 if(Alignment.GAP == alignment.reference[nextIndex]) {
                     nextType = Node.INSERTION;
