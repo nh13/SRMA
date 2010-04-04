@@ -256,7 +256,7 @@ sub CreateJobs {
 			$outID= $1;
 		}
 		die unless (0 < length($outID));
-		print STDERR "[srma submit] hold removed QSUBID=$outID";
+		print STDERR "[srma submit] hold removed QSUBID=$outID\n";
 	}
 }
 
