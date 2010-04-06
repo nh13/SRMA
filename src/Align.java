@@ -460,7 +460,8 @@ public class Align {
         //String readName = rec.getReadName();
 
         if(null == bestAlignHeapNode) {
-            throw new Exception("No alignments!");
+            // Do not modify the alignment
+            return;
         }
 
         // To generate a new CIGAR
