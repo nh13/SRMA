@@ -401,7 +401,7 @@ sub CreateJobsSRMA {
 					$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 					$cmd .= " RANGE=\"$chrName\:$start-$end\"";
 					$cmd .= " QUIET=true";
-					$cmd .= " VALIDATION_STRINGENCY=".$data->{'samOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
+					$cmd .= " VALIDATION_STRINGENCY=".$data->{'samOptions'}->{'validationStringency'} if(defined($data->{'samOptions'}->{'validationStringency'}));
 
 					# Submit the job
 					my @a = (); # empty array for job dependencies
