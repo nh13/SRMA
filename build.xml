@@ -7,6 +7,7 @@
 	<property name="lib" value="lib"/>
 	<property name="sam-version" value="1.17"/>
 	<property name="picard-version" value="1.17"/>
+	<property name="srma-version" value="0.1"/>
 
 	<path id="sam-jdk.path">
 		<pathelement location="${lib}/sam-${sam-version}.jar"/>
@@ -40,7 +41,7 @@
 
 	<target name="jar" depends="compile">
 		<mkdir dir="${jar}"/>
-		<jar destfile="${jar}/${ant.project.name}.jar" basedir="${classes}" duplicate="fail" index="true">
+		<jar destfile="${jar}/${ant.project.name}-${srma-version}.jar" basedir="${classes}" duplicate="fail" index="true">
 			<zipfileset src="${lib}/sam-${sam-version}.jar" includes="**/*.class"/>
 			<zipfileset src="${lib}/picard-${picard-version}.jar" includes="**/*.class"/>
 			<manifest>
@@ -50,7 +51,7 @@
 	</target>
 
 	<target name="run" depends="jar">
-		<java jar="${jar}/${ant.project.name}.jar" fork="true"/>
+		<java jar="${jar}/${ant.project.name}-${srma-version}.jar" fork="true"/>
 	</target>
 
 	<target name="clean-build" depends="clean,jar"/>
