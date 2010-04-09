@@ -8,7 +8,7 @@
 # TODO:
 # - guarantee tmp files do not collide
 # - documentation
-# - documentation: split size == 0 means it wont split
+# 	- documentation: split size == 0 means it wont split
 # - could split not by regions but by the # of records using the ".bam.bai" file (?)
 
 use strict;
@@ -112,6 +112,7 @@ sub Schema {
 			  <xs:element name="cleanUpTmpDirectory" type="xs:integer"/>
 			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
+			  <xs:element name="range" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
 		</xs:element>
@@ -168,6 +169,7 @@ sub ValidateData {
 	ValidatePath($data->{'srmaOptions'},         'tmpDirectory',                             REQUIRED); 
 	ValidateFile($data->{'srmaOptions'},         'inputBAMFile',							 REQUIRED);
 	ValidateFile($data->{'srmaOptions'},         'outputBAMFile',							 REQUIRED);
+	ValidateFile($data->{'srmaOptions'},         'range',							 		 OPTIONAL);
 
 	die "Attribute splitSize required with referenceFasta.\n" if (!defined($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}));
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
@@ -297,6 +299,7 @@ sub CreateJobsSRMA {
 		$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
 		$cmd .= " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
 		$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+		$cmd .= " RANGE=".$data->{'srmaOptions'}->{'range'} if(defined($data->{'srmaOptions'}->{'range'}));
 		$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
 		$cmd .= " MINIMUM_ALLELE_FREQUENCY=".$data->{'srmaOptions'}->{'minimumAlleleFrequency'} if(defined($data->{'srmaOptions'}->{'minimumAlleleFrequency'}));
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
@@ -311,6 +314,26 @@ sub CreateJobsSRMA {
 		my $splitSize = $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'};
 		my @genomeInfo = ();
 
+		my ($range_chr, $range_start, $range_end) = ("", -1, -1);
+		if(defined($data->{'srmaOptions'}->{'range'})) {
+			if($data->{'srmaOptions'}->{'range'} =~ m/(.+):(\d+)-(\d+)/) {
+				$range_chr = $1;
+				$range_start = $2;
+				$range_end = $3;
+				my $found_chr = 0;
+				for(my $i=0;$i<scalar(@genomeInfo);$i++) {
+					if($range_chr eq $genomeInfo[$i]->[0]) {
+						$found_chr = 1;
+						last;
+					}
+				}
+				if(0 == $found_chr) {
+					die("Could not find chromosome [$range_chr] in the reference.\n");
+				}
+
+			}
+		}
+
 		getGenomeInfo($data->{'srmaOptions'}->{'referenceFasta'}->{'content'}, \@genomeInfo);
 
 		for(my $i=0;$i<scalar(@genomeInfo);$i++) {
@@ -319,38 +342,57 @@ sub CreateJobsSRMA {
 			for(my $start=1;$start <= $chrSize;$start+=$splitSize) {
 				my $end = $start + $splitSize - 1;
 				if($chrSize < $end) { $end = $chrSize; }
-				my $outputID = "$chrName\_$start\-$end";
-				my $runFile = CreateRunFile($data, 'srma', $outputID);
-				my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
-
-				my $cmd = "";
-				$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
-				if(defined($data->{'samOptions'}->{'javaArgs'})) {
-					$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
-					if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
-						$cmd .= " -Xmx2g";
+				my $within_range = 1;
+				if(defined($data->{'srmaOptions'}->{'range'})) {
+					if($chrName ne $range_chr || 
+						($chrName eq $range_chr && $end < $range_start) ||
+						($chrName eq $range_chr && $range_end < $start)) {
+						$within_range = 0;
+					}
+					if($start < $range_start) {
+						$start = $range_start;
+					}
+					if($range_end < $end) {
+						$end = $range_end;
 					}
 				}
-				else {
-					$cmd .= " -Xmx2g";
-				}
-				$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaBin'}."srma.jar";
-				$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
-				$cmd .= " O=$outputFile";
-				$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
-				$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
-				$cmd .= " MINIMUM_ALLELE_FREQUENCY=".$data->{'srmaOptions'}->{'minimumAlleleFrequency'} if(defined($data->{'srmaOptions'}->{'minimumAlleleFrequency'}));
-				$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
-				$cmd .= " RANGE=\"$chrName\:$start-$end\"";
-				$cmd .= " QUIET=true";
+				if(1 == $within_range) {
+					my $outputID = "$chrName\_$start\-$end";
+					my $runFile = CreateRunFile($data, 'srma', $outputID);
+					my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
 
-				# Submit the job
-				my @a = (); # empty array for job dependencies
-				my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
-				push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
-				push(@$outputIDs, $outputID);
+					my $cmd = "";
+					$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
+					if(defined($data->{'samOptions'}->{'javaArgs'})) {
+						$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
+						if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+							$cmd .= " -Xmx2g";
+						}
+					}
+					else {
+						$cmd .= " -Xmx2g";
+					}
+					$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaBin'}."srma.jar";
+					$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
+					$cmd .= " O=$outputFile";
+					$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+					$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+					$cmd .= " MINIMUM_ALLELE_FREQUENCY=".$data->{'srmaOptions'}->{'minimumAlleleFrequency'} if(defined($data->{'srmaOptions'}->{'minimumAlleleFrequency'}));
+					$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+					$cmd .= " RANGE=\"$chrName\:$start-$end\"";
+					$cmd .= " QUIET=true";
+
+					# Submit the job
+					my @a = (); # empty array for job dependencies
+					my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
+					push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
+					push(@$outputIDs, $outputID);
+				}
 			}
 		}
+	}
+	if(0 == @$qsubIDs) {
+		die;
 	}
 }
 
@@ -482,7 +524,7 @@ sub SubmitJob {
 	if(!$quiet) {
 		print STDERR "[srma submit] RUNFILE=$run_file\n";
 	}
-	
+
 	if(1 == $should_run) {
 		my $output = <<END_OUTPUT;
 run ()
