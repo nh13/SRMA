@@ -35,6 +35,7 @@ public class Align {
         int numStartNodesAdded = 0;
         boolean strand = rec.getReadNegativeStrandFlag(); // false -> forward, true -> reverse
 
+
         // Debugging stuff
         //String readName = rec.getReadName();
 
@@ -77,6 +78,9 @@ public class Align {
                 throw new Exception("Error.  The current color space alignment has no color qualities.");
             }
         }
+
+        // Remove mate pair information
+        Align.removeMateInfo(rec);
 
         // Bound by original alignment if possible
         bestAlignHeapNode = Align.boundWithOriginalAlignment(rec, 
@@ -262,6 +266,27 @@ public class Align {
         Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
         
         return rec;
+    }
+
+    private static void removeMateInfo(SAMRecord rec)
+    {
+        if(rec.getReadPairedFlag() || rec.getFirstOfPairFlag() || rec.getSecondOfPairFlag()) { // paired end
+            // Remove all information of its mate
+            
+            // flag
+            rec.setProperPairFlag(false); // not paired any more
+            rec.setMateUnmappedFlag(false);
+            rec.setMateNegativeStrandFlag(false);
+            rec.setFirstOfPairFlag(false);
+            rec.setFirstOfSecondFlag(false);
+
+            // entries
+            rec.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
+            rec.setMateAlignmentStart(0);
+            rec.setInferredInsertSize(0);
+
+             // TODO: remove tags and values that are mate pair inclined.
+        }
     }
 
     private static boolean passFilters(Graph graph,
