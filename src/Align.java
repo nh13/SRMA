@@ -278,7 +278,7 @@ public class Align {
             rec.setMateUnmappedFlag(false);
             rec.setMateNegativeStrandFlag(false);
             rec.setFirstOfPairFlag(false);
-            rec.setFirstOfSecondFlag(false);
+            rec.setSecondOfPairFlag(false);
 
             // entries
             rec.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
