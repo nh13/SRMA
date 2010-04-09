@@ -440,6 +440,8 @@ public class Align {
             curAlignHeapNode = heap.poll();
         }
 
+        System.err.println("");
+        alignment.print(System.err);
         throw new Exception("Control reached unexpected point");
     }
 

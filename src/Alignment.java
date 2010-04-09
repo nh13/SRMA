@@ -103,25 +103,12 @@ public class Alignment {
 
         // Set positions etc;
         index = readIndex = 0;
-
         referenceIndex = alignmentStart - 1;
         while(index < this.length) {
-            if(Alignment.GAP == read[index]) { // D
-                // ignore
+            if(0 == index || Alignment.GAP != reference[index-1]) { // previous not an ins
                 referenceIndex++;
             }
-            else if(Alignment.GAP == reference[index]) { // I
-                if(0 == index || Alignment.GAP != reference[index-1]) { // previous not an ins
-                    referenceIndex++;
-                }
-                this.positions[readIndex] = referenceIndex;
-                this.positionsIndex[readIndex] = index;
-                readIndex++;
-            }
-            else { // M
-                if(0 == index || Alignment.GAP != reference[index-1]) { // previous not an ins 
-                    referenceIndex++;
-                }
+            if(Alignment.GAP != read[index]) { // M or I
                 this.positions[readIndex] = referenceIndex;
                 this.positionsIndex[readIndex] = index;
                 readIndex++;
