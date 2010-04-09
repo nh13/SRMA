@@ -465,6 +465,8 @@ public class Align {
             curAlignHeapNode = heap.poll();
         }
 
+        System.err.println("");
+        alignment.print(System.err);
         throw new Exception("Control reached unexpected point");
     }
 
@@ -485,7 +487,8 @@ public class Align {
         //String readName = rec.getReadName();
 
         if(null == bestAlignHeapNode) {
-            throw new Exception("No alignments!");
+            // Do not modify the alignment
+            return;
         }
 
         // To generate a new CIGAR
