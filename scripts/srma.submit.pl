@@ -113,6 +113,7 @@ sub Schema {
 			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			  <xs:element name="range" type="xs:string"/>
+			  <xs:element name="validationStringency" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
 		</xs:element>
@@ -123,6 +124,7 @@ sub Schema {
 			  <xs:element name="mergeLogBase" type="xs:integer"/>
 			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
+			  <xs:element name="validationStringency" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
 		</xs:element>
@@ -169,7 +171,8 @@ sub ValidateData {
 	ValidatePath($data->{'srmaOptions'},         'tmpDirectory',                             REQUIRED); 
 	ValidateFile($data->{'srmaOptions'},         'inputBAMFile',							 REQUIRED);
 	ValidateFile($data->{'srmaOptions'},         'outputBAMFile',							 REQUIRED);
-	ValidateFile($data->{'srmaOptions'},         'range',							 		 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'range',							 		 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'validationStringency',					 OPTIONAL);
 
 	die "Attribute splitSize required with referenceFasta.\n" if (!defined($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}));
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
@@ -180,6 +183,7 @@ sub ValidateData {
 		ValidatePath($data->{'samOptions'},       'mergeLogBase',                             OPTIONAL); 
 		ValidateOption($data->{'samOptions'},     'cleanUpTmpDirectory',                      OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'qsubArgs',                                 OPTIONAL);
+		ValidateOption($data->{'samOptions'},     'validationStringency',					  OPTIONAL);
 	}
 }
 
@@ -258,7 +262,7 @@ sub CreateJobs {
 			$outID= $1;
 		}
 		die unless (0 < length($outID));
-		print STDERR "[srma submit] hold removed QSUBID=$outID\n";
+		print STDERR "[srma submit] hold removed QSUBID=$qsubID\n";
 	}
 }
 
@@ -304,6 +308,7 @@ sub CreateJobsSRMA {
 		$cmd .= " MINIMUM_ALLELE_FREQUENCY=".$data->{'srmaOptions'}->{'minimumAlleleFrequency'} if(defined($data->{'srmaOptions'}->{'minimumAlleleFrequency'}));
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 		$cmd .= " QUIET=true";
+		$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 		# Submit the job
 		my @a = (); # empty array for job dependencies
@@ -335,6 +340,40 @@ sub CreateJobsSRMA {
 		}
 
 		getGenomeInfo($data->{'srmaOptions'}->{'referenceFasta'}->{'content'}, \@genomeInfo);
+
+		my ($range_chr, $range_start, $range_end) = ("", -1, -1);
+		if(defined($data->{'srmaOptions'}->{'range'})) {
+			if($data->{'srmaOptions'}->{'range'} =~ m/(.+):(\d+)-(\d+)/) {
+				$range_chr = $1;
+				$range_start = $2;
+				$range_end = $3;
+				my $found_chr = 0;
+				for(my $i=0;$i<scalar(@genomeInfo);$i++) {
+					if($range_chr eq $genomeInfo[$i]->[0]) {
+						$found_chr = 1;
+						last;
+					}
+				}
+				if(0 == $found_chr) {
+					die("Could not find chromosome [$range_chr] in the reference.\n");
+				}
+			}
+			else {
+				$range_chr = $data->{'srmaOptions'}->{'range'};
+				my $found_chr = 0;
+				for(my $i=0;$i<scalar(@genomeInfo);$i++) {
+					if($range_chr eq $genomeInfo[$i]->[0]) {
+						$range_start = 1;
+						$range_end = $genomeInfo[$i]->[1];
+						$found_chr = 1;
+						last;
+					}
+				}
+				if(0 == $found_chr) {
+					die("Could not find chromosome [$range_chr] in the reference.\n");
+				}
+			}
+		}
 
 		for(my $i=0;$i<scalar(@genomeInfo);$i++) {
 			my $chrName = $genomeInfo[$i]->[0];
@@ -381,6 +420,7 @@ sub CreateJobsSRMA {
 					$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 					$cmd .= " RANGE=\"$chrName\:$start-$end\"";
 					$cmd .= " QUIET=true";
+					$cmd .= " VALIDATION_STRINGENCY=".$data->{'samOptions'}->{'validationStringency'} if(defined($data->{'samOptions'}->{'validationStringency'}));
 
 					# Submit the job
 					my @a = (); # empty array for job dependencies
@@ -504,7 +544,7 @@ sub CreateJobsSAM {
 
 # Clean up
 	if(defined($data->{'srmaOptions'}->{'cleanUpTmpDirectory'}) && 1 == defined($data->{'srmaOptions'}->{'cleanUpTmpDirectory'})) {
-		my @a = (); push(@a, $qsub_id); # push the merge/copy
+		my @a = (); push(@a, $qsubIDs[0]); # push the merge/copy
 		$outputID = "cleanup.tmpdirectory";
 		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$outputID.sh";
 		$cmd = "rm -rv ".$data->{'srmaOptions'}->{'tmpDirectory'};
