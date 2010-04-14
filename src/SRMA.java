@@ -23,7 +23,7 @@ import java.util.*;
 public class SRMA extends CommandLineProgram { 
 
     @Usage (programVersion="0.0.1")
-        public final String USAGE = getStandardUsagePreamble() + "Short read micro assembler.";
+        public final String USAGE = getStandardUsagePreamble() + "Short read micro re-aligner.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The input SAM or BAM file.")
         public File INPUT=null;
     @Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output SAM or BAM file.", optional=true)
