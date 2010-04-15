@@ -32,10 +32,10 @@ public class SRMA extends CommandLineProgram {
         public File REFERENCE=null;
     @Option(doc="The alignment offset.", optional=true)
         public int OFFSET=20;
-    @Option(doc="The minimum allele frequency for the conensus.", optional=true)
-        public double MINIMUM_ALLELE_FREQUENCY=0.0;
+    @Option(doc="The minimum allele frequency for the consensus.", optional=true)
+        public double MINIMUM_ALLELE_FREQUENCY=0.2;
     @Option(doc="The minimum haploid coverage for the consensus.", optional=true)
-        public int MINIMUM_ALLELE_COVERAGE=0;
+        public int MINIMUM_ALLELE_COVERAGE=3;
     @Option(doc="The file containing ranges to examine.", optional=true)
         public File RANGES=null;
     @Option(doc="A range to examine.", optional=true)
