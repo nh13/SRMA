@@ -10,6 +10,7 @@
 # - documentation
 # 	- documentation: split size == 0 means it wont split
 # - could split not by regions but by the # of records using the ".bam.bai" file (?)
+# - check for presence of ref.fa.dict and in.bam.bai
 
 use strict;
 use warnings FATAL => qw( all );
