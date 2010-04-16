@@ -270,7 +270,7 @@ public class Align {
 
     private static void removeMateInfo(SAMRecord rec)
     {
-        if(rec.getReadPairedFlag() || rec.getFirstOfPairFlag() || rec.getSecondOfPairFlag()) { // paired end
+        if(rec.getReadPairedFlag()) {
             // Remove all information of its mate
             
             // flag
@@ -517,11 +517,6 @@ public class Align {
             alignmentStart=bestAlignHeapNode.startPosition;
         }
 
-        // Adjust position on the (-) strand if we end with an insertion
-        if(strand && Node.INSERTION == bestAlignHeapNode.node.type) { // reverse
-            alignmentStart++;
-        }
-
         assert null != bestAlignHeapNode;
         curAlignHeapNode = bestAlignHeapNode;
 
@@ -601,10 +596,6 @@ public class Align {
             else {
                 // prepend
                 cigarElements.add(0, new CigarElement(prevCigarOperatorLength, prevCigarOperator));
-                // adjust if we start with an insertion
-                if(CigarOperator.INSERTION == prevCigarOperator) {
-                    alignmentStart++;
-                }
             }
         }
 
