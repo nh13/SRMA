@@ -8,6 +8,6 @@ In particular:
 - update mapping quality (?)
 - output unmapped reads
 - custom Exception handling
-- minimum mapping quality on input.
+- minimum mapping quality on input, what to do those that are filtered upon output?.
 
 === BUGS ===
