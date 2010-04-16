@@ -76,6 +76,14 @@ public class SRMA extends CommandLineProgram {
     public static void main(final String[] args) {
         new SRMA().instanceMain(args);
     }
+
+    protected String[] customCommandLineValidation()
+    {
+        QUIET=true;
+        return super.customCommandLineValidation();
+    }
+
+
     /*
      * Current assumptions:
      * - can fit entire partial order graph in memory
