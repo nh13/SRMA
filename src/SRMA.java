@@ -32,6 +32,8 @@ public class SRMA extends CommandLineProgram {
         public File REFERENCE=null;
     @Option(doc="The alignment offset.", optional=true)
         public int OFFSET=20;
+    @Option(doc="The minimum mapping quality.", optional=true)
+        public int MIN_MAPQ=0;
     @Option(doc="The minimum allele frequency for the consensus.", optional=true)
         public double MINIMUM_ALLELE_FREQUENCY=0.2;
     @Option(doc="The minimum haploid coverage for the consensus.", optional=true)
@@ -181,7 +183,15 @@ public class SRMA extends CommandLineProgram {
 
             SAMRecord rec = this.getNextSAMRecord();
             while(null != rec) {
-                if(!rec.getReadUnmappedFlag()) { // only mapped reads
+                if(rec.getReadUnmappedFlag()) { 
+                    // TODO
+                    // Print this out somehow in some order somewhere
+                }
+                else if(rec.getMappingQuality() < MIN_MAPQ) {
+                    // TODO
+                    // Print this out somehow in some order somewhere
+                }
+                else {
                     Node recNode = null;
 
                     // Make sure that it is sorted
@@ -214,10 +224,6 @@ public class SRMA extends CommandLineProgram {
 
                     // Process the available reads
                     ctr = this.processList(ctr, true, false);
-                }
-                else {
-                    // TODO
-                    // Print this out somehow in some order somewhere
                 }
 
                 // get new record
