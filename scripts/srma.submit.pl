@@ -320,26 +320,6 @@ sub CreateJobsSRMA {
 		my $splitSize = $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'};
 		my @genomeInfo = ();
 
-		my ($range_chr, $range_start, $range_end) = ("", -1, -1);
-		if(defined($data->{'srmaOptions'}->{'range'})) {
-			if($data->{'srmaOptions'}->{'range'} =~ m/(.+):(\d+)-(\d+)/) {
-				$range_chr = $1;
-				$range_start = $2;
-				$range_end = $3;
-				my $found_chr = 0;
-				for(my $i=0;$i<scalar(@genomeInfo);$i++) {
-					if($range_chr eq $genomeInfo[$i]->[0]) {
-						$found_chr = 1;
-						last;
-					}
-				}
-				if(0 == $found_chr) {
-					die("Could not find chromosome [$range_chr] in the reference.\n");
-				}
-
-			}
-		}
-
 		getGenomeInfo($data->{'srmaOptions'}->{'referenceFasta'}->{'content'}, \@genomeInfo);
 
 		my ($range_chr, $range_start, $range_end) = ("", -1, -1);
