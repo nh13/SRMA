@@ -259,13 +259,13 @@ public class SRMA extends CommandLineProgram {
                 System.err.println("Total memory usage: " + (int)totalMemory + "B");
             } 
             else if(totalMemoryLog2 < 20) {
-                System.err.println("Total memory usage: " + (int)(Math.round(100 * totalMemory / Math.pow(2, 10)) / 100) + "KB");
+                System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 10)) / 100) + "KB");
             }
             else if(totalMemoryLog2 < 30) {
-                System.err.println("Total memory usage: " + (int)(Math.round(100 * totalMemory / Math.pow(2, 20)) / 100) + "MB");
+                System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 20)) / 100) + "MB");
             }
             else {
-                System.err.println("Total memory usage: " + (int)(Math.round(100 * totalMemory / Math.pow(2, 30)) / 100) + "GB");
+                System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 30)) / 100) + "GB");
             }
             // Run time
             long seconds = (this.endTime - this.startTime) / 1000000000;
