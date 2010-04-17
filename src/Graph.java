@@ -38,7 +38,11 @@ public class Graph {
         boolean strand = false;
 
         // Get the alignment
-        alignment = new Alignment(record, sequence);
+        try {
+            alignment = new Alignment(record, sequence);
+        } catch(Alignment.AlignmentException e) {
+            return null;
+        }
         strand = record.getReadNegativeStrandFlag(); 
 
         // Reset if there are no nodes
