@@ -138,7 +138,7 @@ public class SRMA extends CommandLineProgram {
                     throw new Exception("Could not open sequence dictionary file: " + dictionaryName);
                 }
             }
-            
+
             // Get ranges
             if(null == RANGES && null == RANGE) {
                 this.useRanges = false;
@@ -217,17 +217,19 @@ public class SRMA extends CommandLineProgram {
 
                     // Add to the graph 
                     recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
-                    
-                    if(this.useRanges) {
-                        // Partition by the alignment start
-                        if(this.recordAlignmentStartContained(rec)) { // only add if it will be outputted
+
+                    if(null != recNode) { // successfully added
+                        if(this.useRanges) {
+                            // Partition by the alignment start
+                            if(this.recordAlignmentStartContained(rec)) { // only add if it will be outputted
+                                this.toProcessSAMRecordList.add(rec);
+                                this.toProcesSAMRecordNodeList.add(recNode);
+                            }
+                        }
+                        else {
                             this.toProcessSAMRecordList.add(rec);
                             this.toProcesSAMRecordNodeList.add(recNode);
                         }
-                    }
-                    else {
-                        this.toProcessSAMRecordList.add(rec);
-                        this.toProcesSAMRecordNodeList.add(recNode);
                     }
 
                     // Process the available reads

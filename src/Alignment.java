@@ -92,7 +92,8 @@ public class Alignment {
                         readIndex++;
                         break;
                     default:
-                        throw new Exception("Illegal Cigar Operator: " + cigarElementOperator);
+                        // Other CIGAR operators currently not supported
+                        throw new AlignmentException("Illegal Cigar Operator: " + cigarElementOperator);
                 }
                 index++;
             }
@@ -240,5 +241,19 @@ public class Alignment {
             }
         }
         out.println("");
+    }
+
+    public class AlignmentException extends Exception {
+        private static final long serialVersionUID = 1;
+
+        public AlignmentException()
+        {
+            super();
+        }
+
+        public AlignmentException(String s)
+        {
+            super(s);
+        }
     }
 }
