@@ -401,7 +401,8 @@ sub CreateJobsSRMA {
 					$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 					$cmd .= " RANGE=\"$chrName\:$start-$end\"";
 					$cmd .= " QUIET=true";
-					$cmd .= " VALIDATION_STRINGENCY=".$data->{'samOptions'}->{'validationStringency'} if(defined($data->{'samOptions'}->{'validationStringency'}));
+					$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
+					print "$cmd\n";
 
 					# Submit the job
 					my @a = (); # empty array for job dependencies
@@ -507,7 +508,7 @@ sub CreateJobsSAM {
 			$cmd .= " SO=coordinate";
 			$cmd .= " AS=true";
 			$cmd .= " TMP_DIR=".$data->{'srmaOptions'}->{'tmpDirectory'};
-			$cmd .= " VALIDATION_STRINGENCY=SILENT";
+			$cmd .= " VALIDATION_STRINGENCY=".$data->{'samOptions'}->{'validationStringency'} if(defined($data->{'samOptions'}->{'validationStringency'}));
 			# Submit
 			$qsub_id = SubmitJob($run_file, $quiet, ($start_step <= $STARTSTEP{"sam"}) ? 1 : 0, $shouldDepend, $dryrun, $cmd, $data, 'samOptions', $outputID, \@dependentIDs);
 			if(QSUBNOJOB ne $qsub_id) {
