@@ -402,7 +402,6 @@ sub CreateJobsSRMA {
 					$cmd .= " RANGE=\"$chrName\:$start-$end\"";
 					$cmd .= " QUIET=true";
 					$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
-					print "$cmd\n";
 
 					# Submit the job
 					my @a = (); # empty array for job dependencies
