@@ -627,9 +627,13 @@ public class Align {
     {
         int totalCoverage = graph.getCoverage(node.position);
         if(alleleCoverageCutoffs.getQ(totalCoverage) <= toNodeCoverage) {
+            // HERE
+            //System.err.println("TRUE totalCoverage="+totalCoverage+"\ttoNodeCoverage="+toNodeCoverage+"\tcutoff="+alleleCoverageCutoffs.getQ(totalCoverage));
             return true;
         }
         else {
+            // HERE
+            //System.err.println("FALSE totalCoverage="+totalCoverage+"\ttoNodeCoverage="+toNodeCoverage+"\tcutoff="+alleleCoverageCutoffs.getQ(totalCoverage));
             return false;
         }
     }

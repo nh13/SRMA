@@ -150,6 +150,9 @@ public class Graph {
         }
         else { // already contains
             curNode.coverage++; 
+            if(node.offset == 0) { // do not include insertions that extend an insertion
+                this.coverage.set(curNode.position - this.position_start, curNode.coverage + this.coverage.get(curNode.position - this.position_start)); // set coverage
+            }
         }
         // Update edges
         if(null != prev) {
