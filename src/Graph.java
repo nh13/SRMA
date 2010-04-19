@@ -142,7 +142,8 @@ public class Graph {
             // Get the proper queue and add
             this.nodes.get(node.position - this.position_start).add(node);
 
-            if(node.offset == 0) { // do not include insertions that extend an insertion
+            // do not include insertions that extend an insertion
+            if(Node.INSERTION != node.type || 0 != node.offset) {
                 this.coverage.set(node.position - this.position_start, node.coverage + this.coverage.get(node.position - this.position_start)); // set coverage
             }
             this.position_end = node.position;
@@ -150,8 +151,10 @@ public class Graph {
         }
         else { // already contains
             curNode.coverage++; 
-            if(node.offset == 0) { // do not include insertions that extend an insertion
-                this.coverage.set(curNode.position - this.position_start, curNode.coverage + this.coverage.get(curNode.position - this.position_start)); // set coverage
+            // do not include insertions that extend an insertion
+            if(Node.INSERTION != curNode.type || 0 != curNode.offset) {
+                // increment coverage
+                this.coverage.set(curNode.position - this.position_start, 1 + this.coverage.get(curNode.position - this.position_start)); 
             }
         }
         // Update edges
@@ -159,7 +162,6 @@ public class Graph {
             curNode.addToPrev(prev);
             prev.addToNext(curNode);
         }
-
 
         return curNode;
     }
