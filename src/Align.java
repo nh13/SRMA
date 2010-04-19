@@ -284,28 +284,6 @@ public class Align {
         }
     }
 
-    private static boolean passFilters(Graph graph,
-            Node node,
-            int toNodeCoverage,
-            AlleleCoverageCutoffs alleleCoverageCutoffs) 
-    {
-        int totalCoverage = graph.getCoverage(node.position);
-        if(alleleCoverageCutoffs.getQ(totalCoverage) <= toNodeCoverage) {
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
-    private static boolean passFilters(Graph graph,
-            Node node,
-            AlleleCoverageCutoffs alleleCoverageCutoffs) 
-    {
-        return passFilters(graph, node, node.coverage, alleleCoverageCutoffs);
-    }
-
-
     private static AlignHeapNode boundWithOriginalAlignment(SAMRecord rec, 
             Graph graph,
             Node recNode, 
@@ -640,5 +618,26 @@ public class Align {
         rec.setAttribute("XC", bestAlignHeapNode.alleleCoverageSum);
         // set the XE attribute for colorError string
         //rec.setAttribute("CE", colorErrors);
+    }
+
+    private static boolean passFilters(Graph graph,
+            Node node,
+            int toNodeCoverage,
+            AlleleCoverageCutoffs alleleCoverageCutoffs) 
+    {
+        int totalCoverage = graph.getCoverage(node.position);
+        if(alleleCoverageCutoffs.getQ(totalCoverage) <= toNodeCoverage) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    private static boolean passFilters(Graph graph,
+            Node node,
+            AlleleCoverageCutoffs alleleCoverageCutoffs) 
+    {
+        return passFilters(graph, node, node.coverage, alleleCoverageCutoffs);
     }
 }
