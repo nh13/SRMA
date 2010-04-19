@@ -14,10 +14,9 @@ import net.sf.picard.reference.*;
 //import java.lang.Runtime;
 import java.io.*;
 import java.util.*;
+import java.lang.Math;
 
 /* Documentation:
- * - allow if MINIMUM_ALLELE_FREQUENCY or MINIMUM_ALLELE_COVERAGE
- * - requires a ".dict" file for the FASTA
  * */
 
 public class SRMA extends CommandLineProgram { 
@@ -34,8 +33,8 @@ public class SRMA extends CommandLineProgram {
         public int OFFSET=20;
     @Option(doc="The minimum mapping quality.", optional=true)
         public int MIN_MAPQ=0;
-    @Option(doc="The minimum allele frequency for the consensus.", optional=true)
-        public double MINIMUM_ALLELE_FREQUENCY=0.2;
+    @Option(doc="The minimum allele probability conditioned on coverage (for the binomial quantile).", optional=true)
+        public double MINIMUM_ALLELE_PROBABILITY=0.1;
     @Option(doc="The minimum haploid coverage for the consensus.", optional=true)
         public int MINIMUM_ALLELE_COVERAGE=3;
     @Option(doc="The file containing ranges to examine.", optional=true)
@@ -61,6 +60,7 @@ public class SRMA extends CommandLineProgram {
     private SAMFileWriter out = null;
     private Graph graph = null;
     private CloseableIterator<SAMRecord> recordIter = null;
+    private AlleleCoverageCutoffs alleleCoverageCutoffs = null;
 
     // for RANGES
     private boolean useRanges = false;
@@ -93,6 +93,9 @@ public class SRMA extends CommandLineProgram {
         int ctr=0;
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
 
+        // initialize
+        this.alleleCoverageCutoffs = new AlleleCoverageCutoffs(MINIMUM_ALLELE_COVERAGE, MINIMUM_ALLELE_PROBABILITY);
+    
         try { 
             // this is annoying
             QUIET = true;
@@ -362,8 +365,7 @@ public class SRMA extends CommandLineProgram {
                     curSAMRecordNode, 
                     this.referenceSequence,
                     OFFSET, 
-                    MINIMUM_ALLELE_FREQUENCY,
-                    MINIMUM_ALLELE_COVERAGE); 
+                    this.alleleCoverageCutoffs);
             // Add to a heap/priority-queue to assure output is sorted
             this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
         }

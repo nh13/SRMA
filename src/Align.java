@@ -15,8 +15,7 @@ public class Align {
     public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
             ReferenceSequence sequence, 
             int offset, 
-            double minimumAlleleFrequency,
-            int minimumAlleleCoverage)
+            AlleleCoverageCutoffs alleleCoverageCutoffs)
         throws Exception
     {
 
@@ -91,8 +90,7 @@ public class Align {
                 qualities, 
                 space, 
                 sequence, 
-                minimumAlleleFrequency,
-                minimumAlleleCoverage);
+                alleleCoverageCutoffs);
 
         // HERE 
         /*
@@ -127,8 +125,7 @@ public class Align {
                         Node startNode = startNodeQueueIter.next();
                         if(passFilters(graph,
                                     startNode,
-                                    minimumAlleleFrequency,
-                                    minimumAlleleCoverage)) {
+                                    alleleCoverageCutoffs)) {
                             heap.add(new AlignHeapNode(null, 
                                         startNode,
                                         startNode.coverage,
@@ -155,8 +152,7 @@ public class Align {
                         Node startNode = startNodeQueueIter.next();
                         if(passFilters(graph,
                                     startNode,
-                                    minimumAlleleFrequency,
-                                    minimumAlleleCoverage)) {
+                                    alleleCoverageCutoffs)) {
                             heap.add(new AlignHeapNode(null, 
                                         startNode,
                                         startNode.coverage,
@@ -246,8 +242,7 @@ public class Align {
                     if(passFilters(graph,
                                 nextNode,
                                 nextCoverage,
-                                minimumAlleleFrequency,
-                                minimumAlleleCoverage)) {
+                                alleleCoverageCutoffs)) {
                         heap.add(new AlignHeapNode(curAlignHeapNode, 
                                     nextNode, 
                                     nextCoverage,
@@ -292,13 +287,10 @@ public class Align {
     private static boolean passFilters(Graph graph,
             Node node,
             int toNodeCoverage,
-            double minimumAlleleFrequency,
-            int minimumAlleleCoverage) 
+            AlleleCoverageCutoffs alleleCoverageCutoffs) 
     {
-        // must pass either minimum allele frequency or minimum allele coverage
-        // - the former does not penalize low coverage regions, while the later does 
-        int coverage = graph.getCoverage(node.position);
-        if(minimumAlleleFrequency <= toNodeCoveragee / ((double)coverage) || minimumAlleleCoverage <= toNodeCoveragee) {
+        int totalCoverage = graph.getCoverage(node.position);
+        if(alleleCoverageCutoffs.getQ(totalCoverage) <= toNodeCoverage) {
             return true;
         }
         else {
@@ -308,10 +300,9 @@ public class Align {
 
     private static boolean passFilters(Graph graph,
             Node node,
-            double minimumAlleleFrequency,
-            int minimumAlleleCoverage) 
+            AlleleCoverageCutoffs alleleCoverageCutoffs) 
     {
-        return passFilters(graph, node, node.coverage, minimumAlleleFrequency, minimumAlleleCoverage);
+        return passFilters(graph, node, node.coverage, alleleCoverageCutoffs);
     }
 
 
@@ -323,8 +314,7 @@ public class Align {
             String qualities, 
             SRMAUtil.Space space,
             ReferenceSequence sequence, 
-            double minimumAlleleFrequency,
-            int minimumAlleleCoverage)
+            AlleleCoverageCutoffs alleleCoverageCutoffs) 
         throws Exception
     {
         Alignment alignment = null;
@@ -336,8 +326,7 @@ public class Align {
         // Cannot bound
         if(!passFilters(graph,
                     recNode,
-                    minimumAlleleFrequency,
-                    minimumAlleleCoverage)) {
+                    alleleCoverageCutoffs)) {
             return null;
         }
 
@@ -443,8 +432,7 @@ public class Align {
                         if(passFilters(graph,
                                     nextNode,
                                     nextCoverage,
-                                    minimumAlleleFrequency,
-                                    minimumAlleleCoverage)) {
+                                    alleleCoverageCutoffs)) {
                             heap.add(new AlignHeapNode(curAlignHeapNode, 
                                         nextNode, 
                                         nextCoverage,
