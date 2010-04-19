@@ -291,14 +291,14 @@ public class Align {
 
     private static boolean passFilters(Graph graph,
             Node node,
-            int nodeCoverage,
+            int toNodeCoverage,
             double minimumAlleleFrequency,
             int minimumAlleleCoverage) 
     {
         // must pass either minimum allele frequency or minimum allele coverage
         // - the former does not penalize low coverage regions, while the later does 
         int coverage = graph.getCoverage(node.position);
-        if(minimumAlleleFrequency <= nodeCoverage / ((double)coverage) || minimumAlleleCoverage <= nodeCoverage) {
+        if(minimumAlleleFrequency <= toNodeCoveragee / ((double)coverage) || minimumAlleleCoverage <= toNodeCoveragee) {
             return true;
         }
         else {
