@@ -27,6 +27,17 @@ public class SRMAUtil {
         }
     }
 
+    public static char QUAL2CHAR(int qual)
+    {
+        if(93 < qual) {
+            return (char)(126);
+        }
+        else if(qual < 0) {
+            return (char)(33);
+        }
+        return (char)(qual + 33);
+    }
+
     public static char colorSpaceNextBase(char base, char color) throws Exception
     {
         int start=0, by=0, result=0;
