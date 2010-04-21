@@ -11,11 +11,13 @@ import srma.*;
 public class Align {
 
     private static final int MAX_HEAP_SIZE = 8192;
+    private static final int CORRECT_BASE_QUALITY_PENALTY = 20; // TODO: should be a parameter to SRMA
 
     public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
             ReferenceSequence sequence, 
             int offset, 
-            AlleleCoverageCutoffs alleleCoverageCutoffs)
+            AlleleCoverageCutoffs alleleCoverageCutoffs,
+            boolean correctBases)
         throws Exception
     {
 
@@ -40,26 +42,22 @@ public class Align {
 
         assert SRMAUtil.Space.COLORSPACE != space;
 
-        // TODO:
-        // - remove/fix paired end reads?
-
         read = (String)rec.getAttribute("CS");
         if(null == read) {
             // Use base space
             space = SRMAUtil.Space.NTSPACE;
             if(strand) { // reverse
-                byte tmp[] = rec.getReadBases();
+                byte tmp[] = rec.getReadString().getBytes();
                 SAMRecordUtil.reverseArray(tmp);
                 read = new String(tmp);
-                SAMRecordUtil.reverseArray(tmp); // reverse back!
-                tmp = rec.getBaseQualities();
+                tmp = rec.getBaseQualityString().getBytes();
                 SAMRecordUtil.reverseArray(tmp);
                 qualities = new String(tmp);
-                SAMRecordUtil.reverseArray(tmp); // reverse back!
             }
             else { // forward
-                read = new String(rec.getReadBases());
-                qualities = new String(rec.getBaseQualities());
+                read = new String(rec.getReadString());
+                byte tmp[] = rec.getBaseQualityString().getBytes();
+                qualities = new String(tmp);
             }
             if(read.length() <= 0) {
                 throw new Exception("Error.  The current alignment has no bases.");
@@ -94,13 +92,14 @@ public class Align {
 
         // HERE 
         /*
-           if(null != bestAlignHeapNode) {
-           System.err.println("FOUND BEST");
-           }
-           else {
-           System.err.println("NOT FOUND (BEST)");
-           }
-        //Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
+        //System.err.println("readName="+rec.getReadName());
+        if(null != bestAlignHeapNode) {
+        System.err.println("\nFOUND BEST:" + rec.toString());
+        }
+        else {
+        System.err.println("\nNOT FOUND (BEST)" + rec.toString());
+        }
+        //Align.updateSAM(rec, bestAlignHeapNode, space, read, qualities, strand, correctBases);
         //return rec;
         */
 
@@ -258,8 +257,8 @@ public class Align {
         }
 
         // Recover alignment
-        Align.updateSAM(rec, bestAlignHeapNode, space, read, strand);
-        
+        Align.updateSAM(rec, bestAlignHeapNode, space, read, qualities, strand, correctBases);
+
         return rec;
     }
 
@@ -267,7 +266,7 @@ public class Align {
     {
         if(rec.getReadPairedFlag()) {
             // Remove all information of its mate
-            
+
             // flag
             rec.setProperPairFlag(false); // not paired any more
             rec.setMateUnmappedFlag(false);
@@ -280,7 +279,7 @@ public class Align {
             rec.setMateAlignmentStart(0);
             rec.setInferredInsertSize(0);
 
-             // TODO: remove tags and values that are mate pair inclined.
+            // TODO: remove tags and values that are mate pair inclined.
         }
     }
 
@@ -436,7 +435,7 @@ public class Align {
         throw new Exception("Control reached unexpected point");
     }
 
-    private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, boolean strand)
+    private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, boolean strand, boolean correctBases)
         throws Exception
     {
         AlignHeapNode curAlignHeapNode=null;
@@ -467,6 +466,14 @@ public class Align {
         // setMappingQuality (?)
         // setFlag
         // update base qualities for color space reads 
+
+        // Get color space attributes
+        if(null != rec.getAttribute("CS")) {
+            readColors = (String)rec.getAttribute("CS");
+            readColorQualities = (String)rec.getAttribute("CQ");
+        }
+        // Clear attributes
+        rec.clearAttributes();
 
         readBases = new byte[read.length()];
         if(strand) {
@@ -505,7 +512,7 @@ public class Align {
                     default:
                         throw new Exception("Unknown node type");
                 }
-                if(space == SRMAUtil.Space.COLORSPACE) {
+                if(space == SRMAUtil.Space.COLORSPACE || correctBases) {
                     readBases[readIndex]  = (byte)curAlignHeapNode.node.base;
                     if(strand) {
                         readIndex++;
@@ -565,8 +572,8 @@ public class Align {
             }
         }
 
-        // Get color error string
-        if(space == SRMAUtil.Space.COLORSPACE) {
+        if(space == SRMAUtil.Space.COLORSPACE) { // color space, read bases already inferred
+            // Get color error string
             colorErrors = new byte[read.length()];
             char prevBase = SRMAUtil.COLORSPACE_ADAPTOR;
             for(i=0;i<read.length();i++) {
@@ -578,7 +585,41 @@ public class Align {
                 }
             }
         }
-        else {
+        else if(correctBases) { // bases were corrected
+            byte newBaseQualities[] = new byte[read.length()];
+            if(strand) {
+                for(i=0;i<read.length();i++) {
+                    if(readBases[i] == (byte)read.charAt(read.length() - i - 1)) {
+                        newBaseQualities[i] = (byte)(qualities.charAt(read.length() - i - 1) - 33);
+                    }
+                    else {
+                        // TODO: how much to down-weight ?
+                        newBaseQualities[i] = (byte)(SRMAUtil.QUAL2CHAR(SRMAUtil.CHAR2QUAL(qualities.charAt(read.length() - i - 1)) - CORRECT_BASE_QUALITY_PENALTY) - 33);
+                        if(newBaseQualities[i] <= 0) {
+                            newBaseQualities[i]=1;
+                        }
+                    }
+                }
+            }
+            else {
+                for(i=0;i<read.length();i++) {
+                    if(readBases[i] == (byte)read.charAt(i)) {
+                        newBaseQualities[i] = (byte)(qualities.charAt(i) - 33);
+                    }
+                    else {
+                        // TODO: how much to down-weight ?
+                        newBaseQualities[i] = (byte)(SRMAUtil.QUAL2CHAR(SRMAUtil.CHAR2QUAL(qualities.charAt(i)) - CORRECT_BASE_QUALITY_PENALTY) - 33);
+                        if(newBaseQualities[i] <= 0) {
+                            newBaseQualities[i]=1;
+                        }
+                    }
+                }
+            }
+            rec.setBaseQualities(newBaseQualities);
+            rec.setAttribute("XO", read);
+            rec.setAttribute("XQ", qualities);
+        }
+        else { // bases not corrected 
             readBases = new byte[read.length()];
             if(strand) {
                 for(i=0;i<read.length();i++) {
@@ -594,21 +635,8 @@ public class Align {
 
         // Update SAM record
         rec.setCigar(new Cigar(cigarElements));
-        //System.out.println("rec.getAlignmentStart()="+rec.getAlignmentStart());
-        //System.out.println("alignmentStart="+alignmentStart);
         rec.setAlignmentStart(alignmentStart);
-        if(strand) { // reverse
-            // reverse read bases and qualities so it is on the + strand
-            //SAMRecordUtil.reverseArray(readBases);
-            // TODO: qualities
-        }
         rec.setReadBases(readBases);
-        if(null != rec.getAttribute("CS")) {
-            readColors = (String)rec.getAttribute("CS");
-            readColorQualities = (String)rec.getAttribute("CQ");
-        }
-        // Clear attributes
-        rec.clearAttributes();
         // Set new attributes
         if(null != readColors) {
             rec.setAttribute("CS", readColors);

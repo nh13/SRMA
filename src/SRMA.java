@@ -41,6 +41,8 @@ public class SRMA extends CommandLineProgram {
         public File RANGES=null;
     @Option(doc="A range to examine.", optional=true)
         public String RANGE=null;
+    @Option(doc="Correct bases.", optional=true)
+        public boolean CORRECT_BASES=false;
 
     private long startTime;
     private long endTime;
@@ -365,7 +367,8 @@ public class SRMA extends CommandLineProgram {
                     curSAMRecordNode, 
                     this.referenceSequence,
                     OFFSET, 
-                    this.alleleCoverageCutoffs);
+                    this.alleleCoverageCutoffs,
+                    CORRECT_BASES);
             // Add to a heap/priority-queue to assure output is sorted
             this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
         }
