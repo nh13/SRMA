@@ -43,6 +43,8 @@ public class SRMA extends CommandLineProgram {
         public String RANGE=null;
     @Option(doc="Correct bases.", optional=true)
         public boolean CORRECT_BASES=false;
+    @Option(doc="Use sequence qualities", optional=true)
+        public boolean USE_SEQUENCE_QUALITIES=true;
 
     private long startTime;
     private long endTime;
@@ -379,7 +381,8 @@ public class SRMA extends CommandLineProgram {
                     this.referenceSequence,
                     OFFSET, 
                     this.alleleCoverageCutoffs,
-                    CORRECT_BASES);
+                    CORRECT_BASES,
+                    USE_SEQUENCE_QUALITIES);
             // Add to a heap/priority-queue to assure output is sorted
             this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
         }
