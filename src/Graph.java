@@ -37,6 +37,10 @@ public class Graph {
         Node prev=null, cur=null, ret=null;
         boolean strand = false;
 
+        if(record.getReferenceIndex() != sequence.getContigIndex()) {
+            throw new Exception("SAMRecord contig does not match the current reference sequence contig");
+        }
+
         // Get the alignment
         try {
             alignment = new Alignment(record, sequence);

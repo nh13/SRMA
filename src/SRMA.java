@@ -217,9 +217,20 @@ public class SRMA extends CommandLineProgram {
                     // Add only if it is from the same contig
                     if(this.graph.contig != rec.getReferenceIndex()+1) {
                         // Process the rest of the reads
-                        ctr = this.processList(ctr, false, false);
+                        ctr = this.processList(ctr, false, true);
+                        
+                        // Get new reference sequence
+                        while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < rec.getReferenceIndex()) {
+                            this.referenceSequence = this.referenceSequenceFile.nextSequence();
+                        }
+                        if(null == this.referenceSequence) {
+                            throw new Exception("Premature EOF in the reference sequence");
+                        }
+                        else if(this.referenceSequence.getContigIndex() != rec.getReferenceIndex()) {
+                            throw new Exception("Could not find the reference sequence");
+                        }
                     }
-
+            
                     // Add to the graph 
                     recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
 
