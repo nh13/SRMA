@@ -7,7 +7,7 @@
 	<property name="lib" value="lib"/>
 	<property name="sam-version" value="1.17"/>
 	<property name="picard-version" value="1.17"/>
-	<property name="srma-version" value="0.1.1"/>
+	<property name="srma-version" value="0.1.2"/>
 
 	<path id="sam-jdk.path">
 		<pathelement location="${lib}/sam-${sam-version}.jar"/>
