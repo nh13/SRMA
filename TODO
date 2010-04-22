@@ -7,5 +7,6 @@ In particular:
 - update mapping quality (?)
 - output unmapped reads
 - custom Exception handling
+- add srma to the SAM header and SAM records when the alignment is modified.
 
 === Known Bugs ===
