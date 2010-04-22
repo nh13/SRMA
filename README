@@ -1,7 +1,5 @@
 SRMA - short read micro re-aligner 
 
-This is a pre-release version; no support is provided.
-
 === To Install ===
 
 Download sam-1.17.jar and picard-1.17.jar and place them in a folder 
@@ -9,3 +7,7 @@ called lib.
 
 Run:
 ant jar
+
+=== For more help ===
+
+see http://srma.sf.net
