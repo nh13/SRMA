@@ -114,6 +114,7 @@ sub Schema {
 			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			  <xs:element name="range" type="xs:string"/>
+			  <xs:element name="correctBases" type="xs:string"/>
 			  <xs:element name="validationStringency" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
@@ -174,6 +175,7 @@ sub ValidateData {
 	ValidateFile($data->{'srmaOptions'},         'outputBAMFile',							 REQUIRED);
 	ValidateOption($data->{'srmaOptions'},         'range',							 		 OPTIONAL);
 	ValidateOption($data->{'srmaOptions'},         'validationStringency',					 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'correctBases',					 		 OPTIONAL);
 
 	die "Attribute splitSize required with referenceFasta.\n" if (!defined($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}));
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
@@ -309,6 +311,7 @@ sub CreateJobsSRMA {
 		$cmd .= " MINIMUM_ALLELE_FREQUENCY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 		$cmd .= " QUIET=true";
+		$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
 		$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 		# Submit the job
