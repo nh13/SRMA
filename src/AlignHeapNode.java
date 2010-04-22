@@ -29,6 +29,7 @@ public class AlignHeapNode {
             int curCoverage,
             char base,
             char qual,
+            boolean useSequencQualities,
             SRMAUtil.Space space) throws Exception 
     {
         if(null == curNode) {
@@ -60,6 +61,11 @@ public class AlignHeapNode {
             this.alleleCoverageSum = prev.alleleCoverageSum + curCoverage;
         }
         //System.err.println("base="+(char)base+" curNode.base="+(char)curNode.base+" score="+((base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual)));
-        this.score += (base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual); 
+        if(useSequencQualities) {
+            this.score += (base == curNode.base) ? 0 : -1*SRMAUtil.CHAR2QUAL(qual); 
+        }
+        else {
+            this.score += (base == curNode.base) ? 0 : -1;
+        }
     }
 }
