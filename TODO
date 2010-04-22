@@ -1,13 +1,11 @@
-=== Features ===
+=== Potential Features ===
 
 Check the "TODO" comments in the source code.
 
 In particular:
 - update base qualities of color space reads after re-alignment.
-- fix mate information in SAM (MRNM, MPOS, ISIZE) or at least clear this information
 - update mapping quality (?)
 - output unmapped reads
 - custom Exception handling
-- minimum mapping quality on input, what to do those that are filtered upon output?.
 
-=== BUGS ===
+=== Known Bugs ===
