@@ -17,7 +17,8 @@ public class Align {
             ReferenceSequence sequence, 
             int offset, 
             AlleleCoverageCutoffs alleleCoverageCutoffs,
-            boolean correctBases)
+            boolean correctBases,
+            boolean useSequenceQualities)
         throws Exception
     {
 
@@ -26,69 +27,92 @@ public class Align {
         AlignHeapNode nextAlignHeapNode = null;
         AlignHeapNode bestAlignHeapNode=null;
         AlignHeap heap=null;
-        String read=null;
-        String qualities=null;
+        String read=null; // could be cs
+        String readBases = null; // always nt
+        String qualities=null; // could be cq
         SRMAUtil.Space space=SRMAUtil.Space.NTSPACE;
         ListIterator<Node> iter=null;
         ListIterator<Integer> iterCov=null;
-        AlignHeapNodeComparator comp;
+        AlignHeapNodeComparator comp=null;
         int alignmentStart = -1;
         int numStartNodesAdded = 0;
         boolean strand = rec.getReadNegativeStrandFlag(); // false -> forward, true -> reverse
-
 
         // Debugging stuff
         //String readName = rec.getReadName();
 
         assert SRMAUtil.Space.COLORSPACE != space;
 
+        // Get space
         read = (String)rec.getAttribute("CS");
         if(null == read) {
             // Use base space
             space = SRMAUtil.Space.NTSPACE;
-            if(strand) { // reverse
-                byte tmp[] = rec.getReadString().getBytes();
-                SAMRecordUtil.reverseArray(tmp);
-                read = new String(tmp);
-                tmp = rec.getBaseQualityString().getBytes();
-                SAMRecordUtil.reverseArray(tmp);
-                qualities = new String(tmp);
-            }
-            else { // forward
-                read = new String(rec.getReadString());
-                byte tmp[] = rec.getBaseQualityString().getBytes();
-                qualities = new String(tmp);
-            }
-            if(read.length() <= 0) {
-                throw new Exception("Error.  The current alignment has no bases.");
-            }
-            if(qualities.length() <= 0) {
-                throw new Exception("Error.  The current alignment has no qualities.");
-            }
         }
         else {
             // assumes CS and CQ are always in sequencing order
-            read = SRMAUtil.normalizeColorSpaceRead(read);
             space = SRMAUtil.Space.COLORSPACE;
-            qualities = (String)rec.getAttribute("CQ");
-            if(null == qualities) {
-                throw new Exception("Error.  The current color space alignment has no color qualities.");
+        }
+
+        // Get read and qualities
+        if(space == SRMAUtil.Space.NTSPACE) {
+            byte tmpRead[] = rec.getReadString().getBytes();
+            byte tmpQualities[] = rec.getBaseQualityString().getBytes();
+            // Reverse once
+            if(strand) { // reverse
+                SAMRecordUtil.reverseArray(tmpRead);
+                SAMRecordUtil.reverseArray(tmpQualities);
             }
+            read = new String(tmpRead);
+            readBases = new String(tmpRead);
+            qualities = new String(tmpQualities);
+            if(strand) { // reverse
+                SAMRecordUtil.reverseArray(tmpRead);
+                SAMRecordUtil.reverseArray(tmpQualities);
+            }
+        }
+        else {
+            byte tmpRead[] = rec.getReadString().getBytes();
+            // Reverse once
+            if(strand) { // reverse
+                SAMRecordUtil.reverseArray(tmpRead);
+            }
+            readBases = new String(tmpRead);
+            if(strand) { // reverse
+                SAMRecordUtil.reverseArray(tmpRead);
+            }
+            read = SRMAUtil.normalizeColorSpaceRead(read);
+            qualities = (String)rec.getAttribute("CQ");
+        }
+        // Reverse back
+        if(readBases.length() <= 0) {
+            throw new Exception("Error.  The current alignment has no bases.");
+        }
+        if(read.length() <= 0) {
+            throw new Exception("Error.  The current alignment has no bases.");
+        }
+        if(qualities.length() <= 0) {
+            throw new Exception("Error.  The current alignment has no qualities.");
         }
 
         // Remove mate pair information
         Align.removeMateInfo(rec);
 
+        comp = new AlignHeapNodeComparator((strand) ? AlignHeap.HeapType.MAXHEAP : AlignHeap.HeapType.MINHEAP);
+
         // Bound by original alignment if possible
         bestAlignHeapNode = Align.boundWithOriginalAlignment(rec, 
                 graph,
                 recNode, 
+                comp,
                 strand, 
-                read, 
-                qualities, 
+                read,
+                qualities,
+                readBases,
                 space, 
                 sequence, 
-                alleleCoverageCutoffs);
+                alleleCoverageCutoffs,
+                useSequenceQualities);
 
         // HERE 
         /*
@@ -103,14 +127,7 @@ public class Align {
         //return rec;
         */
 
-        if(strand) { // reverse
-            comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MAXHEAP); 
-            heap = new AlignHeap(AlignHeap.HeapType.MAXHEAP); 
-        }
-        else { // forward
-            comp = new AlignHeapNodeComparator(AlignHeap.HeapType.MINHEAP); 
-            heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); 
-        }
+        heap = new AlignHeap((strand) ? AlignHeap.HeapType.MAXHEAP : AlignHeap.HeapType.MINHEAP);
 
         // Add start nodes
         if(strand) { // reverse
@@ -130,6 +147,7 @@ public class Align {
                                         startNode.coverage,
                                         read.charAt(0),
                                         qualities.charAt(0),
+                                        useSequenceQualities,
                                         space));
                         }
                         if(startNode.position < i) {
@@ -157,6 +175,7 @@ public class Align {
                                         startNode.coverage,
                                         read.charAt(0),
                                         qualities.charAt(0),
+                                        useSequenceQualities,
                                         space));
                         }
                         if(i < startNode.position) {
@@ -247,6 +266,7 @@ public class Align {
                                     nextCoverage,
                                     read.charAt(curAlignHeapNode.readOffset+1), 
                                     qualities.charAt(curAlignHeapNode.readOffset+1), 
+                                    useSequenceQualities,
                                     space));
                     }
                 }
@@ -286,16 +306,20 @@ public class Align {
     private static AlignHeapNode boundWithOriginalAlignment(SAMRecord rec, 
             Graph graph,
             Node recNode, 
+            AlignHeapNodeComparator comp,
             boolean strand, 
-            String read, 
-            String qualities, 
+            String read, // could be cs 
+            String qualities, // could be cq
+            String readBases, // always nt
             SRMAUtil.Space space,
             ReferenceSequence sequence, 
-            AlleleCoverageCutoffs alleleCoverageCutoffs) 
+            AlleleCoverageCutoffs alleleCoverageCutoffs,
+            boolean useSequenceQualities) 
         throws Exception
     {
-        Alignment alignment = null;
         AlignHeapNode curAlignHeapNode = null;
+        AlignHeapNode nextAlignHeapNode = null;
+        AlignHeapNode bestAlignHeapNode=null;
         ListIterator<Node> iter=null;
         ListIterator<Integer> iterCov=null;
         AlignHeap heap = null;
@@ -306,9 +330,6 @@ public class Align {
                     alleleCoverageCutoffs)) {
             return null;
         }
-
-        // Get original alignment
-        alignment = new Alignment(rec, sequence);
 
         // Initialize heap
         if(strand) { // reverse
@@ -322,117 +343,78 @@ public class Align {
                     recNode.coverage,
                     read.charAt(0),
                     qualities.charAt(0),
+                    useSequenceQualities,
                     space));
-
-        // HERE
-        /*
-           System.err.println("\n" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd());
-           System.err.println("reverse:" + strand);
-           recNode.print(System.err);
-           alignment.print(System.err); 
-           */
 
         curAlignHeapNode = heap.poll();
         while(null != curAlignHeapNode) {
-
-            // Check if alignment was found
-            if(curAlignHeapNode.readOffset == read.length() - 1) { // Found
-                return curAlignHeapNode;
+            // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
+            nextAlignHeapNode = heap.peek();
+            while(Node.INSERTION != curAlignHeapNode.node.type 
+                    && null != nextAlignHeapNode 
+                    && 0 == comp.compare(curAlignHeapNode, nextAlignHeapNode)) 
+            {
+                if(curAlignHeapNode.score < nextAlignHeapNode.score ||
+                        (curAlignHeapNode.score == nextAlignHeapNode.score && 
+                         curAlignHeapNode.alleleCoverageSum < nextAlignHeapNode.alleleCoverageSum)) {
+                    // Update current node
+                    curAlignHeapNode = heap.poll();
+                         }
+                else {
+                    // Ignore next node
+                    heap.poll();
+                }
+                nextAlignHeapNode = heap.peek();
             }
+            nextAlignHeapNode=null;
 
-            if(strand) { // reverse
-                // Go to all the "prev" nodes
-                iter = curAlignHeapNode.node.prev.listIterator();
-                iterCov = curAlignHeapNode.node.prevCov.listIterator();
+            if(curAlignHeapNode.readOffset == readBases.length() - 1) { // found, keep beset
+                if(null == bestAlignHeapNode 
+                        || bestAlignHeapNode.score < curAlignHeapNode.score 
+                        || (bestAlignHeapNode.score == curAlignHeapNode.score 
+                            && bestAlignHeapNode.alleleCoverageSum < curAlignHeapNode.alleleCoverageSum)) 
+                {
+                    bestAlignHeapNode = curAlignHeapNode;
+                }
             }
-            else { // forward
-                // Go to all "next" nodes
-                iter = curAlignHeapNode.node.next.listIterator();
-                iterCov = curAlignHeapNode.node.nextCov.listIterator();
-            }
+            else {
+                if(strand) { // reverse
+                    // Go to all the "prev" nodes
+                    iter = curAlignHeapNode.node.prev.listIterator();
+                    iterCov = curAlignHeapNode.node.prevCov.listIterator();
+                }
+                else { // forward
+                    // Go to all "next" nodes
+                    iter = curAlignHeapNode.node.next.listIterator();
+                    iterCov = curAlignHeapNode.node.nextCov.listIterator();
+                }
 
-            // We should find original alignment
-            if(iter.hasNext()) {
 
                 // Get the expected next position in the alignment
-                int nextReadOffset = (strand) ? (read.length() - 1 - curAlignHeapNode.readOffset - 1) : (curAlignHeapNode.readOffset + 1);
-                int nextPosition = alignment.positions[nextReadOffset];
-                int nextIndex = alignment.positionsIndex[nextReadOffset];
-                char nextBase = (char)alignment.read[nextIndex];
-                int nextType = -1;
-
-                /*
-                   System.err.println("HERE BOUND: " + nextPosition + ":" + nextIndex + ":" + (char)alignment.reference[nextIndex] + ":" + (char)alignment.read[nextIndex]);
-                   */
-
-                if(Alignment.GAP == alignment.reference[nextIndex]) {
-                    nextType = Node.INSERTION;
-                }
-                else if(alignment.read[nextIndex] == alignment.reference[nextIndex]) {
-                    nextType = Node.MATCH;
-                }
-                else {
-                    // HERE
-                    if(Alignment.GAP == alignment.read[nextIndex]) {
-                        throw new Exception("Alignment error");
-                    }
-                    nextType = Node.MISMATCH;
-                }
-
-                // HERE
-                if(nextBase == Alignment.GAP) {
-                    throw new Error("Alignment error");
-                }
-
-                // HERE
-                /*
-                   System.err.println("nextReadOffset: " + nextReadOffset
-                   + "\tnextPosition: " + nextPosition
-                   + "\tnextBase: " + nextBase
-                   + "\tnextType: " + nextType);
-                   */
-
                 while(iter.hasNext()) {
                     Node nextNode = iter.next();
                     int nextCoverage = iterCov.next();
 
-                    // HERE
-                    /*
-                       System.err.println("Found nextNode.position: " + nextNode.position
-                       + "\tnextNode.type: " + nextNode.type
-                       + "\tnextNode.offset: " + nextNode.offset
-                       + "\tnextNode.base: " + nextNode.base
-                       + "\tnextNode.position: " + nextNode.position);
-                       */
-
-                    if(nextNode.position == nextPosition && nextNode.type == nextType && nextNode.base == nextBase) { // bases match
-                        if(passFilters(graph,
-                                    nextNode,
+                    // Base should match alignment
+                    if(nextNode.base == readBases.charAt(curAlignHeapNode.readOffset+1) && passFilters(graph, nextNode, nextCoverage, alleleCoverageCutoffs)) {
+                        heap.add(new AlignHeapNode(curAlignHeapNode, 
+                                    nextNode, 
                                     nextCoverage,
-                                    alleleCoverageCutoffs)) {
-                            heap.add(new AlignHeapNode(curAlignHeapNode, 
-                                        nextNode, 
-                                        nextCoverage,
-                                        read.charAt(curAlignHeapNode.readOffset+1), 
-                                        qualities.charAt(curAlignHeapNode.readOffset+1), 
-                                        space));
-                        }
-                        else {
-                            return null;
-                        }
+                                    read.charAt(curAlignHeapNode.readOffset+1), 
+                                    qualities.charAt(curAlignHeapNode.readOffset+1), 
+                                    useSequenceQualities,
+                                    space));
                     }
                 }
+                iter=null;
+                iterCov=null;
             }
-            iter=null;
-            iterCov=null;
 
             // Get next
             curAlignHeapNode = heap.poll();
         }
 
-        System.err.println("");
-        alignment.print(System.err);
-        throw new Exception("Control reached unexpected point");
+        return bestAlignHeapNode;
     }
 
     private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, boolean strand, boolean correctBases)
@@ -483,7 +465,7 @@ public class Align {
             readIndex = read.length()-1;
         }
         cigarElements = new LinkedList<CigarElement>();
-        if(strand) {
+        if(strand) { // reverse strand is the current position
             alignmentStart=bestAlignHeapNode.node.position;
         }
         else {
