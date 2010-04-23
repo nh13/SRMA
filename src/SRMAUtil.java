@@ -71,10 +71,11 @@ public class SRMAUtil {
                 result = start + 2*by; break;
             case '3':
                 result = start + 3*by; break;
+            case '.':
             case '4':
                 return 'N'; 
             default:
-                throw new Exception("Error: could not understand the base");
+                throw new Exception("Error: could not understand the color");
         }
 
         if(result < 0) {
@@ -104,7 +105,7 @@ public class SRMAUtil {
                 start=3; by=-1; break;
             case 'N':
             case 'n':
-                return 'N'; 
+                return '4'; 
             default:
                 throw new Exception("Error: could not understand the base");
         }
@@ -124,7 +125,7 @@ public class SRMAUtil {
                 result = start + 3*by; break;
             case 'N':
             case 'n':
-                return 'N'; 
+                return '4'; 
             default:
                 throw new Exception("Error: could not understand the base");
         }
