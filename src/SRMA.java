@@ -46,6 +46,8 @@ public class SRMA extends CommandLineProgram {
         public boolean CORRECT_BASES=false;
     @Option(doc="Use sequence qualities", optional=true)
         public boolean USE_SEQUENCE_QUALITIES=true;
+    @Option(doc="Whether to suppress job-progress info on System.err", optional=true)
+        public boolean QUIET_STDERR=false;
 
     private long startTime;
     private long endTime;
@@ -84,7 +86,6 @@ public class SRMA extends CommandLineProgram {
 
     protected String[] customCommandLineValidation()
     {
-        QUIET=true;
         return super.customCommandLineValidation();
     }
 
@@ -99,12 +100,9 @@ public class SRMA extends CommandLineProgram {
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
 
         // initialize
-        this.alleleCoverageCutoffs = new AlleleCoverageCutoffs(MINIMUM_ALLELE_COVERAGE, MINIMUM_ALLELE_PROBABILITY);
-    
-        try { 
-            // this is annoying
-            QUIET = true;
+        this.alleleCoverageCutoffs = new AlleleCoverageCutoffs(MINIMUM_ALLELE_COVERAGE, MINIMUM_ALLELE_PROBABILITY, QUIET_STDERR);
 
+        try { 
             this.startTime = System.nanoTime();
 
             // Check input files
@@ -236,7 +234,7 @@ public class SRMA extends CommandLineProgram {
                     if(this.graph.contig != rec.getReferenceIndex()+1) {
                         // Process the rest of the reads
                         ctr = this.processList(programRecord, ctr, false, true);
-                        
+
                         // Get new reference sequence
                         while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < rec.getReferenceIndex()) {
                             this.referenceSequence = this.referenceSequenceFile.nextSequence();
@@ -248,7 +246,7 @@ public class SRMA extends CommandLineProgram {
                             throw new Exception("Could not find the reference sequence");
                         }
                     }
-            
+
                     // Add to the graph 
                     recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
 
@@ -284,35 +282,39 @@ public class SRMA extends CommandLineProgram {
             this.endTime = System.nanoTime();
 
             // to end it all
-            System.err.println("");
-            System.err.println("SRMA complete");
-            // Memory
-            double totalMemory = (double)Runtime.getRuntime().totalMemory();
-            double totalMemoryLog2 = Math.log(totalMemory) / Math.log(2.0);
-            if(totalMemoryLog2 < 10) {
-                System.err.println("Total memory usage: " + (int)totalMemory + "B");
-            } 
-            else if(totalMemoryLog2 < 20) {
-                System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 10)) / 100) + "KB");
+            if(!QUIET_STDERR) {
+                System.err.println("");
+                System.err.println("SRMA complete");
+                // Memory
+                double totalMemory = (double)Runtime.getRuntime().totalMemory();
+                double totalMemoryLog2 = Math.log(totalMemory) / Math.log(2.0);
+                if(totalMemoryLog2 < 10) {
+                    System.err.println("Total memory usage: " + (int)totalMemory + "B");
+                } 
+                else if(totalMemoryLog2 < 20) {
+                    System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 10)) / 100) + "KB");
+                }
+                else if(totalMemoryLog2 < 30) {
+                    System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 20)) / 100) + "MB");
+                }
+                else {
+                    System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 30)) / 100) + "GB");
+                }
+                // Run time
+                long seconds = (this.endTime - this.startTime) / 1000000000;
+                long hours = seconds / 3600; seconds -= hours * 3600; 
+                long minutes = seconds / 60; seconds -= minutes* 60; 
+                System.err.println("Total execution time: " + hours + "h : " + minutes + "m : " + seconds + "s");
             }
-            else if(totalMemoryLog2 < 30) {
-                System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 20)) / 100) + "MB");
-            }
-            else {
-                System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 30)) / 100) + "GB");
-            }
-            // Run time
-            long seconds = (this.endTime - this.startTime) / 1000000000;
-            long hours = seconds / 3600; seconds -= hours * 3600; 
-            long minutes = seconds / 60; seconds -= minutes* 60; 
-            System.err.print("Total execution time: " + hours + "h : " + minutes + "m : " + seconds + "s");
-            System.err.println("");
-
 
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(1);
         }
+
+        // this is annoying
+        QUIET = true;
+
         return 0;
     }
 
@@ -360,7 +362,11 @@ public class SRMA extends CommandLineProgram {
 
     private void outputProgress(SAMRecord rec, int ctr)
     {
-        if(0 == (ctr % SRMA_OUTPUT_CTR) || ctr < 0) {
+            
+        if(QUIET_STDERR) {
+            return;
+        }
+        else if(0 == (ctr % SRMA_OUTPUT_CTR) || ctr < 0) {
             // TODO: enforce column width ?
             String outputString = new String("ctr:" + ctr + " AL:" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd() + ":" + rec.toString());
             int outputStringLength = outputString.length();
