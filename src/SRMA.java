@@ -21,7 +21,8 @@ import java.lang.Math;
 
 public class SRMA extends CommandLineProgram { 
 
-    @Usage (programVersion="0.0.1")
+    public final String PROGRAM_VERSION="0.1.2";
+    @Usage (programVersion=PROGRAM_VERSION)
         public final String USAGE = getStandardUsagePreamble() + "Short read micro re-aligner.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The input SAM or BAM file.")
         public File INPUT=null;
@@ -116,6 +117,21 @@ public class SRMA extends CommandLineProgram {
             this.toOutputSAMRecordPriorityQueue = new PriorityQueue<SAMRecord>(40, new SAMRecordCoordinateComparator()); 
             this.in = new SAMFileReader(INPUT, true);
             this.header = this.in.getFileHeader();
+
+            // Add SRMA to the header
+            SAMProgramRecord programRecord = this.header.getProgramRecord("srma");
+            String programVersion = new String(PROGRAM_VERSION);
+            if(null == programRecord) { // create a new one
+                programRecord = new SAMProgramRecord("srma");
+                programRecord.setProgramVersion(programVersion);
+                this.header.addProgramRecord(programRecord);
+            }
+            else if(0 != programVersion.compareTo(programRecord.getProgramVersion())) { // new version, but srma exists
+                programVersion = new String("srma-" + PROGRAM_VERSION); // append "srma-" so we know it was srma
+                programRecord = this.header.createProgramRecord();
+                programRecord.setProgramVersion(programVersion);
+            }
+
             if(null == OUTPUT) { // to STDOUT as a SAM
                 this.out = new SAMFileWriterFactory().makeSAMWriter(this.header, true, System.out);
             }
@@ -219,7 +235,7 @@ public class SRMA extends CommandLineProgram {
                     // Add only if it is from the same contig
                     if(this.graph.contig != rec.getReferenceIndex()+1) {
                         // Process the rest of the reads
-                        ctr = this.processList(ctr, false, true);
+                        ctr = this.processList(programRecord, ctr, false, true);
                         
                         // Get new reference sequence
                         while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < rec.getReferenceIndex()) {
@@ -251,14 +267,14 @@ public class SRMA extends CommandLineProgram {
                     }
 
                     // Process the available reads
-                    ctr = this.processList(ctr, true, false);
+                    ctr = this.processList(programRecord, ctr, true, false);
                 }
 
                 // get new record
                 rec = this.getNextSAMRecord();
             }
             // Process the rest of the reads
-            ctr = this.processList(ctr, true, true);
+            ctr = this.processList(programRecord, ctr, true, true);
 
 
             // Close input/output files
@@ -359,7 +375,7 @@ public class SRMA extends CommandLineProgram {
         }
     }
 
-    private int processList(int ctr, boolean prune, boolean finish)
+    private int processList(SAMProgramRecord programRecord, int ctr, boolean prune, boolean finish)
         throws Exception
     {
         SAMRecord curSAMRecord = null;
@@ -379,6 +395,7 @@ public class SRMA extends CommandLineProgram {
                     curSAMRecord, 
                     curSAMRecordNode, 
                     this.referenceSequence,
+                    programRecord,
                     OFFSET, 
                     this.alleleCoverageCutoffs,
                     CORRECT_BASES,

@@ -15,6 +15,7 @@ public class Align {
 
     public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
             ReferenceSequence sequence, 
+            SAMProgramRecord programRecord,
             int offset, 
             AlleleCoverageCutoffs alleleCoverageCutoffs,
             boolean correctBases,
@@ -123,7 +124,7 @@ public class Align {
         else {
         System.err.println("\nNOT FOUND (BEST)" + rec.toString());
         }
-        //Align.updateSAM(rec, bestAlignHeapNode, space, read, qualities, strand, correctBases);
+        //Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
         //return rec;
         */
 
@@ -277,7 +278,7 @@ public class Align {
         }
 
         // Recover alignment
-        Align.updateSAM(rec, bestAlignHeapNode, space, read, qualities, strand, correctBases);
+        Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
 
         return rec;
     }
@@ -417,7 +418,7 @@ public class Align {
         return bestAlignHeapNode;
     }
 
-    private static void updateSAM(SAMRecord rec, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, boolean strand, boolean correctBases)
+    private static void updateSAM(SAMRecord rec, SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, boolean strand, boolean correctBases)
         throws Exception
     {
         AlignHeapNode curAlignHeapNode=null;
