@@ -48,6 +48,8 @@ public class SRMA extends CommandLineProgram {
         public boolean USE_SEQUENCE_QUALITIES=true;
     @Option(doc="Whether to suppress job-progress info on System.err", optional=true)
         public boolean QUIET_STDERR=false;
+    @Option(doc="The maximum number of nodes on the heap before re-alignment is ingored", optional=true)
+        public int MAX_HEAP_SIZE = 8192;
 
     private long startTime;
     private long endTime;
@@ -407,7 +409,8 @@ public class SRMA extends CommandLineProgram {
                     OFFSET, 
                     this.alleleCoverageCutoffs,
                     CORRECT_BASES,
-                    USE_SEQUENCE_QUALITIES);
+                    USE_SEQUENCE_QUALITIES,
+                    MAX_HEAP_SIZE);
             // Add to a heap/priority-queue to assure output is sorted
             this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
         }

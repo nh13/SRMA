@@ -10,7 +10,6 @@ import srma.*;
 
 public class Align {
 
-    private static final int MAX_HEAP_SIZE = 8192;
     private static final int CORRECT_BASE_QUALITY_PENALTY = 20; // TODO: should be a parameter to SRMA
 
     public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
@@ -19,7 +18,8 @@ public class Align {
             int offset, 
             AlleleCoverageCutoffs alleleCoverageCutoffs,
             boolean correctBases,
-            boolean useSequenceQualities)
+            boolean useSequenceQualities,
+            int MAX_HEAP_SIZE)
         throws Exception
     {
 
@@ -113,7 +113,8 @@ public class Align {
                 space, 
                 sequence, 
                 alleleCoverageCutoffs,
-                useSequenceQualities);
+                useSequenceQualities,
+                MAX_HEAP_SIZE);
 
         // HERE 
         /*
@@ -196,7 +197,7 @@ public class Align {
 
         while(null != curAlignHeapNode) {
 
-            if(Align.MAX_HEAP_SIZE <= heap.size()) {
+            if(MAX_HEAP_SIZE <= heap.size()) {
                 // too many to consider
                 return rec;
             }
@@ -315,7 +316,8 @@ public class Align {
             SRMAUtil.Space space,
             ReferenceSequence sequence, 
             AlleleCoverageCutoffs alleleCoverageCutoffs,
-            boolean useSequenceQualities) 
+            boolean useSequenceQualities,
+            int MAX_HEAP_SIZE) 
         throws Exception
     {
         AlignHeapNode curAlignHeapNode = null;
@@ -349,6 +351,10 @@ public class Align {
 
         curAlignHeapNode = heap.poll();
         while(null != curAlignHeapNode) {
+            if(MAX_HEAP_SIZE <= heap.size()) {
+                // too many to consider
+                return null;
+            }
             // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
             while(Node.INSERTION != curAlignHeapNode.node.type 
