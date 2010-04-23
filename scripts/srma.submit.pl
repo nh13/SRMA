@@ -87,7 +87,7 @@ sub Schema {
 		<xs:element name="srmaOptions">
 		  <xs:complexType>
 			<xs:sequence>
-			  <xs:element name="srmaBin" type="directoryPath"/>
+			  <xs:element name="srmaJar" type="directoryPath"/>
 			  <xs:element name="javaBin" type="directoryPath"/>
 			  <xs:element name="qsubBin" type="directoryPath"/>
 			  <xs:element name="referenceFasta" type="filePath" use="required/>
@@ -160,7 +160,7 @@ sub ValidateData {
 
 	# global options
 	die("The global options were not found.\n") unless (defined($data->{'srmaOptions'})); 
-	ValidatePath($data->{'srmaOptions'},         'srmaBin',                                  OPTIONAL); 
+	ValidatePath($data->{'srmaOptions'},         'srmaJar',                                  OPTIONAL); 
 	ValidatePath($data->{'srmaOptions'},         'javaBin',                                  OPTIONAL); 
 	ValidateFile($data->{'srmaOptions'},         'javaArgs',							     OPTIONAL);
 	ValidatePath($data->{'srmaOptions'},         'qsubBin',                                  OPTIONAL); 
@@ -302,7 +302,7 @@ sub CreateJobsSRMA {
 		else {
 			$cmd .= " -Xmx2g";
 		}
-		$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaBin'}."srma.jar";
+		$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
 		$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
 		$cmd .= " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
 		$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
@@ -395,7 +395,7 @@ sub CreateJobsSRMA {
 					else {
 						$cmd .= " -Xmx2g";
 					}
-					$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaBin'}."srma.jar";
+					$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
 					$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
 					$cmd .= " O=$outputFile";
 					$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
