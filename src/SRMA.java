@@ -54,6 +54,7 @@ public class SRMA extends CommandLineProgram {
 
     private final static int SRMA_OUTPUT_CTR = 100;
     private int maxOutputStringLength = 0;
+    private String maxOutputString = null;
 
     ReferenceSequenceFile referenceSequenceFile = null; 
     private ReferenceSequence referenceSequence = null;
@@ -368,16 +369,17 @@ public class SRMA extends CommandLineProgram {
         }
         else if(0 == (ctr % SRMA_OUTPUT_CTR) || ctr < 0) {
             // TODO: enforce column width ?
-            String outputString = new String("ctr:" + ctr + " AL:" + rec.getAlignmentStart() + ":" + rec.getAlignmentEnd() + ":" + rec.toString());
+            String outputString = new String("Records processsed: " + ctr + " (" + rec.getReferenceName() + ":" + rec.getAlignmentStart() + "-" + rec.getAlignmentEnd() + ")");
             int outputStringLength = outputString.length();
             if(this.maxOutputStringLength < outputStringLength) {
                 this.maxOutputStringLength = outputStringLength;
+                int i;
+                maxOutputString = new String("");
+                for(i=outputStringLength;i < this.maxOutputStringLength;i++) { // pad with blanks
+                    this.maxOutputString += " ";
+                }
             }
-            System.err.print("\r" + outputString);
-            int i;
-            for(i=outputStringLength;i < this.maxOutputStringLength;i++) { // pad with blanks
-                System.err.print(" ");
-            }
+            System.err.print(this.maxOutputString + "\r" + outputString);
         }
     }
 
