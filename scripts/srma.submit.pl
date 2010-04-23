@@ -160,7 +160,7 @@ sub ValidateData {
 
 	# global options
 	die("The global options were not found.\n") unless (defined($data->{'srmaOptions'})); 
-	ValidatePath($data->{'srmaOptions'},         'srmaJar',                                  OPTIONAL); 
+	ValidatePath($data->{'srmaOptions'},         'srmaJar',                                  REQUIRED); 
 	ValidatePath($data->{'srmaOptions'},         'javaBin',                                  OPTIONAL); 
 	ValidateFile($data->{'srmaOptions'},         'javaArgs',							     OPTIONAL);
 	ValidatePath($data->{'srmaOptions'},         'qsubBin',                                  OPTIONAL); 
