@@ -295,7 +295,7 @@ sub CreateJobsSRMA {
 		$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
 		if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
 			$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
-			if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+			if($data->{'srmaOptions'}->{'javaArgs'} !~ m/\-Xmx/) {
 				$cmd .= " -Xmx2g";
 			}
 		}
@@ -386,9 +386,9 @@ sub CreateJobsSRMA {
 
 					my $cmd = "";
 					$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
-					if(defined($data->{'samOptions'}->{'javaArgs'})) {
-						$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
-						if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+					if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
+						$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
+						if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
 							$cmd .= " -Xmx2g";
 						}
 					}
