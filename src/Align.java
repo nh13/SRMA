@@ -627,6 +627,7 @@ public class Align {
         }
         rec.setAttribute("AS", bestAlignHeapNode.score);
         rec.setAttribute("XC", bestAlignHeapNode.alleleCoverageSum);
+        rec.setAttribute("PG", programRecord.getId());
         // set the XE attribute for colorError string
         //rec.setAttribute("CE", colorErrors);
     }
