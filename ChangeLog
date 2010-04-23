@@ -1,0 +1,1152 @@
+commit 1e96089f192660094abc2c7ee3fb32002fe9df53
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 20:02:46 2010 -0700
+
+    * adding feature TODO.
+
+ TODO |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+commit 9fee1c3072bff3b73342c92ce395fcfc537020d7
+Merge: a2d8ceb 05434e5
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 19:54:09 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+    
+    Conflicts:
+    	TODO
+
+commit 05434e5829a5fe28e283174e078c0eec37b922d3
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 19:51:34 2010 -0700
+
+    * changing bounding behavior to preserve left-justified indels.
+    * added option USE_SEQUENCE_QUALITIES in case users do not want to use
+    base/color qualities.
+
+ TODO                   |    1 +
+ src/Align.java         |  246 ++++++++++++++++++++++--------------------------
+ src/AlignHeapNode.java |    8 ++-
+ src/SRMA.java          |    5 +-
+ 4 files changed, 126 insertions(+), 134 deletions(-)
+
+commit a2d8ceb2dcf851d9849560396f5f0325adc56706
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 17:51:04 2010 -0700
+
+    * adding more TODO.
+
+ TODO |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+commit 4c8c87bdbdf11f5e6875ab6dd99c186ea659ebdb
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 17:24:50 2010 -0700
+
+    * moving master to 0.1.2.
+
+ build.xml |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit dbfddba1e078bbe6e3d2a8b72fa172090e794747
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 17:23:40 2010 -0700
+
+    * updating for release.
+
+ README |    6 ++++--
+ TODO   |    6 ++----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+commit 2cbcef7b1cf9ccddcd3d6406e7b0fb8af020bab5
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 17:09:43 2010 -0700
+
+    * adding in correctBases to submit script.
+
+ scripts/srma.submit.pl |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+commit 9b9aaf542123939bced5949782d146bb5769beae
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 21 17:08:44 2010 -0700
+
+    * exception would occur when processsing multiple chromosomes with no range.
+
+ src/Graph.java |    4 ++++
+ src/SRMA.java  |   15 +++++++++++++--
+ 2 files changed, 17 insertions(+), 2 deletions(-)
+
+commit a24f88d58d3a19c583989aa389fe468547eb298a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Apr 20 23:06:05 2010 -0700
+
+    * adding option CORRECT_BASES, which changes the bases of the read to
+    match the alignment.
+
+ src/Align.java    |  106 +++++++++++++++++++++++++++++++++-------------------
+ src/SRMA.java     |    5 ++-
+ src/SRMAUtil.java |   11 +++++
+ 3 files changed, 82 insertions(+), 40 deletions(-)
+
+commit 917498c941357e181ac5850d536e141abf270746
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Apr 19 13:58:21 2010 -0700
+
+    * total coverage was being improperly set, should have been incremented.
+
+ src/Graph.java |   10 ++++++----
+ 1 files changed, 6 insertions(+), 4 deletions(-)
+
+commit 5238982eb1811c220c951955eefe05eab6e886a5
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Apr 19 11:01:41 2010 -0700
+
+    * total coverage was not being properly calculated.
+
+ src/Align.java |    4 ++++
+ src/Graph.java |    3 +++
+ 2 files changed, 7 insertions(+), 0 deletions(-)
+
+commit 56a2bbeec9bbc489b3afc53293e8b0718404bbea
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Apr 19 10:46:54 2010 -0700
+
+    * adding cutoffs.
+
+ src/AlleleCoverageCutoffs.java |   77 ++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 77 insertions(+), 0 deletions(-)
+
+commit aaa12b44ba73e4cd7e18cff463d42b01c40b890d
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Apr 19 10:45:05 2010 -0700
+
+    * moving function
+
+ src/Align.java |   43 +++++++++++++++++++++----------------------
+ 1 files changed, 21 insertions(+), 22 deletions(-)
+
+commit f33b65d5168d97f7ccfd23405777abbd9187ce93
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Apr 19 01:45:29 2010 -0700
+
+    * replacing the option MINIMUM_ALLELE_FREQUENCY with a MINIMUM_ALLELE_PROBABILITY option.
+    The latter replaces the first with a binomial quantile calculation.
+
+ scripts/srma.submit.pl |    8 ++++----
+ src/Align.java         |   38 +++++++++++++-------------------------
+ src/SRMA.java          |   14 ++++++++------
+ 3 files changed, 25 insertions(+), 35 deletions(-)
+
+commit 72a4c4cd69474a4cbb79345182fc43c8c569332a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Apr 19 00:45:42 2010 -0700
+
+    * changing some wording.
+
+ src/Align.java |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+commit c22d53d44e5689a32425a70bb3fba0dc034aef35
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 17 14:26:20 2010 -0700
+
+    * memory output reformatted.
+
+ src/SRMA.java |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+commit 385194af62a65bc16742ebbb395653dbc88a20e3
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 17 13:37:56 2010 -0700
+
+    * removing debugging print.
+
+ scripts/srma.submit.pl |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+commit d64b9d3b36574fe7723991ad42edc477cfc9ec18
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 17 13:36:56 2010 -0700
+
+    * validation stringency was not being correctly set.
+
+ scripts/srma.submit.pl |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+commit e60bfbdb4964ccc3f28b7483459f03481a92b6d1
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 17 00:05:23 2010 -0700
+
+    * add retention of first/second mate flag.
+
+ src/Align.java |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+commit e36e64645d26d7161a148bb74f983f6d992d9628
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 16 23:17:32 2010 -0700
+
+    * ignoring alignments with CIGAR operators outside of [MDI].
+
+ src/Alignment.java |   17 ++++++++++++++++-
+ src/Graph.java     |    6 +++++-
+ src/SRMA.java      |   20 +++++++++++---------
+ 3 files changed, 32 insertions(+), 11 deletions(-)
+
+commit 4b21815ed5029cc90b031173fbaca2aa411b2300
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 16 18:27:01 2010 -0700
+
+    * fixing duplicate code.
+
+ scripts/srma.submit.pl |   20 --------------------
+ 1 files changed, 0 insertions(+), 20 deletions(-)
+
+commit 0cc3a351eac968ad48d1c049078540db7c8bbc0a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 16 15:46:23 2010 -0700
+
+    * forcing option QUIET.
+
+ src/SRMA.java |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
+
+commit 2e3b093cce4955d65504d73e363ef3d39918dd31
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 16 15:46:00 2010 -0700
+
+    * alignment's that start with insertion no longer need adjusting.
+
+ src/Align.java |   11 +----------
+ 1 files changed, 1 insertions(+), 10 deletions(-)
+
+commit d0be9152849446e4cb84f0ed896088ae992605d5
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 16 14:46:44 2010 -0700
+
+    * adding option to ignore reads with a user specified mapping quality.
+
+ TODO          |    2 +-
+ src/SRMA.java |   16 +++++++++++-----
+ 2 files changed, 12 insertions(+), 6 deletions(-)
+
+commit 3f7178a2108ab419808a03c0e53702e1e5d6ce93
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 16 10:38:36 2010 -0700
+
+    * adding some more to TODO.
+
+ TODO |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+commit 1fd99847ff561aa55194d5f633dee743fb79dcb3
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 15 01:36:06 2010 -0700
+
+    * adding to the TODO.
+
+ scripts/srma.submit.pl |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+commit a628739c52afe032109c97ac927fa2767582eb86
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 15 00:14:47 2010 -0700
+
+    * changing defaults for some options
+    * fixing typo in the help.
+
+ src/SRMA.java |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+commit 1bf10c750506e16b6e4e6205f836ad2fc587759b
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Apr 14 15:11:46 2010 -0700
+
+    * changing name from "assembler" to "re-aligner"
+
+ README        |    2 +-
+ src/SRMA.java |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+commit 52ec920722a96f67d8000f162b4f5cb6fb6a6a44
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Apr 12 13:28:10 2010 -0700
+
+    * prettifying memory statistics: now only two decimal points shown.
+
+ src/SRMA.java |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+commit 3368e24dc2ae3b34db00ef8660ef4a7e9fcc8558
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 9 16:35:02 2010 -0700
+
+    * version number string is now longer.
+
+ build.xml |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit 663c675075620238d86a04c36eb8a808719737be
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 9 16:34:32 2010 -0700
+
+    * adding version # to the build.
+
+ build.xml |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+commit 478ccbf0e6049613a2134de708da8ac515d31baf
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 9 16:34:08 2010 -0700
+
+    * fixing typo in the code.
+
+ src/Align.java |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit c0b08d85b1644ae0285192e2e1847d548aacd46e
+Merge: 3736189 9f75c5c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 9 16:30:24 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+    
+    Conflicts:
+    	scripts/srma.submit.pl
+
+commit 373618974219eea67a5f521d1d8e9e199c288ab1
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 9 16:29:20 2010 -0700
+
+    * add support for the RANGE option.
+
+ scripts/srma.submit.pl |  100 ++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 71 insertions(+), 29 deletions(-)
+
+commit acb69826f1e4378372ffb5324618c69df766f902
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 9 16:28:50 2010 -0700
+
+    * remove mate pair information on all mapped reads.
+
+ src/Align.java |   25 +++++++++++++++++++++++++
+ 1 files changed, 25 insertions(+), 0 deletions(-)
+
+commit 9f75c5c62f512566309ecaacd900c604c2c8cfc2
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 9 00:41:47 2010 -0700
+
+    * Alignment class incorrect if there occurs an insertion then deletion in the original alignment.
+
+ src/Align.java     |    2 ++
+ src/Alignment.java |   17 ++---------------
+ 2 files changed, 4 insertions(+), 15 deletions(-)
+
+commit 35002586c462ae04a3d73e0bef73ef9864f7c54f
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 8 00:03:06 2010 -0700
+
+    * sam validationStringency was pointing to srma validationStringency.
+
+ scripts/srma.submit.pl |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit f5795d87eeda41c07dc39528841d4c3a378a58ff
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 8 00:01:38 2010 -0700
+
+    * adding in picard VALIDATION_STRINGENCY option.
+
+ scripts/srma.submit.pl |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
+
+commit dcf253f5388f8b220937260aa76bf625cd042640
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Apr 6 22:28:29 2010 -0700
+
+    * displays proper queue id when hold is removed.
+
+ scripts/srma.submit.pl |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit 120ef836dc117f569854cd7c07cae9adb1975d7e
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Apr 6 14:18:33 2010 -0700
+
+    * if no alignment exists, return the original
+
+ src/Align.java |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+commit ced84e621b77969f8432c73d217ac6cf70bd9326
+Merge: 6b488c8 a665d4b
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Apr 6 12:39:09 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+
+commit 6b488c8c4d41c703c5c2a3b70cb9591d64e496f5
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Apr 6 12:38:08 2010 -0700
+
+    * small bug fix when there is no splitting and cleanup is performed.
+    * supports the RANGE option, even when splitting.
+
+ scripts/srma.submit.pl |  117 +++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 87 insertions(+), 30 deletions(-)
+
+commit a665d4b32083d4f8850668403514ec6d45191c85
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Apr 6 12:14:24 2010 -0700
+
+    * srma requires picard v1.17.
+
+ README    |    2 +-
+ build.xml |    7 ++-----
+ 2 files changed, 3 insertions(+), 6 deletions(-)
+
+commit 26689d29ff57c3622e1ccd2d0f25db34c2f3de7a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 22:45:07 2010 -0700
+
+    * adding in newline.
+
+ scripts/srma.submit.pl |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit 6bb229fe777be23875988e876450717b46e54ec2
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 22:39:30 2010 -0700
+
+    * fixing startstep with dependencies.
+
+ scripts/srma.submit.pl |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
+
+commit f0ba322f8d20e9a65ae6b2971327392592d50c6a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 21:46:27 2010 -0700
+
+    * output file was not being properly created
+    * improved the status message for removing holds.
+
+ scripts/srma.submit.pl |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+commit 60249531b977dac76d11cd4cb0f93da19e5430e2
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 21:37:39 2010 -0700
+
+    * fixing up job holds.
+
+ scripts/srma.submit.pl |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+commit 24a25571a442446ff0d8f325f0a3d62434460812
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 21:32:44 2010 -0700
+
+    * due to the large number of potential submits, all jobs will be help
+    so dependencies can be registered.
+
+ scripts/srma.submit.pl |  109 ++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 69 insertions(+), 40 deletions(-)
+
+commit a2fecb893e7e86ac857fd92b898666797309a877
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 21:32:18 2010 -0700
+
+    * setting a maximum heap size before we give up.
+
+ src/Align.java |   13 ++++++++++---
+ src/Graph.java |    8 ++------
+ src/Node.java  |    7 +++++--
+ 3 files changed, 17 insertions(+), 11 deletions(-)
+
+commit c81af4283c44436697e532dd221c915c8fa5bba2
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 19:59:10 2010 -0700
+
+    * infinite loop due to the graph was being improperly built.
+
+ src/Align.java |  278 ++++++++++++++++++++++++++++----------------------------
+ src/Graph.java |   42 +++++---
+ src/SRMA.java  |    2 +-
+ 3 files changed, 164 insertions(+), 158 deletions(-)
+
+commit 6ae6a1c972a106970f154683b44f639d0fee17e7
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 11:58:47 2010 -0700
+
+    * insertions at the beginning of reads now properly handled.  Insertions
+    in the graph are not positioned at the 3' + strand reference base rather
+    than the 5' + strand reference base.
+
+ src/Align.java     |   15 ++++++-------
+ src/Alignment.java |   55 +++++++++++++++++++++++++++++++++++++++------------
+ src/Graph.java     |   19 +++++++++--------
+ 3 files changed, 59 insertions(+), 30 deletions(-)
+
+commit 9378b76d06ddb7f0b70697f9d8d24e481daadd8f
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Apr 3 10:45:37 2010 -0700
+
+    * fixing infiite loop bug when bounding alignments.
+
+ scripts/srma.submit.pl |    1 -
+ src/Align.java         |  394 ++++++++++++++++++++++++------------------------
+ 2 files changed, 197 insertions(+), 198 deletions(-)
+
+commit 7cec159c10ac5f491c5e18601f4baf1514d28f7e
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 2 19:45:15 2010 -0700
+
+    * fixing warnings.
+
+ build.xml                        |    1 +
+ src/AlignHeapNode.java           |    4 ++--
+ src/AlignHeapNodeComparator.java |    7 ++-----
+ src/Graph.java                   |   18 ------------------
+ src/Node.java                    |    4 ++--
+ src/SRMA.java                    |   13 ++++---------
+ src/SRMAUtil.java                |    2 +-
+ 7 files changed, 12 insertions(+), 37 deletions(-)
+
+commit 94602cf9ddf348cedc38242118e4a0f1918daaf3
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 2 19:31:45 2010 -0700
+
+    * fixing timing output
+    * adding a comment
+
+ scripts/srma.submit.pl |    1 +
+ src/SRMA.java          |    2 +-
+ 2 files changed, 2 insertions(+), 1 deletions(-)
+
+commit e1d434f8c9c0fa7c27241dd781ea35becd284ffc
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Apr 2 01:10:35 2010 -0700
+
+    * fixing bug when the first alignment begins with an insertion.
+
+ src/Alignment.java |   29 +++++++++++++++++++++++++++++
+ src/Graph.java     |   21 +++++++++++----------
+ 2 files changed, 40 insertions(+), 10 deletions(-)
+
+commit 0521044f2965359cc881dab6e2ae0a59f76885e7
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 1 23:07:34 2010 -0700
+
+    * adding some runtime statistics.
+
+ src/SRMA.java |   44 +++++++++++++++++++++++++++++++++++++++++---
+ 1 files changed, 41 insertions(+), 3 deletions(-)
+
+commit a979fba0ce6d0fadadaddd903275d66eaba784e2
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 1 22:16:36 2010 -0700
+
+    * perform a hierarchical merge if the split results in too many files.  This is due to the
+    command line character limit.
+
+ scripts/srma.submit.pl |  114 ++++++++++++++++++++++++++----------------------
+ 1 files changed, 62 insertions(+), 52 deletions(-)
+
+commit cde6e81043a8a3d669ecf9e3e5103f7087b187d0
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 1 21:52:17 2010 -0700
+
+    * removing debug message.
+
+ src/SRMA.java |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+commit 2d829173e01502895f268844cb4020814ff0e301
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 1 21:38:43 2010 -0700
+
+    * genome info now obtained from a picard .dict file instead of the
+    samtools .fai file.
+
+ scripts/srma.submit.pl |   18 +++++++++++-------
+ 1 files changed, 11 insertions(+), 7 deletions(-)
+
+commit 188eaeffc69627b2bec8c79ba22da08d519e5486
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 1 21:29:29 2010 -0700
+
+    * adding in javaArgs.
+
+ scripts/srma.submit.pl |   37 ++++++++++++++++++++++++++++++-------
+ 1 files changed, 30 insertions(+), 7 deletions(-)
+
+commit a6c29d6128ca795953205c81036110a52593aa96
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Apr 1 18:24:13 2010 -0700
+
+    * will now only load one reference contig at a time, which is good
+    for large genomes.
+
+ TODO               |    5 +--
+ src/Align.java     |    8 ++--
+ src/Alignment.java |    4 +-
+ src/Graph.java     |    8 ++---
+ src/Ranges.java    |   41 ++++++++++++------------
+ src/SRMA.java      |   88 ++++++++++++++++++++++++++++++++++++---------------
+ 6 files changed, 93 insertions(+), 61 deletions(-)
+
+commit 5c88b5f517718b63c3bb227a802e6712d3a6b8a6
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Mar 31 10:32:38 2010 -0700
+
+    * now can clean the tmp directory if desired.
+
+ scripts/srma.submit.pl |   20 +++++++++++++++-----
+ 1 files changed, 15 insertions(+), 5 deletions(-)
+
+commit 901d8d73800ef57138cd0026cf0831ea29bf1d2b
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Mar 31 01:17:01 2010 -0700
+
+    * changing dummy merge name.
+
+ scripts/srma.submit.pl |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit 80b9acbfb6b12c41ecf4ac57962728fb6aa2c51e
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Mar 29 23:00:46 2010 -0700
+
+    * fixing bug when initializing heap.
+
+ src/Align.java |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
+
+commit e27308811bfbb5d28ae9eaf4b8e92c363ccf9429
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Mar 29 14:32:27 2010 -0700
+
+    * adding in minimum allele frequency parameter.  This behaves with
+    an or inclusive behavior with respect to the minimum allele coverage.
+    * fixing range bug introduce by previous commit.
+    * will now output a status message padded with blanks not on every alignment.
+
+ scripts/srma.submit.pl |   12 ++-
+ src/Align.java         |  187 ++++++++++++++++++++++++++++++-----------------
+ src/AlignHeapNode.java |    6 +-
+ src/Graph.java         |   47 ++++++++++---
+ src/SRMA.java          |   44 ++++++++++--
+ 5 files changed, 205 insertions(+), 91 deletions(-)
+
+commit cfb2647b11eccaf08544be43fd29ce6b3501cc23
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Mar 29 01:21:40 2010 -0700
+
+    * fixing bug where offset was not used on all input and output cases.
+
+ src/Ranges.java |   55 ++++++++++++++++++++++++++++++++++++++++++-------------
+ src/SRMA.java   |   55 ++++++++++++++++++++++++++++---------------------------
+ 2 files changed, 70 insertions(+), 40 deletions(-)
+
+commit 0d8640fc636379352d1774c14072f1c9b9c77797
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 23:41:06 2010 -0700
+
+    * assuring output is in sorted order.
+
+ src/SRMA.java |   48 ++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 34 insertions(+), 14 deletions(-)
+
+commit 3051706df5ce79c395aec66248aaa179c2f4ab7a
+Merge: b1102fd 2332821
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 23:25:06 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+
+commit b1102fd0bce5f468638f2d529d44acf90ae56472
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 23:24:11 2010 -0700
+
+    * removed portion where graphs are removed from the front when adding.
+
+ src/Graph.java |   21 +++------------------
+ 1 files changed, 3 insertions(+), 18 deletions(-)
+
+commit 233282140bf42edc22c6b3cb1067ff23806f36cf
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 23:21:37 2010 -0700
+
+    * optimizing code further using a profiler.  Not much gain.
+
+ src/Align.java          |   49 +++++++++++---------
+ src/Graph.java          |    6 +-
+ src/NodeComparator.java |    1 +
+ src/SRMA.java           |  114 +++++++++++++++++++++++-----------------------
+ 4 files changed, 89 insertions(+), 81 deletions(-)
+
+commit e4821f835426fc072faa85fb6e926177294d673e
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 22:38:28 2010 -0700
+
+    * optimizing comparison function
+
+ src/AlignHeapNodeComparator.java |   84 +++++++++++++++++--------------------
+ 1 files changed, 39 insertions(+), 45 deletions(-)
+
+commit 12f03749b651d0e8b1b2fe4a9f24257b3092d79c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 21:26:09 2010 -0700
+
+    * fixing graph node addition and pruning to be more efficient when
+    ranges are being used.
+
+ src/Graph.java |   26 ++++++++++++++++++++++++--
+ 1 files changed, 24 insertions(+), 2 deletions(-)
+
+commit aed72294fc86f96028117906d33f5ca175b16cb8
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 20:58:15 2010 -0700
+
+    * updating README to specify 1.16 for picard version.
+
+ README |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit 6b4c89aecfd99e420476ae8abd3fa55769c7bfb9
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 20:57:50 2010 -0700
+
+    * changing TODO in srma.submit.pl
+
+ build.xml              |    4 ++--
+ scripts/srma.submit.pl |    1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+commit 0d5ef49dec28c791325ef51a37ef9e1d4c3409b3
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 20:34:39 2010 -0700
+
+    * adding in 'srma.submit.pl' to help with pipeline and automated
+    testing
+    * adding 'RANGE' command line option for a user to specify a specific
+    range to process.
+    * adding 'OUTPUT' command line option to allow direct output to a
+    SAM/BAM file.
+    * reformatting command line options.
+
+ scripts/srma.submit.pl |  512 ++++++++++++++++++++++++++++++++++++++++++++++++
+ src/Ranges.java        |   63 +++++-
+ src/SRMA.java          |   60 ++++---
+ 3 files changed, 603 insertions(+), 32 deletions(-)
+
+commit f05c84edade76a14c48209d06a754c12896aa432
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 18:18:21 2010 -0700
+
+    * adding unmapped read output to "TODO"
+    * updating README
+    * ignoring unmapped reads in SRMA.java
+
+ README        |    2 +-
+ TODO          |    1 +
+ src/SRMA.java |   66 +++++++++++++++++++++++++++++---------------------------
+ 3 files changed, 36 insertions(+), 33 deletions(-)
+
+commit f8bcdf9741911359745b09e99b391ba453782bde
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Mar 28 15:24:20 2010 -0700
+
+    * adding in bounding of local re-alignment by the previous alignment
+    when coverage filters make this possible.
+
+ TODO                             |    4 +-
+ src/Align.java                   |  224 +++++++++++++++++++++++++++++++++-----
+ src/AlignHeapNodeComparator.java |   54 +++++++---
+ src/Alignment.java               |   24 ++++-
+ src/Graph.java                   |   39 ++++++-
+ src/SRMA.java                    |   15 ++-
+ 6 files changed, 303 insertions(+), 57 deletions(-)
+
+commit 21efd68055c1fad2935a80add6ddf685db9bfb78
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Mar 26 16:43:39 2010 -0700
+
+    * updating TODO.
+
+ TODO |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
+
+commit 0f65ead7f38d6213a6b21202b600dd25f6b38120
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Mar 26 16:42:20 2010 -0700
+
+    * adding ability to only process a given range of entries in the SAM/BAM
+    file.  This requires an SAM/BAM index and input file.
+
+ src/Alignment.java |   20 ++--
+ src/Range.java     |   17 ++++
+ src/Ranges.java    |  125 ++++++++++++++++++++++++++
+ src/SRMA.java      |  246 +++++++++++++++++++++++++++++++++++++++-------------
+ 4 files changed, 337 insertions(+), 71 deletions(-)
+
+commit 8dc64ef2b8b409bfbf7651ed30e17069f1b44f39
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Mar 25 16:08:26 2010 -0700
+
+    * updating TODO and output message
+
+ TODO           |    2 +-
+ src/Align.java |    5 +++--
+ src/SRMA.java  |   12 ++++++++----
+ 3 files changed, 12 insertions(+), 7 deletions(-)
+
+commit dc6e9e2cf81d43330363ed8bd4549d9e1756fe5b
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Mar 25 15:03:22 2010 -0700
+
+    * 5' + strand justifies incoming alignments.
+
+ src/Alignment.java |   95 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 95 insertions(+), 0 deletions(-)
+
+commit 7abf91f9ebe146475c65dc1af0575fe600d4f5ec
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Mar 25 15:02:58 2010 -0700
+
+    * updating TODO
+
+ TODO |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+commit affbea75e13508c78c07e223cb595a18b3fa8e55
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Mar 25 14:55:08 2010 -0700
+
+    * Adding in GPL.
+
+ LICENSE |  339 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 339 insertions(+), 0 deletions(-)
+
+commit a4916513801dca3a8d9cd816cf3a451466e4b18d
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Mar 24 16:22:41 2010 -0700
+
+    * adding graph pruning.  This allows nodes that will no longer be
+    needed to be removed.
+
+ src/Align.java |   21 +++++++++------------
+ src/Graph.java |   44 +++++++++++++++++++++++++++++++++++---------
+ src/SRMA.java  |   13 ++++++++-----
+ 3 files changed, 52 insertions(+), 26 deletions(-)
+
+commit b7bb9d223edf03f9d4edcc536da084d7feb6edd9
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Mar 23 21:11:44 2010 -0700
+
+    * updating TODO
+
+ TODO |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+commit 24ed4bddc4fccaece6ed70a4653000c750fae320
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Feb 26 01:17:12 2010 -0800
+
+    * adding a TODO file.
+
+ TODO |   13 +++++++++++++
+ 1 files changed, 13 insertions(+), 0 deletions(-)
+
+commit 180035efa25693d74269399337c5012f3b54aafc
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Feb 26 01:10:58 2010 -0800
+
+    * incorrect position reported when an alignments ends with an insertion
+    on the (-) strand
+
+ src/Align.java |   31 ++++++++++++++++++++-----------
+ 1 files changed, 20 insertions(+), 11 deletions(-)
+
+commit 4ed73fc05e4ad4b99f65ab8d0568b55fa036bba2
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Feb 26 00:50:18 2010 -0800
+
+    * CS and CQ tags are now carried forward
+    * fixed bug regarding pruning nodes with equal score (coverage sum not considered)
+
+ src/Align.java         |   35 ++++++++++++++++++++++++++---------
+ src/AlignHeapNode.java |    2 +-
+ 2 files changed, 27 insertions(+), 10 deletions(-)
+
+commit 5305057f9fe9b73c1791f006065853734b1d0b3a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jan 29 01:22:01 2010 -0800
+
+    Updating README into instruct to install new picard/sam packages.
+
+ README |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+commit 778ea69003d5cd0796c3333127109f62fa532ead
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jan 28 23:59:24 2010 -0800
+
+    Updating a little based on color space and reverse reads.
+
+ src/Align.java |  108 +++++++++++++++++++++++++++++++++++++------------------
+ src/Graph.java |    9 ++++-
+ src/Node.java  |   15 +++++++-
+ 3 files changed, 93 insertions(+), 39 deletions(-)
+
+commit 11159278a425ddd8655b67572abfd3911334929c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jan 28 22:30:33 2010 -0800
+
+    Updating version #s in picard.  Debugging more and adding reverse strand
+    support.
+
+ build.xml      |    4 +-
+ src/Align.java |  282 +++++++++++++++++++++++++++++++-------------------------
+ src/SRMA.java  |   18 ++--
+ 3 files changed, 170 insertions(+), 134 deletions(-)
+
+commit d6e1c83ad50c37da26e4aab73943ede717966820
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jan 22 01:59:25 2010 -0800
+
+    Fixing many more bugs.
+
+ src/Align.java |   69 ++++++++++++++++++++++++++++---------------------------
+ src/Graph.java |   25 +++++++++----------
+ src/SRMA.java  |    4 +--
+ 3 files changed, 48 insertions(+), 50 deletions(-)
+
+commit fa9438bfec03b0c1600ee7cde5a52a8471dbc750
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jan 22 00:57:26 2010 -0800
+
+    Removing some debugging code.
+
+ src/Graph.java |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+commit 41b8f643734a402a0c6b6e43469a23d227659034
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jan 22 00:56:39 2010 -0800
+
+    Fixing a few more bugs related to insertions and adding to the graph.
+
+ src/Align.java |    4 ++++
+ src/Graph.java |   29 ++++++++++++++++-------------
+ src/SRMA.java  |    6 ++----
+ 3 files changed, 22 insertions(+), 17 deletions(-)
+
+commit 6d1df20c6547fd5be3f9465d182a8d69edd3a115
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jan 22 00:17:49 2010 -0800
+
+    Fixing some boundary bugs in SRMA.
+
+ src/Graph.java |   31 +++++++++++++++++++++----------
+ src/SRMA.java  |    1 -
+ 2 files changed, 21 insertions(+), 11 deletions(-)
+
+commit fd0efa02262031e0938891237ee8f05eb1fa32df
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jan 21 21:38:05 2010 -0800
+
+    Changing the graph representation.
+
+ src/Align.java          |   32 +++--
+ src/Alignment.java      |    1 +
+ src/Graph.java          |  371 +++++++++++++++++++----------------------------
+ src/Node.java           |   12 ++
+ src/NodeComparator.java |   60 +++++---
+ 5 files changed, 222 insertions(+), 254 deletions(-)
+
+commit 2d5634584fed6e80a253a0110004a75441b8ec20
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jan 15 00:27:39 2010 -0800
+
+    More code added.
+
+ src/SRMA.java |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
+
+commit 637465519b5e11b740a514b552f57176aa219d97
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jan 14 22:52:14 2010 -0800
+
+    Adding more code.
+
+ src/Align.java                   |   42 +++++++++++++++++++++++--------------
+ src/AlignHeapNode.java           |    8 +++---
+ src/AlignHeapNodeComparator.java |   11 ++++++++-
+ src/Graph.java                   |   26 ++++++++++++++++++-----
+ src/SRMA.java                    |   35 ++++++++++++++++++-------------
+ 5 files changed, 79 insertions(+), 43 deletions(-)
+
+commit d936152eeb28a3bd169f976098cb25044ce439ba
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jan 14 16:53:09 2010 -0800
+
+    Adding more and debugging more.
+
+ src/Align.java                   |   78 ++++++++++++++------------
+ src/AlignHeapNode.java           |    8 +-
+ src/AlignHeapNodeComparator.java |    6 +-
+ src/Graph.java                   |  115 +++++++++++++++++++++++++++++++-------
+ src/Node.java                    |    4 +-
+ src/SRMA.java                    |  100 ++++++++++++++++-----------------
+ src/SRMAUtil.java                |   57 ++++++++++++-------
+ 7 files changed, 229 insertions(+), 139 deletions(-)
+
+commit f16ea6db7c39a8c78bc3e8e0fde5144d1412d291
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jan 5 13:51:10 2010 -0500
+
+    Adding ability to specify minimum coverage.
+
+ src/Align.java |   41 +++++++++++++++++++++++++----------------
+ src/Node.java  |   24 +++++++++++++++++++++---
+ src/SRMA.java  |    5 ++++-
+ 3 files changed, 50 insertions(+), 20 deletions(-)
+
+commit 3bc4e0c4e0acc66b8b134bbb3af6128a0ccfa5ed
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jan 5 12:09:59 2010 -0500
+
+    Fixing some CIGAR code.
+
+ src/Align.java         |   38 +++++++++++++++++++++-----------------
+ src/AlignHeapNode.java |   13 ++++---------
+ src/Node.java          |    4 ++--
+ src/SRMA.java          |    2 +-
+ 4 files changed, 28 insertions(+), 29 deletions(-)
+
+commit 2f59f8227f9feb1fae41291af741b571d92893cd
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jan 4 15:52:25 2010 -0500
+
+    Adding more code.  Still problems with indels and full-support.
+
+ src/Align.java         |   73 +++++++++++++++++++------
+ src/AlignHeapNode.java |  141 +++++------------------------------------------
+ src/SRMA.java          |    4 +-
+ src/SRMAUtil.java      |  133 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 206 insertions(+), 145 deletions(-)
+
+commit 3ca32b249128adc2ebe18b9d204463a0b0231a5c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Dec 24 17:10:31 2009 -0700
+
+    Adding some more code... still not working.
+
+ src/Align.java         |   71 +++++++++++++++++++++++++++++++-----------------
+ src/AlignHeapNode.java |   67 +++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 111 insertions(+), 27 deletions(-)
+
+commit 37fafc6bb19c1f45e1d0dd72493c498b0e4509bf
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Dec 23 16:24:32 2009 -0700
+
+    Adding more work.  Still nowhere close.
+
+ src/Align.java         |  113 +++++++++++++++++++++++++++++++++++++++++++----
+ src/AlignHeapNode.java |    5 ++-
+ src/Alignment.java     |   85 ++++++++++++++++++++++++++++++++++++
+ src/Graph.java         |   91 ++++++---------------------------------
+ src/Node.java          |    8 ++--
+ src/SRMA.java          |   15 ++++--
+ 6 files changed, 219 insertions(+), 98 deletions(-)
+
+commit 6fa6c66e27e218ad0bea02356c07112e146249c8
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Dec 21 18:11:33 2009 -0700
+
+    Updating more code.  Still not functional.
+
+ src/Align.java                   |  134 ++++++++++++++++++++++++++++++++------
+ src/AlignHeap.java               |   11 ++-
+ src/AlignHeapNode.java           |   15 ++++
+ src/AlignHeapNodeComparator.java |    1 +
+ src/Graph.java                   |    1 -
+ src/SRMA.java                    |   38 +++++++++--
+ 6 files changed, 170 insertions(+), 30 deletions(-)
+
+commit d9bcc7acaef301fb92b4ffa3eae76aad17b30050
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Dec 18 01:07:31 2009 -0800
+
+    Debugging some of the graph creation functions.
+
+ src/AlignHeap.java      |    8 ++---
+ src/Graph.java          |   64 ++++++++++++++++++++++++++++++++++++----------
+ src/Node.java           |   48 ++++++++++++++++++++++++++++++----
+ src/NodeComparator.java |   31 ++++++++++++++++++++++
+ src/SRMA.java           |    4 ++-
+ 5 files changed, 129 insertions(+), 26 deletions(-)
+
+commit 1f580171bf931232d34529e2415a04163694e69d
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Nov 17 14:50:11 2009 -0800
+
+    Starting to add the alignment portion.
+
+ src/Align.java                   |   31 ++++++++++++
+ src/AlignHeap.java               |   38 ++++++++++++++
+ src/AlignHeapNode.java           |  100 ++++++++++++++++++++++++++++++++++++++
+ src/AlignHeapNodeComparator.java |   51 +++++++++++++++++++
+ src/Graph.java                   |   47 +++++++++++++++---
+ src/Node.java                    |    9 ++-
+ src/SRMA.java                    |   20 +++++++-
+ 7 files changed, 284 insertions(+), 12 deletions(-)
+
+commit 59425ffbbd65c559a5ccd25ea3e294668e53b404
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Nov 15 19:41:40 2009 -0800
+
+    Adding more code for creating the assembly graph.
+
+ src/Graph.java |   67 ++++++++++++++++++++++++++++++++++++++++++++-----------
+ src/Node.java  |    3 +-
+ 2 files changed, 55 insertions(+), 15 deletions(-)
+
+commit 76cf19bb25058294c2692731ec8f48ab98e20d80
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Nov 3 21:23:46 2009 -0800
+
+    Adding some more to the code.
+
+ build.xml      |    2 +-
+ src/Graph.java |  233 +++++++++++++++++++++++++++++++++----------------------
+ src/Node.java  |   18 ++--
+ src/SRMA.java  |    2 +-
+ 4 files changed, 151 insertions(+), 104 deletions(-)
+
+commit b13c42d98985bea1a2cbe14519fbbc17dbe980fb
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Nov 3 02:12:58 2009 -0800
+
+    Adding in start of graph generation.
+
+ build.xml                |    2 +-
+ src/ExampleSamUsage.java |   83 --------------------------
+ src/Graph.java           |  146 ++++++++++++++++++++++++++++++++++++++++++++++
+ src/Node.java            |   54 +++++++++++++++++
+ src/SRMA.java            |   73 +++++++++++++++++++++++
+ 5 files changed, 274 insertions(+), 84 deletions(-)
+
+commit e4794a99a8a5f66f50ba8350c2b5f106b9d94cae
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Oct 31 00:06:55 2009 -0700
+
+    Initial import.
+
+ README                   |   11 ++++++
+ build.xml                |   62 ++++++++++++++++++++++++++++++++++
+ src/ExampleSamUsage.java |   83 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 156 insertions(+), 0 deletions(-)
