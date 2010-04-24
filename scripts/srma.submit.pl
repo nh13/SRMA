@@ -257,16 +257,19 @@ sub CreateJobs {
 		CreateJobsSAM($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
 	}
 
-	# remove holds
-	foreach my $qsubID (@qsubGlobalIDs) {
-		my $outID=`qalter $qsubID -h U`;
-		chomp($outID);
-		if($outID=~ m/Your job (\d+)/) {
-			$outID= $1;
-		}
-		die unless (0 < length($outID));
-		print STDERR "[srma submit] hold removed QSUBID=$qsubID\n";
-	}
+    if("PBS" ne $data->{'srmaOptions'}->{'queueType'}) {
+        # remove holds
+        foreach my $qsubID (@qsubGlobalIDs) {
+            my $outID="";
+            $outID=`qalter $qsubID -h U`; # SGE 
+            chomp($outID);
+            if($outID=~ m/Your job (\d+)/) {
+                $outID= $1;
+            }
+            die unless (0 < length($outID));
+            print STDERR "[srma submit] hold removed QSUBID=$qsubID\n";
+        }
+    }
 }
 
 sub CreateRunFile {
@@ -575,7 +578,8 @@ END_OUTPUT
 	# Create qsub command
 	my $qsub = "";
 	$qsub .= $data->{'srmaOptions'}->{'qsubBin'} if defined($data->{'srmaOptions'}->{'qsubBin'});
-	$qsub .= "qsub -h"; # with a user hold
+	        $qsub .= "qsub" if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}); # without a user hold
+			        $qsub .= "qsub -h" if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}); # with a user hold, remove later
 
 	if(0 < scalar(@$dependent_jobIDs) && 1 == $should_depend) {
 		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'});
