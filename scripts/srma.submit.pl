@@ -292,7 +292,8 @@ sub CreateJobsSRMA {
 	if(0 == $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}) { # do not split
 		my $runFile = CreateRunFile($data, 'srma', "");
 		my $cmd = "";
-		$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
+		$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+		$cmd .= "java";
 		if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
 			$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
 			if($data->{'srmaOptions'}->{'javaArgs'} !~ m/\-Xmx/) {
@@ -385,7 +386,8 @@ sub CreateJobsSRMA {
 					my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
 
 					my $cmd = "";
-					$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
+					$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+					$cmd .= "java";
 					if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
 						$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
 						if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
@@ -492,7 +494,8 @@ sub CreateJobsSAM {
 			}
 			# Create the command
 			if(!defined($data->{'samOptions'}->{'picardBin'})) { die("Picard bin required") };
-			$cmd = $data->{'srmaOptions'}->{'javaBin'}."java";
+			$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+			$cmd .= "java";
 			if(defined($data->{'samOptions'}->{'javaArgs'})) {
 				$cmd .= " ".$data->{'samOptions'}->{'javaArgs'};
 				if($data->{'samOptions'}->{'javaArgs'} !~ m/-Xmx/) {
