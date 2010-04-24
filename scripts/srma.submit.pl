@@ -257,19 +257,19 @@ sub CreateJobs {
 		CreateJobsSAM($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
 	}
 
-    if("PBS" ne $data->{'srmaOptions'}->{'queueType'}) {
-        # remove holds
-        foreach my $qsubID (@qsubGlobalIDs) {
-            my $outID="";
-            $outID=`qalter $qsubID -h U`; # SGE 
-            chomp($outID);
-            if($outID=~ m/Your job (\d+)/) {
-                $outID= $1;
-            }
-            die unless (0 < length($outID));
-            print STDERR "[srma submit] hold removed QSUBID=$qsubID\n";
-        }
-    }
+	if("PBS" ne $data->{'srmaOptions'}->{'queueType'}) {
+		# remove holds
+		foreach my $qsubID (@qsubGlobalIDs) {
+			my $outID="";
+			$outID=`qalter $qsubID -h U`; # SGE 
+			chomp($outID);
+			if($outID=~ m/Your job (\d+)/) {
+				$outID= $1;
+			}
+			die unless (0 < length($outID));
+			print STDERR "[srma submit] hold removed QSUBID=$qsubID\n";
+		}
+	}
 }
 
 sub CreateRunFile {
@@ -429,7 +429,7 @@ sub CreateJobsSRMA {
 sub CreateJobsSAM {
 	my ($data, $quiet, $start_step, $dryrun, $dependentQsubIDs, $dependentOutputIDs) = @_;
 	my @qsubIDs = ();
-	my ($cmd, $run_file, $outputID, $qsub_id);
+	my ($run_file, $outputID, $qsub_id);
 
 	my $type = 'picard';
 	my @outputBAMs = ();
@@ -497,6 +497,7 @@ sub CreateJobsSAM {
 			}
 			# Create the command
 			if(!defined($data->{'samOptions'}->{'picardBin'})) { die("Picard bin required") };
+			my $cmd = "";
 			$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
 			$cmd .= "java";
 			if(defined($data->{'samOptions'}->{'javaArgs'})) {
@@ -537,7 +538,7 @@ sub CreateJobsSAM {
 		my @a = (); push(@a, $qsubIDs[0]); # push the merge/copy
 		$outputID = "cleanup.tmpdirectory";
 		$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$outputID.sh";
-		$cmd = "rm -rv ".$data->{'srmaOptions'}->{'tmpDirectory'};
+		my $cmd = "rm -rv ".$data->{'srmaOptions'}->{'tmpDirectory'};
 		$qsub_id = SubmitJob($run_file , $quiet, ($start_step <= $STARTSTEP{"sam"}) ? 1 : 0, 1, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
 	}
 }
@@ -568,7 +569,15 @@ run ()
 }
 END_OUTPUT
 		$output .= "\nrun \"hostname\";\n";
-		$output .= "run \"$command\";\n";
+		# Redirect PBS stderr/stdout, since it buffers them
+		if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}) {
+			my $pbs_stderr_redirect = "$run_file.stderr.redirect";
+			my $pbs_stdout_redirect = "$run_file.stdout.redirect";
+			$output .= "run \"$command 2> $pbs_stderr_redirect > $pbs_stdout_redirect\";\n";
+		}
+		else {
+			$output .= "run \"$command\";\n";
+		}   
 		$output .= "exit 0;\n";
 		open(FH, ">$run_file") or die("Error.  Could not open $run_file for writing!\n");
 		print FH "$output";
@@ -578,8 +587,8 @@ END_OUTPUT
 	# Create qsub command
 	my $qsub = "";
 	$qsub .= $data->{'srmaOptions'}->{'qsubBin'} if defined($data->{'srmaOptions'}->{'qsubBin'});
-	        $qsub .= "qsub" if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}); # without a user hold
-			        $qsub .= "qsub -h" if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}); # with a user hold, remove later
+	$qsub .= "qsub" if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}); # without a user hold
+	$qsub .= "qsub -h" if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}); # with a user hold, remove later
 
 	if(0 < scalar(@$dependent_jobIDs) && 1 == $should_depend) {
 		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'});
@@ -587,6 +596,13 @@ END_OUTPUT
 	}
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
+
+	# Redirect PBS stderr/stdout, since it buffers them
+	if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}) {
+		my $pbs_stderr_redirect = "$run_file.stderr.redirect";
+		my $pbs_stdout_redirect = "$run_file.stdout.redirect";
+		$qsub .= " 2> $pbs_stderr_redirect > $pbs_stdout_redirect";
+	}
 
 	if(1 == $should_run) {
 		if(1 == $dryrun) {
