@@ -517,7 +517,8 @@ sub CreateJobsSAM {
 			}
 			$cmd .= " O=$outputBAM";
 			$cmd .= " SO=coordinate";
-			if(defined($data->{'samOptions'}->{'assumeSorted'})) {
+			if(1 == $mergeLevel && defined($data->{'samOptions'}->{'assumeSorted'})) {
+				# only on the first level, since it will then be sorted
 				$cmd .= " AS=".$data->{'samOptions'}->{'assumeSorted'};
 			}
 			else {
