@@ -21,7 +21,7 @@ import java.lang.Math;
 
 public class SRMA extends CommandLineProgram { 
 
-    public final String PROGRAM_VERSION="0.1.4";
+    public final String PROGRAM_VERSION="0.1.5";
     @Usage (programVersion=PROGRAM_VERSION)
         public final String USAGE = getStandardUsagePreamble() + "Short read micro re-aligner.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The input SAM or BAM file.")
@@ -48,7 +48,7 @@ public class SRMA extends CommandLineProgram {
         public boolean USE_SEQUENCE_QUALITIES=true;
     @Option(doc="Whether to suppress job-progress info on System.err", optional=true)
         public boolean QUIET_STDERR=false;
-    @Option(doc="The maximum number of nodes on the heap before re-alignment is ingored", optional=true)
+    @Option(doc="The maximum number of nodes on the heap before re-alignment is ignored", optional=true)
         public int MAX_HEAP_SIZE = 8192;
 
     private long startTime;
