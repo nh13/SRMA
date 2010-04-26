@@ -7,7 +7,6 @@ In particular:
 - update mapping quality (?)
 - output unmapped reads
 - custom Exception handling
-- add srma to the SAM header and SAM records when the alignment is modified.
 - when an indel exists in the original alignment, allow it to be removed during
 re-alignment.  This option/feature would be useful for 454 data or Single-Molecule Sequencing,
 where indels are introduced pre-alignment. 

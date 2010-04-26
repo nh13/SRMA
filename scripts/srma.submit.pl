@@ -127,6 +127,7 @@ sub Schema {
 			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			  <xs:element name="validationStringency" type="xs:string"/>
+			  <xs:element name="assumeSorted" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
 		</xs:element>
@@ -187,6 +188,7 @@ sub ValidateData {
 		ValidateOption($data->{'samOptions'},     'cleanUpTmpDirectory',                      OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'qsubArgs',                                 OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'validationStringency',					  OPTIONAL);
+		ValidateOption($data->{'samOptions'},     'assumeSorted',					  		  OPTIONAL);
 	}
 }
 
@@ -515,7 +517,12 @@ sub CreateJobsSAM {
 			}
 			$cmd .= " O=$outputBAM";
 			$cmd .= " SO=coordinate";
-			$cmd .= " AS=true";
+			if(defined($data->{'samOptions'}->{'assumeSorted'})) {
+				$cmd .= " AS=".$data->{'samOptions'}->{'assumeSorted'};
+			}
+			else {
+				$cmd .= " AS=true";
+			}
 			$cmd .= " TMP_DIR=".$data->{'srmaOptions'}->{'tmpDirectory'};
 			$cmd .= " VALIDATION_STRINGENCY=".$data->{'samOptions'}->{'validationStringency'} if(defined($data->{'samOptions'}->{'validationStringency'}));
 			# Submit
@@ -600,13 +607,6 @@ END_OUTPUT
 	}
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
-
-	# Redirect PBS stderr/stdout, since it buffers them
-	if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}) {
-		my $pbs_stderr_redirect = "$run_file.stderr.redirect";
-		my $pbs_stdout_redirect = "$run_file.stdout.redirect";
-		$qsub .= " 2> $pbs_stderr_redirect > $pbs_stdout_redirect";
-	}
 
 	if(1 == $should_run) {
 		if(1 == $dryrun) {
