@@ -54,6 +54,7 @@ public class SRMA extends CommandLineProgram {
     private long startTime;
     private long endTime;
 
+
     private final static int SRMA_OUTPUT_CTR = 100;
     private int maxOutputStringLength = 0;
     private String maxOutputString = null;
@@ -417,12 +418,14 @@ public class SRMA extends CommandLineProgram {
         if(finish && null != curSAMRecord) {
             this.outputProgress(curSAMRecord, ctr);
         }
+        curSAMRecord = null;
 
 
         // Output alignments
         while(0 < this.toOutputSAMRecordPriorityQueue.size()) {
             curSAMRecord = this.toOutputSAMRecordPriorityQueue.peek();
-            if(finish || curSAMRecord.getAlignmentStart() < graph.position_start) { // other alignments will not be less than
+            // alignment could have moved (+OFFSET), with another moving (-OFFSET) 
+            if(finish || curSAMRecord.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
                 this.out.addAlignment(this.toOutputSAMRecordPriorityQueue.poll());
             }
             else { // other alignments could be less than

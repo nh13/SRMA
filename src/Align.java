@@ -230,7 +230,7 @@ public class Align {
 
             // Check if the alignment is complete
             if(curAlignHeapNode.readOffset == read.length() - 1) {
-                // Complete, store if has the best alignment.
+                // All read bases examined, store if has the best alignment.
 
                 // HERE
                 //System.err.print(curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.score + ":");
@@ -244,6 +244,9 @@ public class Align {
                 {
                     bestAlignHeapNode = curAlignHeapNode;
                 }
+            }
+            else if(null != bestAlignHeapNode && curAlignHeapNode.score < bestAlignHeapNode.score) {
+                // ignore, under the assumption that scores can only become more negative.
             }
             else {
                 if(strand) { // reverse

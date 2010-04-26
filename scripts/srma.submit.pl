@@ -573,16 +573,15 @@ END_OUTPUT
 			$output .= "use ".$data->{'srmaOptions'}->{'javaUse'}."\n";
 		}
 		$output .= "\nrun \"hostname\";\n";
-	
-	# Redirect PBS stderr/stdout, since it buffers them
-	if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}) {
-		my $pbs_stderr_redirect = "$run_file.stderr.redirect";
-		my $pbs_stdout_redirect = "$run_file.stdout.redirect";
-		$output .= "run \"$command 2> $pbs_stderr_redirect > $pbs_stdout_redirect\";\n"; 
-	}
-	else {
-		$output .= "run \"$command\";\n";
-	}
+		# Redirect PBS stderr/stdout, since it buffers them
+		if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}) {
+			my $pbs_stderr_redirect = "$run_file.stderr.redirect";
+			my $pbs_stdout_redirect = "$run_file.stdout.redirect";
+			$output .= "run \"$command 2> $pbs_stderr_redirect > $pbs_stdout_redirect\";\n";
+		}
+		else {
+			$output .= "run \"$command\";\n";
+		}   
 		$output .= "exit 0;\n";
 		open(FH, ">$run_file") or die("Error.  Could not open $run_file for writing!\n");
 		print FH "$output";
@@ -601,6 +600,13 @@ END_OUTPUT
 	}
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
+
+	# Redirect PBS stderr/stdout, since it buffers them
+	if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}) {
+		my $pbs_stderr_redirect = "$run_file.stderr.redirect";
+		my $pbs_stdout_redirect = "$run_file.stdout.redirect";
+		$qsub .= " 2> $pbs_stderr_redirect > $pbs_stdout_redirect";
+	}
 
 	if(1 == $should_run) {
 		if(1 == $dryrun) {
