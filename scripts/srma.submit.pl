@@ -337,6 +337,9 @@ sub CreateJobsSRMA {
 				$range_chr = $1;
 				$range_start = $2;
 				$range_end = $3;
+				if($range_end < $range_start) {
+					die("Range start position was greater than range end position");
+				}
 				my $found_chr = 0;
 				for(my $i=0;$i<scalar(@genomeInfo);$i++) {
 					if($range_chr eq $genomeInfo[$i]->[0]) {
@@ -372,6 +375,7 @@ sub CreateJobsSRMA {
 				my $end = $start + $splitSize - 1;
 				if($chrSize < $end) { $end = $chrSize; }
 				my $within_range = 1;
+				die unless ($start < $end);
 				if(defined($data->{'srmaOptions'}->{'range'})) {
 					if($chrName ne $range_chr || 
 						($chrName eq $range_chr && $end < $range_start) ||
