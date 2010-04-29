@@ -368,61 +368,56 @@ sub CreateJobsSRMA {
 			}
 		}
 
+		my $finished_range = -1;
 		for(my $i=0;$i<scalar(@genomeInfo);$i++) {
 			my $chrName = $genomeInfo[$i]->[0];
 			my $chrSize = $genomeInfo[$i]->[1];
-			for(my $start=1;$start <= $chrSize;$start+=$splitSize) {
+			my $start = 1;
+			if(defined($data->{'srmaOptions'}->{'range'})) {
+				if($chrName ne $range_chr) {
+					next;
+				}
+				$start = $range_start;
+				$chrSize = $range_end;
+			}
+
+			for(;$start <= $chrSize;$start+=$splitSize) {
 				my $end = $start + $splitSize - 1;
 				if($chrSize < $end) { $end = $chrSize; }
-				my $within_range = 1;
-				die unless ($start < $end);
-				if(defined($data->{'srmaOptions'}->{'range'})) {
-					if($chrName ne $range_chr || 
-						($chrName eq $range_chr && $end < $range_start) ||
-						($chrName eq $range_chr && $range_end < $start)) {
-						$within_range = 0;
-					}
-					if($start < $range_start) {
-						$start = $range_start;
-					}
-					if($range_end < $end) {
-						$end = $range_end;
-					}
-				}
-				if(1 == $within_range) {
-					my $outputID = "$chrName\_$start\-$end";
-					my $runFile = CreateRunFile($data, 'srma', $outputID);
-					my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
+				my $within_range = -1;
+				die("$start $end\n") unless ($start <= $end);
+				my $outputID = "$chrName\_$start\-$end";
+				my $runFile = CreateRunFile($data, 'srma', $outputID);
+				my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
 
-					my $cmd = "";
-					$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
-					$cmd .= "java";
-					if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
-						$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
-						if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
-							$cmd .= " -Xmx2g";
-						}
-					}
-					else {
+				my $cmd = "";
+				$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+				$cmd .= "java";
+				if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
+					$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
+					if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
 						$cmd .= " -Xmx2g";
 					}
-					$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
-					$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
-					$cmd .= " O=$outputFile";
-					$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
-					$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
-					$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
-					$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
-					$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
-					$cmd .= " QUIET=true";
-					$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
-
-					# Submit the job
-					my @a = (); # empty array for job dependencies
-					my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
-					push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
-					push(@$outputIDs, $outputID);
 				}
+				else {
+					$cmd .= " -Xmx2g";
+				}
+				$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
+				$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
+				$cmd .= " O=$outputFile";
+				$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+				$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+				$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+				$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+				$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
+				$cmd .= " QUIET=true";
+				$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
+
+				# Submit the job
+				my @a = (); # empty array for job dependencies
+				my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
+				push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
+				push(@$outputIDs, $outputID);
 			}
 		}
 	}
