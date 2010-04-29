@@ -92,7 +92,7 @@ sub Schema {
 			  <xs:element name="qsubBin" type="directoryPath"/>
 			  <xs:element name="referenceFasta" type="filePath" use="required/>
 				<xs:complexType>
-				  <xs:attribute name="splitSize" type="positiveInteger" use="required"/>
+				  <xs:attribute name="splitSize" type="positiveInteger" use="optional"/>
 				</xs:complexType>
 			  </xs:element>
 			  <xs:element name="offset" type="xs:integer" use="required"/>
@@ -114,6 +114,7 @@ sub Schema {
 			  <xs:element name="javaArgs" type="xs:string"/>
 			  <xs:element name="qsubArgs" type="xs:string"/>
 			  <xs:element name="range" type="xs:string"/>
+			  <xs:element name="ranges" type="filePath"/>
 			  <xs:element name="correctBases" type="xs:string"/>
 			  <xs:element name="validationStringency" type="xs:string"/>
 			</xs:sequence>
@@ -175,11 +176,17 @@ sub ValidateData {
 	ValidateFile($data->{'srmaOptions'},         'inputBAMFile',							 REQUIRED);
 	ValidateFile($data->{'srmaOptions'},         'outputBAMFile',							 REQUIRED);
 	ValidateOption($data->{'srmaOptions'},         'range',							 		 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'ranges',							     OPTIONAL);
 	ValidateOption($data->{'srmaOptions'},         'validationStringency',					 OPTIONAL);
 	ValidateOption($data->{'srmaOptions'},         'correctBases',					 		 OPTIONAL);
 
 	die "Attribute splitSize required with referenceFasta.\n" if (!defined($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}));
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
+	die "Attribute \"splitSize\" may not be used with \"ranges\".\n" if (defined($data->{'srmaOptions'}->{'ranges'}) && 0 < $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'});
+	
+	if(defined($data->{'srmaOptions'}->{'range'}) && defined($data->{'srmaOptions'}->{'range'})) {
+		die("Both attributes \"range\" and \"ranges\" may not be used in conjuction.\n");
+	}
 
 	# picard
 	if(defined($data->{'samOptions'})) {
@@ -294,7 +301,7 @@ sub CreateJobsSRMA {
 	my ($data, $quiet, $start_step, $dryrun, $qsubIDs, $outputIDs) = @_;
 	my @read_files = ();
 
-	if(0 == $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}) { # do not split
+	if($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} <= 0) { # do not split
 		my $runFile = CreateRunFile($data, 'srma', "");
 		my $cmd = "";
 		$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
@@ -313,6 +320,7 @@ sub CreateJobsSRMA {
 		$cmd .= " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
 		$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
 		$cmd .= " RANGE=".$data->{'srmaOptions'}->{'range'} if(defined($data->{'srmaOptions'}->{'range'}));
+		$cmd .= " RANGES=".$data->{'srmaOptions'}->{'ranges'} if(defined($data->{'srmaOptions'}->{'ranges'}));
 		$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
 		$cmd .= " MINIMUM_ALLELE_FREQUENCY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
