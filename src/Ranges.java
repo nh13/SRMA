@@ -114,7 +114,12 @@ public class Ranges {
 
         while(st.hasMoreTokens()) {
             if(0 == i) {
-                Integer tmpInteger = (int)m.get(new String(st.nextToken()));
+                Integer tmpInteger = -1;
+                try {
+                    tmpInteger = (int)m.get(new String(st.nextToken()));
+                } catch(java.lang.NullPointerException e) {
+                    throw new Exception("Could not find reference name in RANGES on line " + lineNumber);
+                }
                 if(null == tmpInteger) {
                     throw new Exception("Could not find reference name in RANGES on line " + lineNumber);
                 }
