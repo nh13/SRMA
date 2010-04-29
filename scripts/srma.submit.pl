@@ -253,7 +253,7 @@ sub CreateJobs {
 	my ($data, $quiet, $start_step, $dryrun) = @_;
 
 	my @srmaJobIDs = ();
-	my @srmaOutputIDs = ();
+	my @srmaOutputBAMs = ();
 	my @samJobIDs = ();
 	my @samOutputIDs = ();
 
@@ -261,9 +261,9 @@ sub CreateJobs {
 	mkpath([$data->{'srmaOptions'}->{'runDirectory'}],    ($quiet) ? 0 : 1, 0755);
 	mkpath([$data->{'srmaOptions'}->{'tmpDirectory'}],    ($quiet) ? 0 : 1, 0755);
 
-	CreateJobsSRMA($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
+	CreateJobsSRMA($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputBAMs);
 	if(0 < scalar(@srmaJobIDs)) {
-		CreateJobsSAM($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputIDs);
+		CreateJobsSAM($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputBAMs);
 	}
 
 	if("PBS" ne $data->{'srmaOptions'}->{'queueType'}) {
@@ -298,7 +298,7 @@ sub CreateTmpOutputFile {
 }
 
 sub CreateJobsSRMA {
-	my ($data, $quiet, $start_step, $dryrun, $qsubIDs, $outputIDs) = @_;
+	my ($data, $quiet, $start_step, $dryrun, $qsubIDs, $outputBAMs) = @_;
 	my @read_files = ();
 
 	if($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} <= 0) { # do not split
@@ -322,7 +322,7 @@ sub CreateJobsSRMA {
 		$cmd .= " RANGE=".$data->{'srmaOptions'}->{'range'} if(defined($data->{'srmaOptions'}->{'range'}));
 		$cmd .= " RANGES=".$data->{'srmaOptions'}->{'ranges'} if(defined($data->{'srmaOptions'}->{'ranges'}));
 		$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
-		$cmd .= " MINIMUM_ALLELE_FREQUENCY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+		$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 		$cmd .= " QUIET=true";
 		$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
@@ -331,6 +331,7 @@ sub CreateJobsSRMA {
 		# Submit the job
 		my @a = (); # empty array for job dependencies
 		my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', 'srma', \@a);
+		# Do not add any SAM jobs (so no qsubIDs or outputBAMs)
 	}
 	else {
 		my $start = 1;
@@ -425,23 +426,28 @@ sub CreateJobsSRMA {
 				my @a = (); # empty array for job dependencies
 				my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
 				push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
-				push(@$outputIDs, $outputID);
+				push(@$outputBAMs, $outputFile);
 			}
 		}
-	}
 	if(0 == @$qsubIDs) {
 		die;
+	}
 	}
 }
 
 
 sub CreateJobsSAM {
-	my ($data, $quiet, $start_step, $dryrun, $dependentQsubIDs, $dependentOutputIDs) = @_;
+	my ($data, $quiet, $start_step, $dryrun, $dependentQsubIDs, $dependentOutputBAMs) = @_;
 	my @qsubIDs = ();
 	my ($run_file, $outputID, $qsub_id);
 
 	my $type = 'picard';
 	my @outputBAMs = ();
+
+	if(0 == scalar(@$dependentQsubIDs)) {
+		# skip
+		return;
+	}
 
 	if(!defined($data->{'samOptions'})) {
 		# Delete the dependent jobs
@@ -453,11 +459,9 @@ sub CreateJobsSAM {
 	}
 
 	# Get BAM file names
-	for(my $i=0;$i<scalar(@$dependentOutputIDs);$i++) {
-		my $outputID = $dependentOutputIDs->[$i];
-		my $tmpBAMFile = CreateTmpOutputFile($data, 'srma', $outputID);
-		push(@outputBAMs, $tmpBAMFile);
+	for(my $i=0;$i<scalar(@$dependentOutputBAMs);$i++) {
 		push(@qsubIDs, $dependentQsubIDs->[$i]);
+		push(@outputBAMs, $dependentOutputBAMs->[$i]);
 	}
 
 	my $mergeLogBase = MERGE_LOG_BASE;
@@ -470,7 +474,7 @@ sub CreateJobsSAM {
 	# Therefore, a hierarchical merge is required.
 	my $mergeLevel = 0;
 	my $shouldDepend = ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0;
-	while(1 < scalar(@qsubIDs)) { # while merging is necessary
+	do {
 		$mergeLevel++;
 		my $ctr = 0;
 		my @curIDs = @qsubIDs;
@@ -545,7 +549,7 @@ sub CreateJobsSAM {
 			}
 		}
 		$shouldDepend = 1; # always depend on the next loops
-	}
+	} while(1 < scalar(@qsubIDs)); # while merging is necessary
 
 
 # Clean up
@@ -583,7 +587,6 @@ run ()
 	fi
 }
 END_OUTPUT
-		$output .= "source \$PBS_O_HOME/.bash_profile\n"; # Nils Homer 4/23/2010
 		if(defined($data->{'srmaOptions'}->{'javaUse'})) {
 			$output .= "use ".$data->{'srmaOptions'}->{'javaUse'}."\n";
 		}
