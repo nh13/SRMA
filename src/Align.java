@@ -84,6 +84,12 @@ public class Align {
             }
             read = SRMAUtil.normalizeColorSpaceRead(read);
             qualities = (String)rec.getAttribute("CQ");
+            // Some aligners include a quality value for the adapter.  A quality value
+            // IMHO should not be given for an unobserved (assumed) peice of data.  Trim
+            // the first quality in this case
+            if(qualities.length() == 1 + read.length()) { // trim the f
+                qualities = qualities.substring(1);
+            }
         }
         // Reverse back
         if(readBases.length() <= 0) {
@@ -94,6 +100,14 @@ public class Align {
         }
         if(qualities.length() <= 0) {
             throw new Exception("Error.  The current alignment has no qualities.");
+        }
+        if(readBases.length() != read.length()) {
+            if(space == SRMAUtil.Space.COLORSPACE) {
+                throw new Exception("Error.  The current alignment's read bases length does not match the length of the colors in the CS tag.");
+            }
+            else {
+                throw new Exception("Error.  Internal error: readBases.length() != read.length()");
+            }
         }
 
         // Remove mate pair information
