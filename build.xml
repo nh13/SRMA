@@ -3,6 +3,8 @@
 	<property name="build" value="build"/>
 	<property name="classes" value="${build}/classes"/>
 	<property name="jar" value="${build}/jar"/>
+	<property name="dist" value="dist"/>
+	<property name="scripts" value="scripts"/>
 	<property name="main-class" value="srma.SRMA"/>
 	<property name="lib" value="lib"/>
 	<property name="sam-version" value="1.17"/>
@@ -27,6 +29,7 @@
 
 	<target name="clean">
 		<delete dir="${build}"/>
+		<delete dir="${dist}"/>
 	</target>
 
 	<target name="compile" depends="init">
@@ -58,4 +61,11 @@
 
 	<target name="main" depends="clean,run"/>
 
+	<target name="dist" depends="jar" description="Build a distribution zip file">
+		<mkdir dir="${dist}"/>
+		<zip zipfile="${dist}/srma-${srma-version}.zip">
+			<zipfileset dir="${jar}" includes="*.jar" prefix="srma-${srma-version}"/>
+			<zipfileset dir="${scripts}" includes="*.pl" prefix="srma-${srma-version}"/>
+		</zip>
+	</target>
 </project>
