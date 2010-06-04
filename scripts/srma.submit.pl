@@ -184,7 +184,7 @@ sub ValidateData {
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
 	die "Attribute \"splitSize\" may not be used with \"ranges\".\n" if (defined($data->{'srmaOptions'}->{'ranges'}) && 0 < $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'});
 	
-	if(defined($data->{'srmaOptions'}->{'range'}) && defined($data->{'srmaOptions'}->{'range'})) {
+	if(defined($data->{'srmaOptions'}->{'range'}) && defined($data->{'srmaOptions'}->{'ranges'})) {
 		die("Both attributes \"range\" and \"ranges\" may not be used in conjuction.\n");
 	}
 
