@@ -19,6 +19,7 @@ public class Align {
             AlleleCoverageCutoffs alleleCoverageCutoffs,
             boolean correctBases,
             boolean useSequenceQualities,
+            int MAXIMUM_TOTAL_COVERAGE,
             int MAX_HEAP_SIZE)
         throws Exception
     {
@@ -128,6 +129,7 @@ public class Align {
                 sequence, 
                 alleleCoverageCutoffs,
                 useSequenceQualities,
+                MAXIMUM_TOTAL_COVERAGE,
                 MAX_HEAP_SIZE);
 
         // HERE 
@@ -155,9 +157,11 @@ public class Align {
                     Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
                     while(startNodeQueueIter.hasNext()) {
                         Node startNode = startNodeQueueIter.next();
-                        if(passFilters(graph,
-                                    startNode,
-                                    alleleCoverageCutoffs)) {
+                        int f = passFilters(graph,
+                                startNode,
+                                alleleCoverageCutoffs,
+                                MAXIMUM_TOTAL_COVERAGE);
+                        if(0 == f) {
                             heap.add(new AlignHeapNode(null, 
                                         startNode,
                                         startNode.coverage,
@@ -165,6 +169,9 @@ public class Align {
                                         qualities.charAt(0),
                                         useSequenceQualities,
                                         space));
+                        }
+                        else if(f < 0) {
+                            return rec;
                         }
                         if(startNode.position < i) {
                             i = startNode.position;
@@ -183,9 +190,11 @@ public class Align {
                     Iterator<Node> startNodeQueueIter = startNodeQueue.iterator();
                     while(startNodeQueueIter.hasNext()) {
                         Node startNode = startNodeQueueIter.next();
-                        if(passFilters(graph,
-                                    startNode,
-                                    alleleCoverageCutoffs)) {
+                        int f = passFilters(graph,
+                                startNode,
+                                alleleCoverageCutoffs,
+                                MAXIMUM_TOTAL_COVERAGE);
+                        if(0 == f) {
                             heap.add(new AlignHeapNode(null, 
                                         startNode,
                                         startNode.coverage,
@@ -193,6 +202,9 @@ public class Align {
                                         qualities.charAt(0),
                                         useSequenceQualities,
                                         space));
+                        }
+                        else if(f < 0) {
+                            return rec;
                         }
                         if(i < startNode.position) {
                             i = startNode.position;
@@ -276,10 +288,12 @@ public class Align {
                 while(iter.hasNext()) {
                     Node nextNode = iter.next();
                     int nextCoverage = iterCov.next();
-                    if(passFilters(graph,
-                                nextNode,
-                                nextCoverage,
-                                alleleCoverageCutoffs)) {
+                    int f = passFilters(graph,
+                            nextNode,
+                            nextCoverage,
+                            alleleCoverageCutoffs,
+                            MAXIMUM_TOTAL_COVERAGE);
+                    if(0 == f) {
                         heap.add(new AlignHeapNode(curAlignHeapNode, 
                                     nextNode, 
                                     nextCoverage,
@@ -287,6 +301,9 @@ public class Align {
                                     qualities.charAt(curAlignHeapNode.readOffset+1), 
                                     useSequenceQualities,
                                     space));
+                    }
+                    else if(f < 0) {
+                        return rec;
                     }
                 }
                 iter=null;
@@ -334,6 +351,7 @@ public class Align {
             ReferenceSequence sequence, 
             AlleleCoverageCutoffs alleleCoverageCutoffs,
             boolean useSequenceQualities,
+            int MAXIMUM_TOTAL_COVERAGE,
             int MAX_HEAP_SIZE) 
         throws Exception
     {
@@ -345,9 +363,10 @@ public class Align {
         AlignHeap heap = null;
 
         // Cannot bound
-        if(!passFilters(graph,
+        if(0 != passFilters(graph,
                     recNode,
-                    alleleCoverageCutoffs)) {
+                    alleleCoverageCutoffs,
+                    MAXIMUM_TOTAL_COVERAGE)) {
             return null;
         }
 
@@ -420,14 +439,24 @@ public class Align {
                     int nextCoverage = iterCov.next();
 
                     // Base should match alignment
-                    if(nextNode.base == readBases.charAt(curAlignHeapNode.readOffset+1) && passFilters(graph, nextNode, nextCoverage, alleleCoverageCutoffs)) {
-                        heap.add(new AlignHeapNode(curAlignHeapNode, 
-                                    nextNode, 
-                                    nextCoverage,
-                                    read.charAt(curAlignHeapNode.readOffset+1), 
-                                    qualities.charAt(curAlignHeapNode.readOffset+1), 
-                                    useSequenceQualities,
-                                    space));
+                    if(nextNode.base == readBases.charAt(curAlignHeapNode.readOffset+1)) {
+                        int f = passFilters(graph, 
+                                nextNode, 
+                                nextCoverage, 
+                                alleleCoverageCutoffs,
+                                MAXIMUM_TOTAL_COVERAGE);
+                        if(0 == f) {
+                            heap.add(new AlignHeapNode(curAlignHeapNode, 
+                                        nextNode, 
+                                        nextCoverage,
+                                        read.charAt(curAlignHeapNode.readOffset+1), 
+                                        qualities.charAt(curAlignHeapNode.readOffset+1), 
+                                        useSequenceQualities,
+                                        space));
+                        }
+                        else if(f < 0) {
+                            return null;
+                        }
                     }
                 }
                 iter=null;
@@ -655,28 +684,38 @@ public class Align {
         //rec.setAttribute("CE", colorErrors);
     }
 
-    private static boolean passFilters(Graph graph,
+    /*
+     * -1 if the alignment process should be aborted 
+     *  0 if the alignment should continue 
+     *  1 if the alignment should not be considered any further
+     * */
+    private static int passFilters(Graph graph,
             Node node,
             int toNodeCoverage,
-            AlleleCoverageCutoffs alleleCoverageCutoffs) 
+            AlleleCoverageCutoffs alleleCoverageCutoffs,
+            int MAXIMUM_TOTAL_COVERAGE) 
     {
         int totalCoverage = graph.getCoverage(node.position);
-        if(alleleCoverageCutoffs.getQ(totalCoverage) <= toNodeCoverage) {
+        if(MAXIMUM_TOTAL_COVERAGE < totalCoverage) {
+            return -1;
+        }
+        else if(alleleCoverageCutoffs.getQ(totalCoverage) <= toNodeCoverage) {
             // HERE
             //System.err.println("TRUE totalCoverage="+totalCoverage+"\ttoNodeCoverage="+toNodeCoverage+"\tcutoff="+alleleCoverageCutoffs.getQ(totalCoverage));
-            return true;
+            return 0;
         }
         else {
             // HERE
             //System.err.println("FALSE totalCoverage="+totalCoverage+"\ttoNodeCoverage="+toNodeCoverage+"\tcutoff="+alleleCoverageCutoffs.getQ(totalCoverage));
-            return false;
+            return 1;
         }
     }
 
-    private static boolean passFilters(Graph graph,
+    private static int passFilters(Graph graph,
             Node node,
-            AlleleCoverageCutoffs alleleCoverageCutoffs) 
+            AlleleCoverageCutoffs alleleCoverageCutoffs,
+            int MAXIMUM_TOTAL_COVERAGE) 
     {
-        return passFilters(graph, node, node.coverage, alleleCoverageCutoffs);
+        return passFilters(graph, node, node.coverage, alleleCoverageCutoffs, MAXIMUM_TOTAL_COVERAGE);
     }
 }

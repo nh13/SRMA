@@ -38,6 +38,8 @@ public class SRMA extends CommandLineProgram {
         public double MINIMUM_ALLELE_PROBABILITY=0.1;
     @Option(doc="The minimum haploid coverage for the consensus.", optional=true)
         public int MINIMUM_ALLELE_COVERAGE=3;
+    @Option(doc="The maximum total coverage over a position to consider, otherwise ignore the re-alignment.", optional=true)
+        public int MAXIMUM_TOTAL_COVERAGE=100;
     @Option(doc="The file containing ranges to examine.", optional=true)
         public File RANGES=null;
     @Option(doc="A range to examine.", optional=true)
@@ -411,6 +413,7 @@ public class SRMA extends CommandLineProgram {
                     this.alleleCoverageCutoffs,
                     CORRECT_BASES,
                     USE_SEQUENCE_QUALITIES,
+                    MAXIMUM_TOTAL_COVERAGE,
                     MAX_HEAP_SIZE);
             // Add to a heap/priority-queue to assure output is sorted
             this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
