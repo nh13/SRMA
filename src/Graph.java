@@ -42,11 +42,14 @@ public class Graph {
         }
 
         // Get the alignment
+        /*
         try {
             alignment = new Alignment(record, sequence);
         } catch(Alignment.AlignmentException e) {
             return null;
         }
+        */
+        alignment = new Alignment(record, sequence);
         strand = record.getReadNegativeStrandFlag(); 
 
         // Reset if there are no nodes

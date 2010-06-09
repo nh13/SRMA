@@ -39,6 +39,10 @@ public class Align {
         int alignmentStart = -1;
         int numStartNodesAdded = 0;
         boolean strand = rec.getReadNegativeStrandFlag(); // false -> forward, true -> reverse
+        String softClipStartBases = null;
+        String softClipStartQualities = null;
+        String softClipEndBases = null;
+        String softClipEndQualities = null;
 
         // Debugging stuff
         //String readName = rec.getReadName();
@@ -68,6 +72,7 @@ public class Align {
             read = new String(tmpRead);
             readBases = new String(tmpRead);
             qualities = new String(tmpQualities);
+            // Reverse again
             if(strand) { // reverse
                 SAMRecordUtil.reverseArray(tmpRead);
                 SAMRecordUtil.reverseArray(tmpQualities);
@@ -80,6 +85,7 @@ public class Align {
                 SAMRecordUtil.reverseArray(tmpRead);
             }
             readBases = new String(tmpRead);
+            // Reverse again
             if(strand) { // reverse
                 SAMRecordUtil.reverseArray(tmpRead);
             }
@@ -88,7 +94,7 @@ public class Align {
             // Some aligners include a quality value for the adapter.  A quality value
             // IMHO should not be given for an unobserved (assumed) peice of data.  Trim
             // the first quality in this case
-            if(qualities.length() == 1 + read.length()) { // trim the f
+            if(qualities.length() == 1 + read.length()) { // trim the first quality
                 qualities = qualities.substring(1);
             }
         }
@@ -108,6 +114,58 @@ public class Align {
             }
             else {
                 throw new Exception("Error.  Internal error: readBases.length() != read.length()");
+            }
+        }
+
+        // Deal with soft-clipping
+        // - save the soft clipped sequence for latter
+        {
+            List<CigarElement> cigarElements = null;
+
+            cigarElements = rec.getCigar().getCigarElements();
+            CigarElement e1 = cigarElements.get(0); // first
+            CigarElement e2 = cigarElements.get(cigarElements.size()-1); // last 
+
+            // Soft-clipped
+            if(CigarOperator.S == e1.getOperator()) {
+                if(space == SRMAUtil.Space.COLORSPACE) {
+                    throw new Exception("Error.  Soft clipping with color-space data not currently supported.");
+                }
+                int l = e1.getLength();
+                if(strand) { // reverse
+                    softClipStartBases = readBases.substring(readBases.length() - l);
+                    softClipStartQualities = qualities.substring(qualities.length() - l);
+                    readBases = readBases.substring(0, readBases.length() - l);
+                    read = read.substring(0, read.length() - l);
+                    qualities = qualities.substring(0, qualities.length() - l);
+                }
+                else {
+                    softClipStartBases = readBases.substring(0, l-1);
+                    softClipStartQualities = qualities.substring(0, l-1);
+                    readBases = readBases.substring(l);
+                    read = read.substring(l);
+                    qualities = qualities.substring(l);
+                }
+            }
+            if(CigarOperator.S == e2.getOperator()) {
+                if(space == SRMAUtil.Space.COLORSPACE) {
+                    throw new Exception("Error.  Soft clipping with color-space data not currently supported.");
+                }
+                int l = e2.getLength();
+                if(strand) { // reverse
+                    softClipEndBases = readBases.substring(0, l-1);
+                    softClipEndQualities = qualities.substring(0, l-1);
+                    readBases = readBases.substring(l);
+                    read = read.substring(l);
+                    qualities = qualities.substring(l);
+                }
+                else {
+                    softClipEndBases = readBases.substring(readBases.length() - l);
+                    softClipEndQualities = qualities.substring(qualities.length() - l);
+                    readBases = readBases.substring(0, readBases.length() - l);
+                    read = read.substring(0, read.length() - l);
+                    qualities = qualities.substring(0, qualities.length() - l);
+                }
             }
         }
 
@@ -313,7 +371,7 @@ public class Align {
         }
 
         // Recover alignment
-        Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
+        Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, softClipStartBases, softClipStartQualities, softClipEndBases, softClipEndQualities, strand, correctBases);
 
         return rec;
     }
@@ -327,8 +385,8 @@ public class Align {
             rec.setProperPairFlag(false); // not paired any more
             rec.setMateUnmappedFlag(false);
             rec.setMateNegativeStrandFlag(false);
-            //rec.setFirstOfPairFlag(false);
-            //rec.setSecondOfPairFlag(false);
+            rec.setFirstOfPairFlag(false);
+            rec.setSecondOfPairFlag(false);
 
             // entries
             rec.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
@@ -399,10 +457,11 @@ public class Align {
             {
                 if(curAlignHeapNode.score < nextAlignHeapNode.score ||
                         (curAlignHeapNode.score == nextAlignHeapNode.score && 
-                         curAlignHeapNode.alleleCoverageSum < nextAlignHeapNode.alleleCoverageSum)) {
+                         curAlignHeapNode.alleleCoverageSum < nextAlignHeapNode.alleleCoverageSum)) 
+                {
                     // Update current node
                     curAlignHeapNode = heap.poll();
-                         }
+                }
                 else {
                     // Ignore next node
                     heap.poll();
@@ -470,7 +529,7 @@ public class Align {
         return bestAlignHeapNode;
     }
 
-    private static void updateSAM(SAMRecord rec, SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, boolean strand, boolean correctBases)
+    private static void updateSAM(SAMRecord rec, SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, String softClipStartBases, String softClipStartQualities, String softClipEndBases, String softClipEndQualities, boolean strand, boolean correctBases)
         throws Exception
     {
         AlignHeapNode curAlignHeapNode=null;
@@ -479,6 +538,7 @@ public class Align {
         int alignmentStart = 0;
         int readIndex=-1;
         byte readBases[] = null;
+        byte baseQualities[] = null;
         byte colorErrors[] = null;
         int i;
         String readColors=null, readColorQualities=null;
@@ -511,6 +571,11 @@ public class Align {
         rec.clearAttributes();
 
         readBases = new byte[read.length()];
+        baseQualities = new byte[qualities.length()];
+        for(i=0;i<qualities.length();i++) {
+            baseQualities[i] = (byte)qualities.charAt(i);
+        }
+
         if(strand) {
             readIndex=0;
         }
@@ -621,17 +686,16 @@ public class Align {
             }
         }
         else if(correctBases) { // bases were corrected
-            byte newBaseQualities[] = new byte[read.length()];
             if(strand) {
                 for(i=0;i<read.length();i++) {
                     if(readBases[i] == (byte)read.charAt(read.length() - i - 1)) {
-                        newBaseQualities[i] = (byte)(qualities.charAt(read.length() - i - 1) - 33);
+                        baseQualities[i] = (byte)(qualities.charAt(read.length() - i - 1) - 33);
                     }
                     else {
                         // TODO: how much to down-weight ?
-                        newBaseQualities[i] = (byte)(SRMAUtil.QUAL2CHAR(SRMAUtil.CHAR2QUAL(qualities.charAt(read.length() - i - 1)) - CORRECT_BASE_QUALITY_PENALTY) - 33);
-                        if(newBaseQualities[i] <= 0) {
-                            newBaseQualities[i]=1;
+                        baseQualities[i] = (byte)(SRMAUtil.QUAL2CHAR(SRMAUtil.CHAR2QUAL(qualities.charAt(read.length() - i - 1)) - CORRECT_BASE_QUALITY_PENALTY) - 33);
+                        if(baseQualities[i] <= 0) {
+                            baseQualities[i]=1;
                         }
                     }
                 }
@@ -639,18 +703,17 @@ public class Align {
             else {
                 for(i=0;i<read.length();i++) {
                     if(readBases[i] == (byte)read.charAt(i)) {
-                        newBaseQualities[i] = (byte)(qualities.charAt(i) - 33);
+                        baseQualities[i] = (byte)(qualities.charAt(i) - 33);
                     }
                     else {
                         // TODO: how much to down-weight ?
-                        newBaseQualities[i] = (byte)(SRMAUtil.QUAL2CHAR(SRMAUtil.CHAR2QUAL(qualities.charAt(i)) - CORRECT_BASE_QUALITY_PENALTY) - 33);
-                        if(newBaseQualities[i] <= 0) {
-                            newBaseQualities[i]=1;
+                        baseQualities[i] = (byte)(SRMAUtil.QUAL2CHAR(SRMAUtil.CHAR2QUAL(qualities.charAt(i)) - CORRECT_BASE_QUALITY_PENALTY) - 33);
+                        if(baseQualities[i] <= 0) {
+                            baseQualities[i]=1;
                         }
                     }
                 }
             }
-            rec.setBaseQualities(newBaseQualities);
             rec.setAttribute("XO", read);
             rec.setAttribute("XQ", qualities);
         }
@@ -668,10 +731,49 @@ public class Align {
             }
         }
 
+        // Add in soft-clipping
+        if(null != softClipStartBases) { // prepend
+            cigarElements.add(0, new CigarElement(softClipStartBases.length(), CigarOperator.S));
+
+            byte tmpBases[] = new byte[readBases.length + softClipStartBases.length()];
+            System.arraycopy(readBases, 0, tmpBases, softClipStartBases.length(), readBases.length);
+            readBases = tmpBases;
+            for(i=0;i<softClipStartBases.length();i++) {
+                readBases[i] = (byte)softClipStartBases.charAt(i);
+            }
+
+            byte tmpQualities[] = new byte[baseQualities.length + softClipStartQualities.length()];
+            System.arraycopy(baseQualities, 0, tmpQualities, softClipStartQualities.length(), baseQualities.length);
+            baseQualities = tmpQualities;
+            for(i=0;i<softClipStartQualities.length();i++) {
+                baseQualities[i] = (byte)softClipStartQualities.charAt(i);
+            }
+        }
+        /*
+           if(null != softClipEndBases) { // append
+           cigarElements.add(new CigarElement(softClipEndBases.length(), CigarOperator.S));
+
+           byte tmpBases[] = new byte[readBases.length + softClipEndBases.length()];
+           System.arraycopy(readBases, 0, tmpBases, 0, readBases.length);
+           for(i=0;i<softClipEndBases.length();i++) {
+           tmpBases[i+readBases.length] = (byte)softClipEndBases.charAt(i);
+           }
+           readBases = tmpBases;
+
+           byte tmpQualities[] = new byte[baseQualities.length + softClipEndQualities.length()];
+           System.arraycopy(baseQualities, 0, tmpQualities, 0, baseQualities.length);
+           for(i=0;i<softClipEndQualities.length();i++) {
+           tmpQualities[i+baseQualities.length] = (byte)softClipEndQualities.charAt(i);
+           }
+           baseQualities = tmpQualities;
+           }
+           */
+
         // Update SAM record
         rec.setCigar(new Cigar(cigarElements));
         rec.setAlignmentStart(alignmentStart);
         rec.setReadBases(readBases);
+        rec.setBaseQualities(baseQualities);
         // Set new attributes
         if(null != readColors) {
             rec.setAttribute("CS", readColors);

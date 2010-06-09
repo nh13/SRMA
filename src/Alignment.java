@@ -42,11 +42,16 @@ public class Alignment {
         iter = cigarElements.iterator();
         while(iter.hasNext()) {
             cigarElement = iter.next();
-            this.length += cigarElement.getLength();
             switch(cigarElement.getOperator()) {
                 case M:
                 case I:
+                case EQ: // will EQ exist ?
+                case X: // will X exist ? 
                     positionsLength += cigarElement.getLength();
+                    this.length += cigarElement.getLength();
+                    break;
+                case D:
+                    this.length += cigarElement.getLength();
                     break;
                 default:
                     break;
@@ -73,29 +78,43 @@ public class Alignment {
             cigarElementLength = cigarElement.getLength();
             cigarElementOperator = cigarElement.getOperator();
             for(i=0;i<cigarElementLength;i++) {
-                // TODO: make sure these are upper case
+                // TODO: make sure the bases are upper case
                 switch(cigarElementOperator) {
                     case M:
+                    case EQ: // will EQ exist ?
+                    case X: // will X exist ? 
                         this.reference[index] = referenceBases[alignmentStart - 1 + referenceIndex];
                         this.read[index] = readBases[readIndex]; 
                         referenceIndex++;
                         readIndex++;
+                        index++;
                         break;
                     case D:
                         this.reference[index] = referenceBases[alignmentStart - 1 + referenceIndex];
                         this.read[index] = Alignment.GAP;
                         referenceIndex++;
+                        index++;
                         break;
                     case I:
                         this.reference[index] = Alignment.GAP; 
                         this.read[index] = readBases[readIndex]; 
                         readIndex++;
+                        index++;
                         break;
+                    case S:
+                        // Ignore soft-clipping
+                        readIndex++;
+                        break;
+                    case H:
+                        // Ignore hard-clipping
+                        break;
+                    case P:
+                        throw new AlignmentException("Illegal Cigar Operator: " + cigarElementOperator + " (Padded alignments not supported).");
+                    case N:
+                        throw new AlignmentException("Illegal Cigar Operator: " + cigarElementOperator + " (Spliced alignments not supported)."); 
                     default:
-                        // Other CIGAR operators currently not supported
-                        throw new AlignmentException("Illegal Cigar Operator: " + cigarElementOperator);
+                        throw new AlignmentException("Illegal Cigar Operator: " + cigarElementOperator + " (Not supported)");
                 }
-                index++;
             }
         }
 
@@ -109,7 +128,7 @@ public class Alignment {
             if(0 == index || Alignment.GAP != reference[index-1]) { // previous not an ins
                 referenceIndex++;
             }
-            if(Alignment.GAP != read[index]) { // M or I
+            if(Alignment.GAP != read[index]) { // M/EQ/X/I
                 this.positions[readIndex] = referenceIndex;
                 this.positionsIndex[readIndex] = index;
                 readIndex++;
