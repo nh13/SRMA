@@ -31,7 +31,7 @@ use constant {
 	OPTIONAL => 0,
 	REQUIRED => 1,
 	BREAKLINE => "************************************************************\n",
-	MERGE_LOG_BASE => 8,
+	MERGE_LOG_BASE => 16,
 	QSUBNOJOB => "QSUBNOJOB"
 };
 
