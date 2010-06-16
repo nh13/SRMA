@@ -106,6 +106,7 @@ public class SRMA extends CommandLineProgram {
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
 
         // initialize
+        this.maxOutputString = new String("");
         this.alleleCoverageCutoffs = new AlleleCoverageCutoffs(MINIMUM_ALLELE_COVERAGE, MINIMUM_ALLELE_PROBABILITY, QUIET_STDERR);
 
         try { 
@@ -144,27 +145,12 @@ public class SRMA extends CommandLineProgram {
             }
 
             // Get references
-            ReferenceSequenceFileFactory referenceSequenceFileFactory = new ReferenceSequenceFileFactory();
-            this.referenceSequenceFile = referenceSequenceFileFactory.getReferenceSequenceFile(REFERENCE);
-            this.referenceDictionary = this.referenceSequenceFile.getSequenceDictionary();
-            if(null == this.referenceDictionary) {
-                // Try manually
-                String dictionaryName = new String(REFERENCE.getAbsolutePath());
-                dictionaryName += ".dict";
-                final File dictionary = new File(dictionaryName);
-                if (dictionary.exists()) {
-                    IoUtil.assertFileIsReadable(dictionary);
-                    final SAMTextHeaderCodec codec = new SAMTextHeaderCodec();
-                    final SAMFileHeader header = codec.decode(new AsciiLineReader(new FileInputStream(dictionary)),
-                            dictionary.toString());
-                    if (header.getSequenceDictionary() != null && header.getSequenceDictionary().size() > 0) {
-                        this.referenceDictionary = header.getSequenceDictionary();
-                    }
-                }
-                else {
-                    throw new Exception("Could not open sequence dictionary file: " + dictionaryName);
-                }
+            //ReferenceSequenceFileFactory referenceSequenceFileFactory = new ReferenceSequenceFileFactory();
+            this.referenceSequenceFile = new IndexedFastaSequenceFile(REFERENCE);
+            if(!this.referenceSequenceFile.isIndexed()) {
+                throw new Exception("Reference sequence file was not indexed.");
             }
+            this.referenceDictionary = this.referenceSequenceFile.getSequenceDictionary();
 
             // Get ranges
             if(null == RANGES && null == RANGE) {
@@ -196,9 +182,7 @@ public class SRMA extends CommandLineProgram {
 
                 this.inputRange = this.inputRangesIterator.next();
 
-                do {
-                    this.referenceSequence = this.referenceSequenceFile.nextSequence();
-                } while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < this.inputRange.referenceIndex);
+                this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName());
                 if(null == this.referenceSequence) {
                     throw new Exception("Premature EOF in the reference sequence");
                 }
@@ -242,9 +226,8 @@ public class SRMA extends CommandLineProgram {
                         ctr = this.processList(programRecord, ctr, false, true);
 
                         // Get new reference sequence
-                        while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < rec.getReferenceIndex()) {
-                            this.referenceSequence = this.referenceSequenceFile.nextSequence();
-                        }
+                        this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(rec.getReferenceIndex()).getSequenceName());
+                        
                         if(null == this.referenceSequence) {
                             throw new Exception("Premature EOF in the reference sequence");
                         }
@@ -348,9 +331,9 @@ public class SRMA extends CommandLineProgram {
                     return null;
                 }
             } while(false == this.recordIter.hasNext());
-            while(null != this.referenceSequence && this.referenceSequence.getContigIndex() < this.inputRange.referenceIndex) {
-                this.referenceSequence = this.referenceSequenceFile.nextSequence();
-            }
+            
+                
+            this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName());
             if(null == this.referenceSequence) {
                 throw new Exception("Premature EOF in the reference sequence");
             }
@@ -377,14 +360,13 @@ public class SRMA extends CommandLineProgram {
             String outputString = new String("Records processsed: " + ctr + " (" + rec.getReferenceName() + ":" + rec.getAlignmentStart() + "-" + rec.getAlignmentEnd() + ")");
             int outputStringLength = outputString.length();
             if(this.maxOutputStringLength < outputStringLength) {
-                this.maxOutputStringLength = outputStringLength;
                 int i;
-                maxOutputString = new String("");
-                for(i=outputStringLength;i < this.maxOutputStringLength;i++) { // pad with blanks
+                for(i=this.maxOutputStringLength;i< outputStringLength;i++) { // pad with blanks
                     this.maxOutputString += " ";
                 }
+                this.maxOutputStringLength = outputStringLength;
             }
-            System.err.print(this.maxOutputString + "\r" + outputString);
+            System.err.print("\r" + outputString + this.maxOutputString);
         }
     }
 
