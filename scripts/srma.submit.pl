@@ -95,9 +95,10 @@ sub Schema {
 				  <xs:attribute name="splitSize" type="positiveInteger" use="optional"/>
 				</xs:complexType>
 			  </xs:element>
-			  <xs:element name="offset" type="xs:integer" use="required"/>
-			  <xs:element name="minimumAlleleProbability" type="xs:double" use="required"/>
-			  <xs:element name="minimumAlleleCoverage" type="xs:integer" use="required"/>
+			  <xs:element name="offset" type="xs:integer" use="optional"/>
+			  <xs:element name="minimumAlleleProbability" type="xs:double" use="optional"/>
+			  <xs:element name="minimumAlleleCoverage" type="xs:integer" use="optional"/>
+			  <xs:element name="maximumTotalCoverage" type="xs:integer" use="optional"/>
 			  <xs:element name="inputBAMFile" type="filePath" use="required">
 			  <xs:element name="outputBAMFile" type="filePath" use="required">
 			  <xs:element name="runDirectory" type="directoryPath" use="required">
@@ -168,8 +169,9 @@ sub ValidateData {
 	ValidatePath($data->{'srmaOptions'},         'qsubBin',                                  OPTIONAL); 
 	ValidateOptions($data->{'srmaOptions'},      'queueType',          \%QUEUETYPES,         REQUIRED);
 	ValidateOption($data->{'srmaOptions'},	     'offset',									 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},	     'minimumAlleleProbability',					 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},	     'minimumAlleleProbability',				 OPTIONAL);
 	ValidateOption($data->{'srmaOptions'},	     'minimumAlleleCoverage',					 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},	     'maximumTotalCoverage',					 OPTIONAL);
 	ValidateFile($data->{'srmaOptions'},         'referenceFasta',                           REQUIRED);
 	ValidatePath($data->{'srmaOptions'},         'runDirectory',                             REQUIRED); 
 	ValidatePath($data->{'srmaOptions'},         'tmpDirectory',                             REQUIRED); 
@@ -324,6 +326,7 @@ sub CreateJobsSRMA {
 		$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
 		$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+		$cmd .= " MAXIMUM_TOTAL_COVERAGE=".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
 		$cmd .= " QUIET=true";
 		$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
 		$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
@@ -418,6 +421,7 @@ sub CreateJobsSRMA {
 				$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
 				$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 				$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+				$cmd .= " MAXIMUM_TOTAL_COVERAGE=".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
 				$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
 				$cmd .= " QUIET=true";
 				$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
