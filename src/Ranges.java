@@ -55,6 +55,7 @@ public class Ranges {
     {
         Map<String, Integer> hm = new HashMap<String, Integer>();
         int i, colon, dash, referenceIndex;
+        int startPosition, endPosition;
 
         // init
         this.ranges = new LinkedList<Range>();
@@ -65,17 +66,34 @@ public class Ranges {
         // get delimiters
         colon = range.indexOf(':');
         dash = range.indexOf('-', colon+1);
-        if(colon <= 0 || (dash - colon) <= 1 || (range.length() - dash) <= 1) {
-            throw new Exception("RANGE was improperly specified.");
-        }   
 
-        String chrName = range.substring(0, colon);
-        if(null == hm.get(chrName)) {
-            throw new Exception("Could not find reference name " + chrName + " in RANGE");
+        // Only chromosome name
+        if(colon < 0) { // contig only
+            referenceIndex = (int)hm.get(range);
+            startPosition = 1;
+            endPosition = referenceDictionary.getSequence(referenceIndex).getSequenceLength();
         }
-        referenceIndex = (int)hm.get(chrName);
-        int startPosition = Integer.parseInt(range.substring(colon+1, dash));
-        int endPosition = Integer.parseInt(range.substring(dash+1));
+        else {
+            if(colon <= 0 || (0 < dash && (dash - colon) <= 1) || (0 < dash && (range.length() - dash) <= 1)) {
+                throw new Exception("RANGE was improperly specified.");
+            }   
+                
+            String chrName = range.substring(0, colon);
+            if(null == hm.get(chrName)) {
+                throw new Exception("Could not find reference name " + chrName + " in RANGE");
+            }
+            referenceIndex = (int)hm.get(chrName);
+
+            if(dash <= 0) {
+                startPosition = Integer.parseInt(range.substring(colon+1));
+                endPosition = referenceDictionary.getSequence(referenceIndex).getSequenceLength();
+            }
+            else {
+                startPosition = Integer.parseInt(range.substring(colon+1, dash));
+                endPosition = Integer.parseInt(range.substring(dash+1));
+            }
+        }
+
         if(startPosition <= 0 || referenceDictionary.getSequence(referenceIndex).getSequenceLength() < startPosition) {
             throw new Exception("startPosition was out of bounds in RANGE");
         }
@@ -85,6 +103,7 @@ public class Ranges {
         else if(endPosition < startPosition) {
             throw new Exception("endPosition < startPosition in RANGE");
         }
+
         startPosition -= offset;
         if(startPosition <= 0) {
             startPosition = 1;
