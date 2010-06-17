@@ -14,8 +14,8 @@ public class Graph {
     int contig; // one based
     int position_start; // one based
     int position_end; // one based
-    ArrayList<PriorityQueue<Node>> nodes; // zero based
-    ArrayList<Integer> coverage; // does not count insertions with offset > 0
+    List<PriorityQueue<Node>> nodes; // zero based
+    List<Integer> coverage; // does not count insertions with offset > 0
     SAMFileHeader header;
 
     public Graph(SAMFileHeader header)
@@ -281,25 +281,35 @@ public class Graph {
     public void prune(int referenceIndex, int alignmentStart, int offset)
         throws Exception
     {
-        PriorityQueue<Node> queue = null;
+        //PriorityQueue<Node> queue = null;
 
         if(this.contig != referenceIndex+1) {
             throw new Exception("Pruning expects the same contig");
         }
 
+        /*
         while(this.position_start < alignmentStart - offset) {
             // remove nodes from the queue
+            
+            // Is this necessary? 
             queue = this.nodes.get(0); 
             if(null != queue) {
                 while(null != queue.peek()) {
                     queue.poll().destroy();
                 }
             }
-            // destroy the first node in the queue
+           
+        // destroy the first node in the queue
             queue = null;
             this.nodes.remove(0); 
             this.coverage.remove(0);
             this.position_start++;
+        }
+*/
+        if(this.position_start < alignmentStart - offset) {
+            this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size()-1);
+            this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size()-1);
+            this.position_start = alignmentStart - offset;
         }
     }
 

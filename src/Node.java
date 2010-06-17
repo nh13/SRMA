@@ -33,10 +33,10 @@ public class Node {
         this.position = position;
         this.offset = 0;
         this.coverage = 1;
-        this.next = new ArrayList<Node>();
-        this.nextCov = new ArrayList<Integer>();
-        this.prev = new ArrayList<Node>();
-        this.prevCov = new ArrayList<Integer>();
+        this.next = new LinkedList<Node>();
+        this.nextCov = new LinkedList<Integer>();
+        this.prev = new LinkedList<Node>();
+        this.prevCov = new LinkedList<Integer>();
         if(null != prev) {
             addToPrev(prev);
             if(Node.INSERTION == prev.type && Node.INSERTION == this.type) {

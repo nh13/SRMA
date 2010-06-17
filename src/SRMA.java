@@ -4,6 +4,7 @@
 package srma;
 
 import srma.Align;
+import srma.ThreadPoolLinkedList;
 
 import net.sf.samtools.*;
 import net.sf.samtools.util.*;
@@ -53,7 +54,7 @@ public class SRMA extends CommandLineProgram {
     @Option(doc="The maximum number of nodes on the heap before re-alignment is ignored", optional=true)
         public int MAX_HEAP_SIZE = 8192;
     @Option(doc="The maximum number of SAM records in the queue before re-alignment", optional=true)
-        public int MAX_QUEUE_SIZE = 8192;
+        public int MAX_QUEUE_SIZE = 65536;
     @Option(doc="The number of threads for parallel processing", optional=true)
         public int NUM_THREADS = 1;
 
@@ -68,8 +69,8 @@ public class SRMA extends CommandLineProgram {
     private ReferenceSequence referenceSequence = null;
     private SAMSequenceDictionary referenceDictionary = null;
 
-    private LinkedList<SAMRecord> toProcessSAMRecordList = null;
-    private LinkedList<Node> toProcessSAMRecordNodeList = null;
+    private ThreadPoolLinkedList<SAMRecord> toProcessSAMRecordList = null;
+    private ThreadPoolLinkedList<Node> toProcessSAMRecordNodeList = null;
     private PriorityQueue<SAMRecord> toOutputSAMRecordPriorityQueue = null;
     private SAMFileReader in = null;
     private SAMFileHeader header = null;
@@ -120,8 +121,8 @@ public class SRMA extends CommandLineProgram {
             IoUtil.assertFileIsReadable(REFERENCE);
 
             // Initialize basic input/output files
-            this.toProcessSAMRecordList = new LinkedList<SAMRecord>();
-            this.toProcessSAMRecordNodeList = new LinkedList<Node>();
+            this.toProcessSAMRecordList = new ThreadPoolLinkedList<SAMRecord>(NUM_THREADS);
+            this.toProcessSAMRecordNodeList = new ThreadPoolLinkedList<Node>(NUM_THREADS);
             this.toOutputSAMRecordPriorityQueue = new PriorityQueue<SAMRecord>(40, new SAMRecordCoordinateComparator()); 
             this.in = new SAMFileReader(INPUT, true);
             this.header = this.in.getFileHeader();
@@ -280,11 +281,8 @@ public class SRMA extends CommandLineProgram {
                 else if(totalMemoryLog2 < 20) {
                     System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 10)) / 100) + "KB");
                 }
-                else if(totalMemoryLog2 < 30) {
-                    System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 20)) / 100) + "MB");
-                }
                 else {
-                    System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 30)) / 100) + "GB");
+                    System.err.println("Total memory usage: " + (Math.round(100 * totalMemory / Math.pow(2, 20)) / 100) + "MB");
                 }
                 // Run time
                 long seconds = (this.endTime - this.startTime) / 1000000000;
@@ -353,7 +351,7 @@ public class SRMA extends CommandLineProgram {
         }
         else {
             // TODO: enforce column width ?
-            String outputString = new String("Records processsed: " + ctr + " (" + rec.getReferenceName() + ":" + rec.getAlignmentStart() + "-" + rec.getAlignmentEnd() + ")");
+            String outputString = new String("Records processsed: " + ctr + " (last " + rec.getReferenceName() + ":" + rec.getAlignmentStart() + "-" + rec.getAlignmentEnd() + ")");
             int outputStringLength = outputString.length();
             if(this.maxOutputStringLength < outputStringLength) {
                 int i;
@@ -372,9 +370,11 @@ public class SRMA extends CommandLineProgram {
         SAMRecord curSAMRecord = null;
 
         // Check if we should process
-        if(!flush && this.toProcessSAMRecordList.size() < this.MAX_QUEUE_SIZE) {
+        if(0 == this.toProcessSAMRecordList.size() ||
+                (!flush && this.toProcessSAMRecordList.size() < this.MAX_QUEUE_SIZE)) {
             return ctr;
         }
+
 
         // Process alignments
         if(0 < this.toProcessSAMRecordList.size()) { 
@@ -403,15 +403,13 @@ public class SRMA extends CommandLineProgram {
 
             // Output the alignments
             while(0 < this.toProcessSAMRecordList.size()) {
-                //System.err.println(toProcessSAMRecordList.getLast().getAlignmentStart() + " ? " + (toProcessSAMRecordList.getFirst().getAlignmentEnd() + OFFSET));
-
                 if(!flush && toProcessSAMRecordList.getLast().getAlignmentStart() <= toProcessSAMRecordList.getFirst().getAlignmentEnd() + OFFSET) { 
                     break;
                 }
                 // Add to a heap/priority-queue to assure output is sorted
-                curSAMRecord = this.toProcessSAMRecordList.remove(0);
+                curSAMRecord = this.toProcessSAMRecordList.removeFirst();
                 this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
-                this.toProcessSAMRecordNodeList.remove(0);
+                this.toProcessSAMRecordNodeList.removeFirst();
                 ctr++;
             }
 
@@ -439,7 +437,6 @@ public class SRMA extends CommandLineProgram {
                 break;
             }
         }
-
 
         return ctr;
     }
@@ -490,24 +487,21 @@ public class SRMA extends CommandLineProgram {
 
         public void run() 
         {
-
             try {
                 // Do stuff
-                //System.err.println("THREAD: " + this.threadID);
+                ListIterator<SAMRecord> iterSAMRecords = toProcessSAMRecordList.listIterator(this.threadID);
+                ListIterator<Node> iterNodes = toProcessSAMRecordNodeList.listIterator(this.threadID);
+                while(iterSAMRecords.hasNext()) {
+                    SAMRecord curSAMRecord = iterSAMRecords.next();
 
-                int i;
-                for(i=this.threadID;i < toProcessSAMRecordList.size();i+=this.numThreads) {
-                    //System.err.println("threadID: "+this.threadID+"\ti: "+i);
-                    SAMRecord curSAMRecord = toProcessSAMRecordList.get(i);
-                    
                     if(!flush && toProcessSAMRecordList.getLast().getAlignmentStart() <= curSAMRecord.getAlignmentEnd() + OFFSET) { 
                         break;
                     }
-
+                    
                     // Align - this will overwrite/change the alignment
                     Align.align(graph,
                             curSAMRecord,
-                            toProcessSAMRecordNodeList.get(i),
+                            iterNodes.next(),
                             referenceSequence,
                             this.programRecord,
                             OFFSET,
