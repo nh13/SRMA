@@ -373,7 +373,7 @@ public class SRMA extends CommandLineProgram {
         if(0 == this.toProcessSAMRecordList.size() ||
                 (!flush && this.toProcessSAMRecordList.size() < this.MAX_QUEUE_SIZE)) {
             return ctr;
-        }
+                }
 
 
         // Process alignments
@@ -388,7 +388,10 @@ public class SRMA extends CommandLineProgram {
                 threads.add(new AlignThread(i, 
                             numThreads, 
                             programRecord, 
-                            flush));
+                            flush,
+                            this.toProcessSAMRecordList.getLast().getAlignmentStart(),
+                            this.toProcessSAMRecordList.listIterator(i),
+                            this.toProcessSAMRecordNodeList.listIterator(i)));
             }
 
             // Start
@@ -473,31 +476,38 @@ public class SRMA extends CommandLineProgram {
         private int numThreads; 
         private SAMProgramRecord programRecord;
         private boolean flush;
+        private int lastAlignmentStart;
+        private ListIterator<SAMRecord> iterSAMRecords;
+        private ListIterator<Node> iterNodes;
 
         public AlignThread(int threadID,
                 int numThreads, 
                 SAMProgramRecord programRecord,
-                boolean flush)
+                boolean flush,
+                int lastAlignmentStart,
+                ListIterator<SAMRecord> iterSAMRecords,
+                ListIterator<Node> iterNodes)
         {
             this.threadID = threadID;
             this.programRecord = programRecord;
             this.numThreads = numThreads; 
             this.flush = flush;
+            this.lastAlignmentStart = lastAlignmentStart;
+            this.iterSAMRecords = iterSAMRecords;
+            this.iterNodes = iterNodes;
         }
 
         public void run() 
         {
             try {
                 // Do stuff
-                ListIterator<SAMRecord> iterSAMRecords = toProcessSAMRecordList.listIterator(this.threadID);
-                ListIterator<Node> iterNodes = toProcessSAMRecordNodeList.listIterator(this.threadID);
                 while(iterSAMRecords.hasNext()) {
                     SAMRecord curSAMRecord = iterSAMRecords.next();
 
-                    if(!flush && toProcessSAMRecordList.getLast().getAlignmentStart() <= curSAMRecord.getAlignmentEnd() + OFFSET) { 
+                    if(!flush && this.lastAlignmentStart <= curSAMRecord.getAlignmentEnd() + OFFSET) { 
                         break;
                     }
-                    
+
                     // Align - this will overwrite/change the alignment
                     Align.align(graph,
                             curSAMRecord,
