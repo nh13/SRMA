@@ -69,10 +69,6 @@ public class ThreadPoolLinkedList<E> {
         if(0 == this.size) {
             return null;
         }
-        this.first++;
-        if(this.numThreads <= this.first) {
-            this.first = 0;
-        }
         this.size--;
         if(0 == this.size) {
             this.size = 0;
@@ -80,6 +76,12 @@ public class ThreadPoolLinkedList<E> {
             this.next = 0;
             this.last = 0;
             this.lastE = null;
+        }
+        else {
+            this.first++;
+            if(this.numThreads <= this.first) {
+                this.first = 0;
+            }
         }
         return this.lists.get(prevFirst).remove(0);
     }

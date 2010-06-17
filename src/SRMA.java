@@ -115,6 +115,10 @@ public class SRMA extends CommandLineProgram {
 
         try { 
             this.startTime = System.nanoTime();
+        
+            if(1 < this.NUM_THREADS) {
+                System.err.println("** Warning: option NUM_THREADS currently does not increase performance significantly **");
+            }
 
             // Check input files
             IoUtil.assertFileIsReadable(INPUT);
@@ -403,7 +407,7 @@ public class SRMA extends CommandLineProgram {
             for(i=0;i<numThreads;i++) {
                 threads.get(i).join();
             }
-
+            
             // Output the alignments
             while(0 < this.toProcessSAMRecordList.size()) {
                 if(!flush && toProcessSAMRecordList.getLast().getAlignmentStart() <= toProcessSAMRecordList.getFirst().getAlignmentEnd() + OFFSET) { 
