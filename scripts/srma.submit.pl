@@ -116,6 +116,7 @@ sub Schema {
 			  <xs:element name="range" type="xs:string"/>
 			  <xs:element name="ranges" type="filePath"/>
 			  <xs:element name="correctBases" type="xs:string"/>
+			  <xs:element name="numThreads" type="xs:integer"/>
 			  <xs:element name="validationStringency" type="xs:string"/>
 			</xs:sequence>
 		  </xs:complexType>
@@ -179,6 +180,7 @@ sub ValidateData {
 	ValidateOption($data->{'srmaOptions'},         'ranges',							     OPTIONAL);
 	ValidateOption($data->{'srmaOptions'},         'validationStringency',					 OPTIONAL);
 	ValidateOption($data->{'srmaOptions'},         'correctBases',					 		 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'numThreads',					 		 OPTIONAL);
 
 	die "Attribute splitSize required with referenceFasta.\n" if (!defined($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}));
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
@@ -326,6 +328,7 @@ sub CreateJobsSRMA {
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 		$cmd .= " QUIET=true";
 		$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
+		$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
 		$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 		# Submit the job
@@ -421,6 +424,7 @@ sub CreateJobsSRMA {
 				$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
 				$cmd .= " QUIET=true";
 				$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
+				$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
 				$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 				# Submit the job

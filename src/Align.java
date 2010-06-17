@@ -12,7 +12,7 @@ public class Align {
 
     private static final int CORRECT_BASE_QUALITY_PENALTY = 20; // TODO: should be a parameter to SRMA
 
-    public static SAMRecord align(Graph graph, SAMRecord rec, Node recNode, 
+    public static void align(Graph graph, SAMRecord rec, Node recNode, 
             ReferenceSequence sequence, 
             SAMProgramRecord programRecord,
             int offset, 
@@ -200,7 +200,6 @@ public class Align {
         System.err.println("\nNOT FOUND (BEST)" + rec.toString());
         }
         //Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
-        //return rec;
         */
 
         heap = new AlignHeap((strand) ? AlignHeap.HeapType.MAXHEAP : AlignHeap.HeapType.MINHEAP);
@@ -229,7 +228,7 @@ public class Align {
                                         space));
                         }
                         else if(f < 0) {
-                            return rec;
+                            return;
                         }
                         if(startNode.position < i) {
                             i = startNode.position;
@@ -262,7 +261,7 @@ public class Align {
                                         space));
                         }
                         else if(f < 0) {
-                            return rec;
+                            return;
                         }
                         if(i < startNode.position) {
                             i = startNode.position;
@@ -283,7 +282,7 @@ public class Align {
 
             if(MAX_HEAP_SIZE <= heap.size()) {
                 // too many to consider
-                return rec;
+                return;
             }
 
             // HERE
@@ -361,7 +360,7 @@ public class Align {
                                     space));
                     }
                     else if(f < 0) {
-                        return rec;
+                        return;
                     }
                 }
                 iter=null;
@@ -372,8 +371,6 @@ public class Align {
 
         // Recover alignment
         Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, softClipStartBases, softClipStartQualities, softClipEndBases, softClipEndQualities, strand, correctBases);
-
-        return rec;
     }
 
     private static void removeMateInfo(SAMRecord rec)

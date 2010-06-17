@@ -52,10 +52,13 @@ public class SRMA extends CommandLineProgram {
         public boolean QUIET_STDERR=false;
     @Option(doc="The maximum number of nodes on the heap before re-alignment is ignored", optional=true)
         public int MAX_HEAP_SIZE = 8192;
+    @Option(doc="The maximum number of SAM records in the queue before re-alignment", optional=true)
+        public int MAX_QUEUE_SIZE = 8192;
+    @Option(doc="The number of threads for parallel processing", optional=true)
+        public int NUM_THREADS = 1;
 
     private long startTime;
     private long endTime;
-
 
     private final static int SRMA_OUTPUT_CTR = 100;
     private int maxOutputStringLength = 0;
@@ -66,7 +69,7 @@ public class SRMA extends CommandLineProgram {
     private SAMSequenceDictionary referenceDictionary = null;
 
     private LinkedList<SAMRecord> toProcessSAMRecordList = null;
-    private LinkedList<Node> toProcesSAMRecordNodeList = null;
+    private LinkedList<Node> toProcessSAMRecordNodeList = null;
     private PriorityQueue<SAMRecord> toOutputSAMRecordPriorityQueue = null;
     private SAMFileReader in = null;
     private SAMFileHeader header = null;
@@ -118,7 +121,7 @@ public class SRMA extends CommandLineProgram {
 
             // Initialize basic input/output files
             this.toProcessSAMRecordList = new LinkedList<SAMRecord>();
-            this.toProcesSAMRecordNodeList = new LinkedList<Node>();
+            this.toProcessSAMRecordNodeList = new LinkedList<Node>();
             this.toOutputSAMRecordPriorityQueue = new PriorityQueue<SAMRecord>(40, new SAMRecordCoordinateComparator()); 
             this.in = new SAMFileReader(INPUT, true);
             this.header = this.in.getFileHeader();
@@ -223,11 +226,11 @@ public class SRMA extends CommandLineProgram {
                     // Add only if it is from the same contig
                     if(this.graph.contig != rec.getReferenceIndex()+1) {
                         // Process the rest of the reads
-                        ctr = this.processList(programRecord, ctr, false, true);
+                        ctr = this.processList(programRecord, ctr, false, true, this.NUM_THREADS);
 
                         // Get new reference sequence
                         this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(rec.getReferenceIndex()).getSequenceName());
-                        
+
                         if(null == this.referenceSequence) {
                             throw new Exception("Premature EOF in the reference sequence");
                         }
@@ -240,28 +243,22 @@ public class SRMA extends CommandLineProgram {
                     recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
 
                     if(null != recNode) { // successfully added
-                        if(this.useRanges) {
-                            // Partition by the alignment start
-                            if(this.recordAlignmentStartContained(rec)) { // only add if it will be outputted
-                                this.toProcessSAMRecordList.add(rec);
-                                this.toProcesSAMRecordNodeList.add(recNode);
-                            }
-                        }
-                        else {
+                        // With ranges: partition by the alignment start and only add if it will be outputted
+                        if(!this.useRanges || this.recordAlignmentStartContained(rec)) { 
                             this.toProcessSAMRecordList.add(rec);
-                            this.toProcesSAMRecordNodeList.add(recNode);
+                            this.toProcessSAMRecordNodeList.add(recNode);
                         }
                     }
 
                     // Process the available reads
-                    ctr = this.processList(programRecord, ctr, true, false);
+                    ctr = this.processList(programRecord, ctr, true, false, this.NUM_THREADS);
                 }
 
                 // get new record
                 rec = this.getNextSAMRecord();
             }
             // Process the rest of the reads
-            ctr = this.processList(programRecord, ctr, true, true);
+            ctr = this.processList(programRecord, ctr, true, true, this.NUM_THREADS);
 
 
             // Close input/output files
@@ -331,8 +328,8 @@ public class SRMA extends CommandLineProgram {
                     return null;
                 }
             } while(false == this.recordIter.hasNext());
-            
-                
+
+
             this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName());
             if(null == this.referenceSequence) {
                 throw new Exception("Premature EOF in the reference sequence");
@@ -351,11 +348,10 @@ public class SRMA extends CommandLineProgram {
 
     private void outputProgress(SAMRecord rec, int ctr)
     {
-            
         if(QUIET_STDERR) {
             return;
         }
-        else if(0 == (ctr % SRMA_OUTPUT_CTR) || ctr < 0) {
+        else {
             // TODO: enforce column width ?
             String outputString = new String("Records processsed: " + ctr + " (" + rec.getReferenceName() + ":" + rec.getAlignmentStart() + "-" + rec.getAlignmentEnd() + ")");
             int outputStringLength = outputString.length();
@@ -370,53 +366,80 @@ public class SRMA extends CommandLineProgram {
         }
     }
 
-    private int processList(SAMProgramRecord programRecord, int ctr, boolean prune, boolean finish)
+    private int processList(SAMProgramRecord programRecord, int ctr, boolean prune, boolean flush, int numThreads)
         throws Exception
     {
         SAMRecord curSAMRecord = null;
 
-        // Process alignments
-        while(0 < this.toProcessSAMRecordList.size() && ((!finish && this.toProcessSAMRecordList.getFirst().getAlignmentEnd() + this.OFFSET < this.toProcessSAMRecordList.getLast().getAlignmentStart()) || finish)) {
-            curSAMRecord = this.toProcessSAMRecordList.removeFirst();
-            Node curSAMRecordNode = this.toProcesSAMRecordNodeList.removeFirst();
-            if(prune) {
-                this.graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), this.OFFSET); 
-            }
-            this.outputProgress(curSAMRecord, ctr);
-            ctr++;
-
-            // Align - this will overwrite/change the alignment
-            curSAMRecord = Align.align(this.graph, 
-                    curSAMRecord, 
-                    curSAMRecordNode, 
-                    this.referenceSequence,
-                    programRecord,
-                    OFFSET, 
-                    this.alleleCoverageCutoffs,
-                    CORRECT_BASES,
-                    USE_SEQUENCE_QUALITIES,
-                    MAXIMUM_TOTAL_COVERAGE,
-                    MAX_HEAP_SIZE);
-            // Add to a heap/priority-queue to assure output is sorted
-            this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
+        // Check if we should process
+        if(!flush && this.toProcessSAMRecordList.size() < this.MAX_QUEUE_SIZE) {
+            return ctr;
         }
-        if(finish && null != curSAMRecord) {
+
+        // Process alignments
+        if(0 < this.toProcessSAMRecordList.size()) { 
+
+            int i;
+            LinkedList<Thread> threads = null;
+
+            // Create threads
+            threads = new LinkedList<Thread>();
+            for(i=0;i<numThreads;i++) {
+                threads.add(new AlignThread(i, 
+                            numThreads, 
+                            programRecord, 
+                            flush));
+            }
+
+            // Start
+            for(i=0;i<numThreads;i++) {
+                threads.get(i).start();
+            }
+
+            // Join
+            for(i=0;i<numThreads;i++) {
+                threads.get(i).join();
+            }
+
+            // Output the alignments
+            while(0 < this.toProcessSAMRecordList.size()) {
+                //System.err.println(toProcessSAMRecordList.getLast().getAlignmentStart() + " ? " + (toProcessSAMRecordList.getFirst().getAlignmentEnd() + OFFSET));
+
+                if(!flush && toProcessSAMRecordList.getLast().getAlignmentStart() <= toProcessSAMRecordList.getFirst().getAlignmentEnd() + OFFSET) { 
+                    break;
+                }
+                // Add to a heap/priority-queue to assure output is sorted
+                curSAMRecord = this.toProcessSAMRecordList.remove(0);
+                this.toOutputSAMRecordPriorityQueue.add(curSAMRecord);
+                this.toProcessSAMRecordNodeList.remove(0);
+                ctr++;
+            }
+
+            // Prune the graph
+            if(null != curSAMRecord) {
+                this.outputProgress(curSAMRecord, ctr);
+                if(prune) {
+                    this.graph.prune(curSAMRecord.getReferenceIndex(), curSAMRecord.getAlignmentStart(), this.OFFSET);
+                }
+            }
+        }
+        if(flush && null != curSAMRecord) {
             this.outputProgress(curSAMRecord, ctr);
         }
         curSAMRecord = null;
-
 
         // Output alignments
         while(0 < this.toOutputSAMRecordPriorityQueue.size()) {
             curSAMRecord = this.toOutputSAMRecordPriorityQueue.peek();
             // alignment could have moved (+OFFSET), with another moving (-OFFSET) 
-            if(finish || curSAMRecord.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
+            if(flush || curSAMRecord.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
                 this.out.addAlignment(this.toOutputSAMRecordPriorityQueue.poll());
             }
             else { // other alignments could be less than
                 break;
             }
         }
+
 
         return ctr;
     }
@@ -444,6 +467,60 @@ public class SRMA extends CommandLineProgram {
         else {
             // must be within range
             return true;
+        }
+    }
+
+    private class AlignThread extends Thread {
+
+        private int threadID;
+        private int numThreads; 
+        private SAMProgramRecord programRecord;
+        private boolean flush;
+
+        public AlignThread(int threadID,
+                int numThreads, 
+                SAMProgramRecord programRecord,
+                boolean flush)
+        {
+            this.threadID = threadID;
+            this.programRecord = programRecord;
+            this.numThreads = numThreads; 
+            this.flush = flush;
+        }
+
+        public void run() 
+        {
+
+            try {
+                // Do stuff
+                //System.err.println("THREAD: " + this.threadID);
+
+                int i;
+                for(i=this.threadID;i < toProcessSAMRecordList.size();i+=this.numThreads) {
+                    //System.err.println("threadID: "+this.threadID+"\ti: "+i);
+                    SAMRecord curSAMRecord = toProcessSAMRecordList.get(i);
+                    
+                    if(!flush && toProcessSAMRecordList.getLast().getAlignmentStart() <= curSAMRecord.getAlignmentEnd() + OFFSET) { 
+                        break;
+                    }
+
+                    // Align - this will overwrite/change the alignment
+                    Align.align(graph,
+                            curSAMRecord,
+                            toProcessSAMRecordNodeList.get(i),
+                            referenceSequence,
+                            this.programRecord,
+                            OFFSET,
+                            alleleCoverageCutoffs,
+                            CORRECT_BASES,
+                            USE_SEQUENCE_QUALITIES,
+                            MAXIMUM_TOTAL_COVERAGE,
+                            MAX_HEAP_SIZE);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
         }
     }
 }
