@@ -625,6 +625,11 @@ END_OUTPUT
 		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'});
 		$qsub .= " -W depend=afterok:".join(":", @$dependent_jobIDs) if ("PBS" eq $data->{'srmaOptions'}->{'queueType'});
 	}
+	if(defined($data->{$type}->{'numThreads'}) && 1 < $data->{$type}->{'numThreads'}) {
+		$qsub .= " -pe serial ".$data->{$type}->{'numThreads'}     if ("SGE" eq $data->{'globalOptions'}->{'queueType'});
+		$qsub .= " -l nodes=1:ppn=".$data->{$type}->{'numThreads'} if ("PBS" eq $data->{'globalOptions'}->{'queueType'});
+	}
+							    }
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
 
