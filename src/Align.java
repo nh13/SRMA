@@ -570,7 +570,7 @@ public class Align {
         readBases = new byte[read.length()];
         baseQualities = new byte[qualities.length()];
         for(i=0;i<qualities.length();i++) {
-            baseQualities[i] = (byte)qualities.charAt(i);
+            baseQualities[i] = (byte)(qualities.charAt(i) - 33);
         }
 
         if(strand) {
