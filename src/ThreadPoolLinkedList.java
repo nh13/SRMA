@@ -2,6 +2,9 @@ package srma;
 
 import java.util.*;
 
+// HERE
+import net.sf.samtools.*;
+
 // Notes: optimized for use in SRMA.java
 public class ThreadPoolLinkedList<E> {
 
@@ -23,10 +26,10 @@ public class ThreadPoolLinkedList<E> {
         this.size = 0;
         this.first = 0;
         this.next = 0;
-        this.last = 0;
+        this.last = -1;
     }
 
-    public synchronized void add(E e)
+    public void add(E e)
     {
         this.lists.get(this.next).add(e);
         this.next++;
@@ -40,6 +43,11 @@ public class ThreadPoolLinkedList<E> {
         this.size++;
     }
 
+    public int getFirstIndex()
+    {
+        return this.first;
+    }
+    
     public int size() 
     {
         return this.size;
@@ -51,11 +59,14 @@ public class ThreadPoolLinkedList<E> {
             return null;
         }
 
-        return this.lists.get(this.first).get(0);
+        return this.lists.get(this.first).getFirst();
     }
 
     public E getLast()
     {
+        if(0 == this.size) {
+            return null;
+        }
         return this.lists.get(this.last).getLast();
     }
 
@@ -71,7 +82,7 @@ public class ThreadPoolLinkedList<E> {
             this.size = 0;
             this.first = 0;
             this.next = 0;
-            this.last = 0;
+            this.last = -1;
         }
         else {
             this.first++;
@@ -93,31 +104,19 @@ public class ThreadPoolLinkedList<E> {
         return this.lists.get(threadID).listIterator();
     }
 
-    // This could cause some inconsistency if it is used to modify the underlying lists.  
-    // Ignore this warning for performance.
-    public List<E> getListForThread(int threadID)
-        throws Exception
-    {
-        if(threadID < 0 || this.numThreads <= threadID) {
-            throw new Exception("threadID out of bounds");
-        }
-        return this.lists.get(threadID);
-    }
-
-    // TEST this
+    // TODO: Need to test this
     public void rebalance()
         throws Exception
     {
         int i, size;
 
         size = this.lists.get(0).size();
-        for(i=2;i<this.numThreads;i++) {
+        for(i=1;i<this.numThreads;i++) {
             int tmpSize = this.lists.get(i).size();
             if(tmpSize + 1 != size && tmpSize != size && tmpSize - 1 != size) {
                 throw new Exception("rebalance will lead to inconsistency");
             }
         }
-
         if(0 == size) {
             this.size = 0;
             this.first = 0;
@@ -128,7 +127,7 @@ public class ThreadPoolLinkedList<E> {
             this.first = this.last = 0;
             this.size = 0;
             size = this.lists.get(0).size();
-            for(i=2;i<this.numThreads;i++) {
+            for(i=1;i<this.numThreads;i++) {
                 this.size += this.lists.get(i).size();
                 if(size < this.lists.get(i).size()) {
                     this.first = this.last = i;
@@ -141,6 +140,29 @@ public class ThreadPoolLinkedList<E> {
             this.next = this.last + 1;
             if(this.numThreads <= this.next) {
                 this.next = 0;
+            }
+        }
+    }
+
+    public void printDebug()
+    {
+        int i;
+
+        System.err.println("size="+size+" "
+                +"this.first="+this.first+" "
+                +"this.last="+this.last+" "
+                +"this.next="+this.next);
+
+        for(i=0;i<this.numThreads;i++) {
+            if(0 == this.lists.get(i).size()) {
+                System.err.println("PRINT EMPTY");
+            }
+            else {
+                E e = this.lists.get(i).getFirst();
+                if(e instanceof SAMRecord) {
+                    System.err.println("PRINT DEBUG: " + ((SAMRecord)e).getAlignmentStart() 
+                            + " " + this.lists.get(i).size());
+                }
             }
         }
     }

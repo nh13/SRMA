@@ -192,13 +192,13 @@ public class Align {
 
         // HERE 
         /*
-        System.err.println("readName="+rec.getReadName());
-        if(null != bestAlignHeapNode) {
-            System.err.println("\nFOUND BEST:" + rec.toString());
-        }
-        else {
-            System.err.println("\nNOT FOUND (BEST): " + rec.toString());
-        }
+           System.err.println("readName="+rec.getReadName());
+           if(null != bestAlignHeapNode) {
+           System.err.println("\nFOUND BEST:" + rec.toString());
+           }
+           else {
+           System.err.println("\nNOT FOUND (BEST): " + rec.toString());
+           }
         //Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
         */
 
