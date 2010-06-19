@@ -40,27 +40,33 @@ public class Graph {
         if(record.getReferenceIndex() != sequence.getContigIndex()) {
             throw new Exception("SAMRecord contig does not match the current reference sequence contig");
         }
+        else if(record.getAlignmentStart() < this.position_start) {
+            // possible race condition otherwise.
+            throw new Exception("Unsynchronized addition");
+        }
 
         // Get the alignment
         /*
-        try {
-            alignment = new Alignment(record, sequence);
-        } catch(Alignment.AlignmentException e) {
-            return null;
-        }
-        */
+           try {
+           alignment = new Alignment(record, sequence);
+           } catch(Alignment.AlignmentException e) {
+           return null;
+           }
+           */
         alignment = new Alignment(record, sequence);
         strand = record.getReadNegativeStrandFlag(); 
 
         // Reset if there are no nodes
-        if(0 == this.nodes.size()) {
-            this.position_start = record.getAlignmentStart();
-            if(Alignment.GAP == alignment.reference[0]) { // insertion
-                this.position_start--;
+        synchronized (this) {
+            if(0 == this.nodes.size()) {
+                this.position_start = record.getAlignmentStart();
+                if(Alignment.GAP == alignment.reference[0]) { // insertion
+                    this.position_start--;
+                }
+                // TOD0: could be insertions then deletions at the start, which will cause errors, not implemented yet
+                this.position_end = this.position_start;
+                this.contig = record.getReferenceIndex() + 1;
             }
-            // TOD0: could be insertions then deletions at the start, which will cause errors, not implemented yet
-            this.position_end = this.position_start;
-            this.contig = record.getReferenceIndex() + 1;
         }
 
         // HERE
@@ -123,7 +129,7 @@ public class Graph {
      * Adds the node to the graph.  Merges if the graph already
      * contains a similar node.
      * */
-    private Node addNode(Node node, Node prev)
+    private synchronized Node addNode(Node node, Node prev)
         throws Exception
     {
 
@@ -139,7 +145,10 @@ public class Graph {
             if(node.contig != this.contig) { // destroy
                 this.destroy();
                 this.contig = node.contig;
-                this.position_start = this.position_end = node.position;
+                this.position_start = node.position;
+                if(this.position_end < node.position) {
+                    this.position_end = node.position;
+                }
             }
             // Add new queues if necessary
             for(i=this.position_end;i<=node.position;i++) {
@@ -153,7 +162,9 @@ public class Graph {
             if(Node.INSERTION != node.type || 0 != node.offset) {
                 this.coverage.set(node.position - this.position_start, node.coverage + this.coverage.get(node.position - this.position_start)); // set coverage
             }
-            this.position_end = node.position;
+            if(this.position_end < node.position) {
+                this.position_end = node.position;
+            }
             curNode = node;
         }
         else { // already contains
@@ -288,24 +299,24 @@ public class Graph {
         }
 
         /*
-        while(this.position_start < alignmentStart - offset) {
-            // remove nodes from the queue
-            
-            // Is this necessary? 
-            queue = this.nodes.get(0); 
-            if(null != queue) {
-                while(null != queue.peek()) {
-                    queue.poll().destroy();
-                }
-            }
-           
-        // destroy the first node in the queue
-            queue = null;
-            this.nodes.remove(0); 
-            this.coverage.remove(0);
-            this.position_start++;
+           while(this.position_start < alignmentStart - offset) {
+        // remove nodes from the queue
+
+        // Is this necessary? 
+        queue = this.nodes.get(0); 
+        if(null != queue) {
+        while(null != queue.peek()) {
+        queue.poll().destroy();
         }
-*/
+        }
+
+        // destroy the first node in the queue
+        queue = null;
+        this.nodes.remove(0); 
+        this.coverage.remove(0);
+        this.position_start++;
+           }
+           */
         if(this.position_start < alignmentStart - offset) {
             this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size()-1);
             this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size()-1);

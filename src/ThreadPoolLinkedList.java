@@ -2,30 +2,31 @@ package srma;
 
 import java.util.*;
 
+// HERE
+import net.sf.samtools.*;
+
 // Notes: optimized for use in SRMA.java
 public class ThreadPoolLinkedList<E> {
 
     private int numThreads;
-    private List<List<E>> lists;
+    private List<LinkedList<E>> lists;
     private int first;
     private int next;
     private int last;
     private int size;
-    E lastE;
 
     public ThreadPoolLinkedList(int numThreads) 
     {
         int i;
         this.numThreads = numThreads;
-        this.lists = new ArrayList<List<E>>();
+        this.lists = new ArrayList<LinkedList<E>>();
         for(i=0;i<this.numThreads;i++) {
             this.lists.add(new LinkedList<E>());
         }
         this.size = 0;
         this.first = 0;
         this.next = 0;
-        this.last = 0;
-        this.lastE = null;
+        this.last = -1;
     }
 
     public void add(E e)
@@ -40,9 +41,13 @@ public class ThreadPoolLinkedList<E> {
             this.last = 0;
         }
         this.size++;
-        this.lastE = e;
     }
 
+    public int getFirstIndex()
+    {
+        return this.first;
+    }
+    
     public int size() 
     {
         return this.size;
@@ -54,12 +59,15 @@ public class ThreadPoolLinkedList<E> {
             return null;
         }
 
-        return this.lists.get(this.first).get(0);
+        return this.lists.get(this.first).getFirst();
     }
 
     public E getLast()
     {
-        return this.lastE;
+        if(0 == this.size) {
+            return null;
+        }
+        return this.lists.get(this.last).getLast();
     }
 
     public E removeFirst()
@@ -74,8 +82,7 @@ public class ThreadPoolLinkedList<E> {
             this.size = 0;
             this.first = 0;
             this.next = 0;
-            this.last = 0;
-            this.lastE = null;
+            this.last = -1;
         }
         else {
             this.first++;
@@ -86,12 +93,77 @@ public class ThreadPoolLinkedList<E> {
         return this.lists.get(prevFirst).remove(0);
     }
 
-    public ListIterator<E>listIterator(int threadID)
+    // This could cause some inconsistency if it is used to modify the underlying lists.  
+    // Ignore this warning for performance.
+    public ListIterator<E> listIterator(int threadID)
         throws Exception
     {
         if(threadID < 0 || this.numThreads <= threadID) {
             throw new Exception("threadID out of bounds");
         }
         return this.lists.get(threadID).listIterator();
+    }
+
+    // TODO: Need to test this
+    public void rebalance()
+        throws Exception
+    {
+        int i, size;
+
+        size = this.lists.get(0).size();
+        for(i=1;i<this.numThreads;i++) {
+            int tmpSize = this.lists.get(i).size();
+            if(tmpSize + 1 != size && tmpSize != size && tmpSize - 1 != size) {
+                throw new Exception("rebalance will lead to inconsistency");
+            }
+        }
+        if(0 == size) {
+            this.size = 0;
+            this.first = 0;
+            this.next = 0;
+            this.last = 0;
+        }
+        else {
+            this.first = this.last = 0;
+            this.size = 0;
+            size = this.lists.get(0).size();
+            for(i=1;i<this.numThreads;i++) {
+                this.size += this.lists.get(i).size();
+                if(size < this.lists.get(i).size()) {
+                    this.first = this.last = i;
+                }
+                if(size == this.lists.get(i).size()) {
+                    this.last = i;
+                }
+            }
+
+            this.next = this.last + 1;
+            if(this.numThreads <= this.next) {
+                this.next = 0;
+            }
+        }
+    }
+
+    public void printDebug()
+    {
+        int i;
+
+        System.err.println("size="+size+" "
+                +"this.first="+this.first+" "
+                +"this.last="+this.last+" "
+                +"this.next="+this.next);
+
+        for(i=0;i<this.numThreads;i++) {
+            if(0 == this.lists.get(i).size()) {
+                System.err.println("PRINT EMPTY");
+            }
+            else {
+                E e = this.lists.get(i).getFirst();
+                if(e instanceof SAMRecord) {
+                    System.err.println("PRINT DEBUG: " + ((SAMRecord)e).getAlignmentStart() 
+                            + " " + this.lists.get(i).size());
+                }
+            }
+        }
     }
 }

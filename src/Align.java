@@ -192,13 +192,13 @@ public class Align {
 
         // HERE 
         /*
-        //System.err.println("readName="+rec.getReadName());
-        if(null != bestAlignHeapNode) {
-        System.err.println("\nFOUND BEST:" + rec.toString());
-        }
-        else {
-        System.err.println("\nNOT FOUND (BEST)" + rec.toString());
-        }
+           System.err.println("readName="+rec.getReadName());
+           if(null != bestAlignHeapNode) {
+           System.err.println("\nFOUND BEST:" + rec.toString());
+           }
+           else {
+           System.err.println("\nNOT FOUND (BEST): " + rec.toString());
+           }
         //Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
         */
 
@@ -570,6 +570,7 @@ public class Align {
         readBases = new byte[read.length()];
         baseQualities = new byte[qualities.length()];
         for(i=0;i<qualities.length();i++) {
+            // Must subtract 33 for PHRED scaling
             baseQualities[i] = (byte)(qualities.charAt(i) - 33);
         }
 
