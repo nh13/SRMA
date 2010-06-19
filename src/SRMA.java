@@ -445,12 +445,14 @@ public class SRMA extends CommandLineProgram {
                 threads.get(i).join();
             }
 
-            // Copy stuff
+            // Copy records to be re-aligned
             int first = toAddToGraphSAMRecordList.getFirstIndex();
             while(0 < toAddToGraphSAMRecordList.size()) {
                 SAMRecord rec = toAddToGraphSAMRecordList.removeFirst();
                 Node recNode = toProcessSAMRecordNodeListThread.get(first).removeFirst();
-                if(null != recNode) {
+                if(null != recNode &&
+                    (!this.useRanges || this.recordAlignmentStartContained(rec))) 
+                {
                     this.toProcessSAMRecordList.add(rec);
                     this.toProcessSAMRecordNodeList.add(recNode);
                 }
@@ -685,16 +687,7 @@ public class SRMA extends CommandLineProgram {
                     System.exit(1);
                 }
 
-                if(null != recNode) { // successfully added
-                    // With ranges: partition by the alignment start and only add if it will be outputted
-                    // TODO
-                    /*
-                       if(!this.useRanges || this.recordAlignmentStartContained(rec)) { 
-                       this.toProcessSAMRecordList.add(rec);
-                       this.toProcessSAMRecordNodeList.add(recNode);
-                       }
-                       */
-                }
+                // Keep track of start node
                 toProcessSAMRecordNodeListThread.add(recNode);
             }
         }
