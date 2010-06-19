@@ -292,12 +292,14 @@ public class Graph {
     public void prune(int referenceIndex, int alignmentStart, int offset)
         throws Exception
     {
-        //PriorityQueue<Node> queue = null;
-
         if(this.contig != referenceIndex+1) {
-            throw new Exception("Pruning expects the same contig");
+            this.destroy();
+            this.contig = referenceIndex +  1;
+            this.position_end = this.position_end = alignmentStart;
         }
+        else {
 
+        //PriorityQueue<Node> queue = null;
         /*
            while(this.position_start < alignmentStart - offset) {
         // remove nodes from the queue
@@ -321,6 +323,7 @@ public class Graph {
             this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size()-1);
             this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size()-1);
             this.position_start = alignmentStart - offset;
+        }
         }
     }
 

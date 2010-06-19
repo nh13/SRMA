@@ -43,11 +43,63 @@ public class ThreadPoolLinkedList<E> {
         this.size++;
     }
 
+    // Debugging function
+    public void checkSorted()
+        throws Exception
+    {
+        int i, j, k;
+        int prevReferenceIndex = -1;
+        int prevAlignmentStart = -1;
+
+        j=this.first;
+        k=0;
+        for(i=0;i<this.size;i++) {
+
+            SAMRecord rec = (SAMRecord)this.lists.get(j).get(k);
+            if(rec.getReferenceIndex() < prevReferenceIndex ||
+                    (rec.getReferenceIndex() == prevReferenceIndex && rec.getAlignmentStart() < prevAlignmentStart)) 
+            {
+                System.err.println("");
+                this.printDebug();
+                System.err.println("i="+i+"\tj="+j+"\tk="+k);
+                throw new Exception("checkSorted 1");
+            }
+            prevReferenceIndex = rec.getReferenceIndex();
+            prevAlignmentStart = rec.getAlignmentStart(); 
+
+            // which list
+            j++;
+            if(this.numThreads <= j) {
+                j=0;
+            }
+            // up level
+            if(this.first == j) {
+                k++;
+            }
+        }
+
+        for(i=0;i<this.numThreads;i++) {
+            ListIterator<E> iter = this.listIterator(i);
+            prevReferenceIndex = prevAlignmentStart = -1;
+            while(iter.hasNext()) {
+                SAMRecord rec = (SAMRecord)iter.next();
+                if(rec.getReferenceIndex() < prevReferenceIndex ||
+                        (rec.getReferenceIndex() == prevReferenceIndex && rec.getAlignmentStart() < prevAlignmentStart)) 
+                {
+                    throw new Exception("checkSorted 2");
+                }
+                prevReferenceIndex = rec.getReferenceIndex();
+                prevAlignmentStart = rec.getAlignmentStart(); 
+            }
+        }
+
+    }
+
     public int getFirstIndex()
     {
         return this.first;
     }
-    
+
     public int size() 
     {
         return this.size;
