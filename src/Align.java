@@ -201,11 +201,6 @@ public class Align {
            }
         //Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
         */
-        /*
-        if(null != bestAlignHeapNode) {
-           System.err.println("\nNOT FOUND (BEST): " + rec.toString() + " strand:" + strand);
-        }
-        */
 
         heap = new AlignHeap((strand) ? AlignHeap.HeapType.MAXHEAP : AlignHeap.HeapType.MINHEAP);
 
@@ -421,7 +416,7 @@ public class Align {
         ListIterator<Node> iter=null;
         ListIterator<Integer> iterCov=null;
         AlignHeap heap = null;
-
+        
         // Cannot bound
         if(0 != passFilters(graph,
                     recNode,
@@ -437,6 +432,8 @@ public class Align {
         else { // forward
             heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); 
         }
+        
+        // Add start nodes
         heap.add(new AlignHeapNode(null, 
                     recNode,
                     recNode.coverage,
@@ -492,7 +489,6 @@ public class Align {
                     iter = curAlignHeapNode.node.next.listIterator();
                     iterCov = curAlignHeapNode.node.nextCov.listIterator();
                 }
-
 
                 // Get the expected next position in the alignment
                 while(iter.hasNext()) {
