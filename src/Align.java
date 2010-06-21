@@ -201,6 +201,11 @@ public class Align {
            }
         //Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, strand, correctBases);
         */
+        /*
+        if(null != bestAlignHeapNode) {
+           System.err.println("\nNOT FOUND (BEST): " + rec.toString() + " strand:" + strand);
+        }
+        */
 
         heap = new AlignHeap((strand) ? AlignHeap.HeapType.MAXHEAP : AlignHeap.HeapType.MINHEAP);
 

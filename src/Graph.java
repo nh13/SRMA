@@ -299,31 +299,31 @@ public class Graph {
         }
         else {
 
-        //PriorityQueue<Node> queue = null;
-        /*
-           while(this.position_start < alignmentStart - offset) {
-        // remove nodes from the queue
+            //PriorityQueue<Node> queue = null;
+            /*
+               while(this.position_start < alignmentStart - offset) {
+            // remove nodes from the queue
 
-        // Is this necessary? 
-        queue = this.nodes.get(0); 
-        if(null != queue) {
-        while(null != queue.peek()) {
-        queue.poll().destroy();
-        }
-        }
+            // Is this necessary? 
+            queue = this.nodes.get(0); 
+            if(null != queue) {
+            while(null != queue.peek()) {
+            queue.poll().destroy();
+            }
+            }
 
-        // destroy the first node in the queue
-        queue = null;
-        this.nodes.remove(0); 
-        this.coverage.remove(0);
-        this.position_start++;
-           }
-           */
-        if(this.position_start < alignmentStart - offset) {
-            this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size()-1);
-            this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size()-1);
-            this.position_start = alignmentStart - offset;
-        }
+            // destroy the first node in the queue
+            queue = null;
+            this.nodes.remove(0); 
+            this.coverage.remove(0);
+            this.position_start++;
+               }
+               */
+            if(this.position_start < alignmentStart - offset) {
+                this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size()-1);
+                this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size()-1);
+                this.position_start = alignmentStart - offset;
+            }
         }
     }
 
