@@ -629,7 +629,6 @@ END_OUTPUT
 		$qsub .= " -pe serial ".$data->{$type}->{'numThreads'}     if ("SGE" eq $data->{'globalOptions'}->{'queueType'});
 		$qsub .= " -l nodes=1:ppn=".$data->{$type}->{'numThreads'} if ("PBS" eq $data->{'globalOptions'}->{'queueType'});
 	}
-							    }
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
 
