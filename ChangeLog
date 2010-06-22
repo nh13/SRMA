@@ -1,3 +1,34 @@
+commit f67c7954854d4d38ff39b3cc9c7108c0b3848349
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jun 22 02:03:52 2010 -0700
+
+    * setting up graph based upon first SAM record to avoid memory overhead.
+
+commit de934c5ba6f2925ddf0dbcbaed5bb9d796f0c2c7
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jun 22 01:51:00 2010 -0700
+
+    * adding in MAXIMUM_QUEUE_SIZE to the submission script.
+
+commit 5a39a99df9fd9f6bfea55aab8468a0dd2d9317d8
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jun 22 01:38:38 2010 -0700
+
+    * removing debugging code (threads running serially).
+
+commit 533baf48f6527b5238bf1e6e23081403124605be
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jun 22 00:30:19 2010 -0700
+
+    * extra curly bracket.
+
+commit 0cdd50a7a92436ea3cf55a091e605c6a5349931a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jun 21 23:50:35 2010 -0700
+
+    * updating ChangeLog
+    * (release 0.1.6)
+
 commit 7d22af7835270b8a2b5505ea13b44fa5d4999cf3
 Author: Nils Homer <nilshomer@gmail.com>
 Date:   Mon Jun 21 23:48:25 2010 -0700
