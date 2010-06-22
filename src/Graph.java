@@ -138,16 +138,10 @@ public class Graph {
         // Check if such a node exists
         // - if such a node exists, return it
         // - else insert it
-
         curNode = this.contains(node);
         if(null == curNode) { // new node, "how exciting!"
-            if(node.contig != this.contig) { // destroy
-                this.destroy();
-                this.contig = node.contig;
-                this.position_start = node.position;
-                if(this.position_end < node.position) {
-                    this.position_end = node.position;
-                }
+            if(node.contig != this.contig) { // same contig 
+                throw new Exception("NOT IMPLEMENTED");
             }
             // Add new queues if necessary
             for(i=this.position_end;i<node.position;i++) {
@@ -290,37 +284,20 @@ public class Graph {
         throws Exception
     {
         if(this.contig != referenceIndex+1) {
-            this.destroy();
-            this.contig = referenceIndex +  1;
+            this.nodes.clear();
+            this.coverage.clear();
+            this.contig = referenceIndex + 1;
             this.position_start = this.position_end = alignmentStart;
             this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
             this.coverage.add(new Integer(0));
         }
         else {
             if(this.position_start < alignmentStart - offset) {
-                this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size()-1);
-                this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size()-1);
+                this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size());
+                this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size());
                 this.position_start = alignmentStart - offset;
             }
         }
-    }
-
-    private synchronized void destroy()
-    {
-        int i;
-        PriorityQueue<Node> queue;
-
-        for(i=0;i<this.nodes.size();i++) {
-            queue = this.nodes.get(i);
-            while(null != queue.peek()) {
-                queue.poll().destroy();
-            }
-        }
-
-        this.contig = 1;
-        this.position_start = this.position_end = 1;
-        this.nodes.clear();
-        this.coverage.clear();
     }
 
     public void print()

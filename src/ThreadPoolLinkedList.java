@@ -85,7 +85,7 @@ public class ThreadPoolLinkedList<E> {
     }
 
     // Do not use this if we mean to flush
-    public LinkedList<LinkedList<AlignRecord>> getAlignRecordThreadLists(int numThreads, int contig, int alignmentStartLowerBound)
+    public LinkedList<LinkedList<AlignRecord>> getAlignRecordThreadLists(int numThreads, int contig, int alignmentStartUpperBound)
     {
         int i = 0;
         int size = this.size();
@@ -106,7 +106,7 @@ public class ThreadPoolLinkedList<E> {
                 rec = ((AlignRecord)e).record;
             }
             if(rec.getReferenceIndex()+1 != contig ||
-                    alignmentStartLowerBound <= rec.getAlignmentEnd()) {
+                    alignmentStartUpperBound <= rec.getAlignmentEnd()) {
                 break;
             }
             threadLists.get(i).add((AlignRecord)this.buffer.removeFirst());

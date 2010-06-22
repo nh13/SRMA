@@ -505,7 +505,7 @@ public class SRMA extends CommandLineProgram {
                 else {
                     toAlignThreadLists = this.toAlignList.getAlignRecordThreadLists(this.NUM_THREADS, 
                             this.graph.contig,
-                            this.toAlignList.getFirst().record.getAlignmentEnd() + this.OFFSET);
+                            this.toAlignList.getLast().record.getAlignmentStart() - this.OFFSET);
                 }
 
                 // Create threads
