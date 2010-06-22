@@ -1,3 +1,22 @@
+commit bbd8e326a122dc88635b291e40696756aba662b8
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jun 22 02:35:29 2010 -0700
+
+    * NULL pointer occurred if there were no reads.
+
+commit 988f0b20c27980f1b97f0abeb77020b5fcf274d6
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jun 22 02:12:38 2010 -0700
+
+    * fixing MAXIMUM_QUEUE_SIZE option in the submission script.
+
+commit 61ae3a60f6d8159475ad8b7752f70f7bb8683686
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Tue Jun 22 02:04:53 2010 -0700
+
+    * updating ChangeLog
+    * (re-release 0.1.6)
+
 commit f67c7954854d4d38ff39b3cc9c7108c0b3848349
 Author: Nils Homer <nilshomer@gmail.com>
 Date:   Tue Jun 22 02:03:52 2010 -0700
