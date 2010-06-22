@@ -37,7 +37,7 @@ use constant {
 
 my $config;
 my ($man, $print_schema, $help, $quiet, $start_step, $dryrun) = (0, 0, 0, 0, "srma", 0);
-my $version = "0.1.6";
+my $version = "0.1.7";
 
 GetOptions('help|?' => \$help, 
 	man => \$man, 
