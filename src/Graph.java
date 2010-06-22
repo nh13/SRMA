@@ -18,6 +18,7 @@ public class Graph {
     List<Integer> coverage; // does not count insertions with offset > 0
     SAMFileHeader header;
     NodeComparator nodeComparator; 
+    private boolean isEmpty;
 
     public Graph(SAMFileHeader header)
     {
@@ -31,6 +32,7 @@ public class Graph {
         // Add two initial dummy elements
         this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
         this.coverage.add(new Integer(0));
+        this.isEmpty = true;
     }
 
     // Returns start/end node in the alignment graph with respect to strand
@@ -60,7 +62,7 @@ public class Graph {
             }
 
             // Reset if there are no nodes
-            if(0 == this.nodes.size()) {
+            if(this.isEmpty) {
                 this.position_start = alignment_start;
                 if(Alignment.GAP == alignment.reference[0]) { // insertion
                     this.position_start--;
@@ -159,6 +161,7 @@ public class Graph {
                 this.position_end = node.position;
             }
             curNode = node;
+            this.isEmpty = false;
         }
         else { // already contains
             curNode.coverage++; 
@@ -182,17 +185,17 @@ public class Graph {
      * null otherwise
      * */
     private Node contains(Node node)
+        throws Exception
     {
         PriorityQueue<Node> nodeQueue = null;
         Iterator<Node> nodeQueueIter = null;
         Node curNode = null;
 
         // See if there are any nodes at this position
-        try {
-            nodeQueue = this.nodes.get(node.position - this.position_start);
-        } catch (IndexOutOfBoundsException e) {
+        if(node.position - this.position_start < 0 || this.nodes.size() <= node.position - this.position_start) {
             return null;
         }
+        nodeQueue = this.nodes.get(node.position - this.position_start);
 
         // Go through all nodes at this position etc.
         nodeQueueIter = nodeQueue.iterator();
@@ -283,20 +286,31 @@ public class Graph {
     public synchronized void prune(int referenceIndex, int alignmentStart, int offset)
         throws Exception
     {
+        boolean shouldClear = false;
+        
         if(this.contig != referenceIndex+1) {
+            shouldClear = true;
+        }
+        else {
+            if(this.position_start < alignmentStart - offset) { // unreachable nodes at the start
+                if(this.position_end < alignmentStart - offset) { // all are unreachable
+                    shouldClear = true;
+                }
+                else {
+                    this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size());
+                    this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size());
+                    this.position_start = alignmentStart - offset;
+                }
+            }
+        }
+        if(shouldClear) {
             this.nodes.clear();
             this.coverage.clear();
             this.contig = referenceIndex + 1;
             this.position_start = this.position_end = alignmentStart;
             this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
             this.coverage.add(new Integer(0));
-        }
-        else {
-            if(this.position_start < alignmentStart - offset) {
-                this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size());
-                this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size());
-                this.position_start = alignmentStart - offset;
-            }
+            this.isEmpty = true;
         }
     }
 

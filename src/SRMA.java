@@ -108,6 +108,7 @@ public class SRMA extends CommandLineProgram {
     {
         int ctr=0;
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
+        SAMRecord rec = null;
 
         // initialize
         this.maxOutputString = new String("");
@@ -209,7 +210,12 @@ public class SRMA extends CommandLineProgram {
             // Initialize graph
             this.graph = new Graph(this.header);
 
-            SAMRecord rec = this.getNextSAMRecord();
+            // Get first record
+            rec = this.getNextSAMRecord();
+                
+            // Do an initial prune
+            this.graph.prune(rec.getReferenceIndex(), rec.getAlignmentStart(), 0);
+
             // Continue while either
             // - there is input
             // - there are records to add to the graph
