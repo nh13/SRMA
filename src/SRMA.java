@@ -448,12 +448,11 @@ public class SRMA extends CommandLineProgram {
 
             // Start
             for(i=0;i<this.NUM_THREADS;i++) {
-                //threads.get(i).start();
+                threads.get(i).start();
             }
 
             // Join
             for(i=0;i<this.NUM_THREADS;i++) {
-                threads.get(i).start();
                 threads.get(i).join();
             }
 
