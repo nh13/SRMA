@@ -1,3 +1,199 @@
+commit 7d22af7835270b8a2b5505ea13b44fa5d4999cf3
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jun 21 23:48:25 2010 -0700
+
+    * updating Picard to v1-23.
+
+commit 38c2eb2e40b21ab6976f216e2521e44cab80bd2f
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jun 21 23:45:09 2010 -0700
+
+    * changing NUM_THREAD option warning.
+
+commit afe398cf02a7b14c3e71b140b9ca06a4ba05be26
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jun 21 23:32:02 2010 -0700
+
+    * fixing issue with pruning (bug introduced by re-implementation).
+    * choosing when to re-align was being too conservative (bug introduced by re-implementation).
+
+commit e05e334cfbf4d84816563fefc4fa48887c352904
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jun 21 22:50:08 2010 -0700
+
+    * further debugging concurrency issues
+    * graph's coverage counts were inconsistent between 'next' and
+    'previous' edges.
+
+commit 158ab239968a7f69e26bf91515b208141872c28f
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jun 21 15:10:30 2010 -0700
+
+    * cosmetic changes
+
+commit 0209288d96cacbfdb0a1023adb250d39c76d8123
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Mon Jun 21 14:44:09 2010 -0700
+
+    * re-implementing major portions of threading.  Concurrency can be
+    difficult.
+
+commit 4425acf8dd7099ffbde35d96c3d9a9dcdcbb6100
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sat Jun 19 10:44:12 2010 -0700
+
+    * debugging multi-threading more.
+
+commit e2f42727cefb95f161b034434922c25f106d9bfa
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jun 18 23:09:29 2010 -0700
+
+    * RANGE/RANGES options works with new multi-threading.
+
+commit 263b67c8b8aa9ebe000a10efa90c5cf5f77331cd
+Merge: 4b7c29e 5bd944a
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jun 18 20:56:56 2010 -0700
+
+    Merge branch 'threading'
+    
+    Conflicts:
+    	src/Align.java
+
+commit 5bd944a05fc81c212e0fc0c880e231ba8c041bc6
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jun 18 20:48:39 2010 -0700
+
+    * adding in Graph threading.
+
+commit 4b7c29e992bfbeeb24c3536d21d82e545183cc5c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jun 18 13:55:55 2010 -0700
+
+    * base qualities may not be properly scaled
+
+commit 64d02baf49edbb6812ecc9d10435975825cd9d2c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jun 18 13:54:36 2010 -0700
+
+    * committing failed stuff.
+
+commit eab72b663535b74f71bb1c22204ba4a1d88e1e08
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jun 17 10:16:34 2010 -0700
+
+    * multi-threading for re-alignment does not have a large speed-up.
+    Adding a user warning.
+
+commit 85335e52eb7c88142b4dd75f976ee73e6c450d14
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jun 17 01:03:21 2010 -0700
+
+    * trying to remove some shared objects from the scope of some threads.
+
+commit 363dba6359b672df157e989eac5a04ca54c240fb
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jun 17 00:42:48 2010 -0700
+
+    * adding in missing file for optimized threading.
+
+commit 4a22ac7d285438234baa02c27abf7156c31d4def
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu Jun 17 00:42:28 2010 -0700
+
+    * trying to optimize threading.
+
+commit d9389b32bf1ce08e18261f08ea5e2ea053c7d25c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 16 23:08:14 2010 -0700
+
+    * threaded jobs will now queue properly
+
+commit d8d6ead3cba8a54bc575fcf105db4e0246ed6b1a
+Merge: 032a933 4db29b4
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 16 21:04:33 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+
+commit 032a9336ee2bc3df359a6ff2eeaa1e487c8365d1
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 16 21:04:01 2010 -0700
+
+    * adding in multi-threading support
+
+commit 4db29b4f00dc4fdd1ab1a25909c51ed2628d95ed
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 16 15:35:13 2010 -0700
+
+    * adding in MAXIMUM_TOTAL_COVERAGE support in srma.submit.pl.
+
+commit 5953fce44c4396394960e69477d0a3ba2c01ef3d
+Merge: a7ce767 2456ba5
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 16 15:23:13 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+
+commit 2456ba57abc1cfd294b4470f7ccdf563edd4945c
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 16 15:21:18 2010 -0700
+
+    * supporting indexed fasta files, which was newly implemented in picard.
+    This will allow for fast traversal of a FASTA file when processing
+    latter contigs or chromosomes.
+    * fixing terminal small space problem in the output progress
+
+commit a7ce767936ea6c5c12a9b00c72db5f6c97dc44bd
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 9 16:15:42 2010 -0700
+
+    * making the log base 16 not 8
+
+commit 5e6b8102c1a5948c1e472928d4f7d88d619679e1
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Wed Jun 9 14:00:14 2010 -0700
+
+    * adding initial support for SAM entries with soft-clipping.
+
+commit 8d6845d5945d56a7c5c28ee4ec10b362fb04942d
+Merge: 0c3b91a 33d9e8d
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Jun 6 23:47:59 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+
+commit 0c3b91a957a6841eb9f44a9082b95246bfeca950
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Sun Jun 6 23:47:33 2010 -0700
+
+    * adding option MAXIMUM_TOTAL_COVERAGE to ignore high-coverage regions.
+
+commit 33d9e8ddf34cc2ea4e4cf1dbae9cafe305af35f3
+Merge: 3503625 83e1bb3
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jun 4 11:57:41 2010 -0700
+
+    Merge branch 'master' of ssh://srma.git.sourceforge.net/gitroot/srma/srma
+
+commit 350362568b516e40c7e3a3b9ee2705827af12074
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Fri Jun 4 11:57:09 2010 -0700
+
+    * fixing option check for range and ranges.
+
+commit 83e1bb36b802d45909e17b5d4c7f9df2e1c93e06
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu May 13 22:22:45 2010 -0700
+
+    * moving master to 0.1.6
+
+commit 4dfb7d538f274f54ff84755f482002f759a8d767
+Author: Nils Homer <nilshomer@gmail.com>
+Date:   Thu May 13 22:21:09 2010 -0700
+
+    * (release 0.1.5)
+
 commit f47e4c01fbfd3db46843eafe2e326c27c86a4abd
 Author: Nils Homer <nilshomer@gmail.com>
 Date:   Thu May 13 22:19:30 2010 -0700
