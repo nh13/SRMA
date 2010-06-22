@@ -330,10 +330,9 @@ sub CreateJobsSRMA {
 		$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
 		$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
-		$cmd .= " MAXIMUM_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
 		$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
 		$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
-		$cmd .= " MAXIMUM_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
+		$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
 		$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 		# Submit the job
@@ -430,7 +429,7 @@ sub CreateJobsSRMA {
 				$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
 				$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
 				$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
-				$cmd .= " MAXIMUM_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
+				$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
 				$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 				# Submit the job
