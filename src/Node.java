@@ -5,7 +5,7 @@ package srma;
 
 import java.io.*;
 import java.util.*;
-    
+
 public class Node {
 
     public static final int MATCH       = 0;
@@ -19,12 +19,10 @@ public class Node {
     int position; // one-based
     int offset; // for insertions
     int coverage;
-    List<Node> next; // downstream nodes
-    List<Integer> nextCov;
-    List<Node> prev; // upstream nodes
-    List<Integer> prevCov;
+    List<NodeRecord> next; // downstram nodes
+    List<NodeRecord> prev; // upstream nodes
 
-    public Node(char base, int type, int contig, int position, Node prev)
+    public Node(char base, int type, int contig, int position, Node prev, NodeComparator nodeComparator)
         throws Exception
     {
         this.base = base;
@@ -33,66 +31,103 @@ public class Node {
         this.position = position;
         this.offset = 0;
         this.coverage = 1;
-        this.next = new LinkedList<Node>();
-        this.nextCov = new LinkedList<Integer>();
-        this.prev = new LinkedList<Node>();
-        this.prevCov = new LinkedList<Integer>();
+        this.next = new LinkedList<NodeRecord>();
+        this.prev = new LinkedList<NodeRecord>();
         if(null != prev) {
-            addToPrev(prev);
             if(Node.INSERTION == prev.type && Node.INSERTION == this.type) {
                 this.offset = prev.offset + 1;
             }
         }
     }
 
-    public void addToNext(Node node)
+    public void addToNext(Node node, NodeComparator nodeComparator)
         throws Exception
     {
         if(null == node) {
             throw new Exception("addToNext: node was null!");
         }
-        int indexOf = this.next.indexOf(node);
-        if(indexOf < 0) {
-            this.next.add(node);
-            this.nextCov.add(1);
-        }
-        else {
-            this.nextCov.add(indexOf, this.nextCov.remove(indexOf) + 1);
-        }
+        
+        this.addToList(this.next.listIterator(), node, nodeComparator);
     }
 
-    public void addToPrev(Node node) 
+
+    public void addToPrev(Node node, NodeComparator nodeComparator)
         throws Exception
     {
         if(null == node) {
             throw new Exception("addToPrev: node was null!");
         }
-        int indexOf = this.prev.indexOf(node);
-        if(indexOf < 0) {
-            this.prev.add(node);
-            this.prevCov.add(1);
+        this.addToList(this.prev.listIterator(), node, nodeComparator);
+    }
+    
+    private void addToList(ListIterator<NodeRecord> iter, Node node, NodeComparator nodeComparator) 
+    {
+
+        while(iter.hasNext()) {
+            NodeRecord rec = iter.next();
+            Node curN = rec.node;
+            Integer curI = rec.coverage;
+            int comparison = nodeComparator.compare(curN, node);
+
+            if(0 == comparison) {
+                iter.set(new NodeRecord(curN, curI+1));
+                return;
+            }
+            else if(0 < comparison) {
+                // move back one
+                iter.previous();
+                break;
+            }
         }
-        else {
-            this.prevCov.add(indexOf, this.prevCov.remove(indexOf) + 1);
+        iter.add(new NodeRecord(node, 1));
+    }
+
+    public void checkList(ListIterator<NodeRecord> iter, NodeComparator nodeComparator)
+        throws Exception
+    {
+        NodeRecord prev=null, cur=null;
+
+        while(iter.hasNext()) {
+            cur = iter.next();
+            if(null != prev) {
+                int comparison = nodeComparator.compare(prev.node, cur.node);
+                if(0 < comparison) {
+                    throw new Exception("OUT OF ORDER");
+                }
+
+                prev = cur;
+            }
         }
     }
 
     public void print(PrintStream out) 
         throws Exception
     {
-        ListIterator<Node> iter;
-        ListIterator<Integer> iterCov;
+        ListIterator<NodeRecord> iter = null;
+
         out.print("[" + this.base + ":" + this.type + ":" + this.contig + ":" + 
                 this.position + ":" + this.offset + ":" + this.coverage + "]");
-        iter = this.next.listIterator();
-        iterCov = this.nextCov.listIterator();
-
+        
+        out.print("\tPREV[");
+        iter = this.prev.listIterator();
         while(iter.hasNext()) {
-            Node next = iter.next();
-            Integer nextCov = iterCov.next();
-            out.print("\t" + next.base + ":" + next.type + ":" + next.contig + 
-                    ":" + next.position + ":" + next.offset + ":" + next.coverage + ":" + nextCov); 
+            NodeRecord next = iter.next();
+            Node nextNode = next.node;
+            Integer nextCov = next.coverage;
+            out.print("\t" + nextNode.base + ":" + nextNode.type + ":" + nextNode.contig + 
+                    ":" + nextNode.position + ":" + nextNode.offset + ":" + nextNode.coverage + ":" + nextCov); 
         }
+        out.print("]");
+        out.print("\tNEXT[");
+        iter = this.next.listIterator();
+        while(iter.hasNext()) {
+            NodeRecord next = iter.next();
+            Node nextNode = next.node;
+            Integer nextCov = next.coverage;
+            out.print("\t" + nextNode.base + ":" + nextNode.type + ":" + nextNode.contig + 
+                    ":" + nextNode.position + ":" + nextNode.offset + ":" + nextNode.coverage + ":" + nextCov); 
+        }
+        out.print("]");
         out.println("");
     }
 
@@ -106,35 +141,19 @@ public class Node {
     {
         // Clear the previous list
         this.prev.clear();
-        this.prevCov.clear();
 
         // Clear the next list
         this.next.clear();
-        this.nextCov.clear();
     }
 
-    public class NodeComparator implements Comparator<Node> {
-        public int compare(Node o1, Node o2) 
-        {
-            if(o1.contig < o2.contig ||
-                    (o1.contig == o2.contig && o1.position < o2.position) ||
-                    (o1.contig == o2.contig && o1.position == o2.position && o1.offset < o2.offset) ||
-                    (o1.contig == o2.contig && o1.position == o2.position && o1.offset == o2.offset && o1.type < o2.type) ||
-                    (o1.contig == o2.contig && o1.position == o2.position && o1.offset == o2.offset && o1.type == o2.type && o1.base < o2.base)) {
-                return -1;
-            }
-            else if(o1.contig == o2.contig && o1.position == o2.position && o1.offset == o2.offset && o1.type == o2.type && o1.base == o2.base) {
-                return 0;
-            }
-            else {
-                return 1;
-            }
-        }
+    public class NodeRecord {
+        public Node node;
+        public int coverage;
 
-        public boolean equals(Node o1, Node o2) 
+        public NodeRecord(Node node, int coverage) 
         {
-            return (0 == this.compare(o1, o2));
+            this.node = node;
+            this.coverage = coverage;
         }
     }
-
 }

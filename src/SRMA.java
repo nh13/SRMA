@@ -269,7 +269,7 @@ public class SRMA extends CommandLineProgram {
                     if(this.graph.contig != rec.getReferenceIndex()+1) {
                         // Process the rest of the reads
                         if(0 < this.toAlignList.size()) {
-                            ctr = this.processToAlignList(programRecord, ctr, true, this.NUM_THREADS);
+                            ctr = this.processToAlignList(programRecord, ctr, true);
                         }
 
                         // Get new reference sequence
@@ -293,14 +293,14 @@ public class SRMA extends CommandLineProgram {
                 {
                     // flush
                     if(0 < this.toAlignList.size()) {
-                        ctr = this.processToAlignList(programRecord, ctr, true, this.NUM_THREADS);
+                        ctr = this.processToAlignList(programRecord, ctr, true);
                     }
                 }
                 else {
                     // there may be more to come
                     if(this.MAX_QUEUE_SIZE <= this.toAlignList.size()) 
                     {
-                        ctr = this.processToAlignList(programRecord, ctr, false, this.NUM_THREADS);
+                        ctr = this.processToAlignList(programRecord, ctr, false);
                     }
                 }
 
@@ -376,7 +376,6 @@ public class SRMA extends CommandLineProgram {
                 }
             } while(false == this.recordIter.hasNext());
 
-
             this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName());
             if(null == this.referenceSequence) {
                 throw new Exception("Premature EOF in the reference sequence");
@@ -431,11 +430,10 @@ public class SRMA extends CommandLineProgram {
                 this.graph.prune(this.toAddToGraphList.getFirst().getReferenceIndex(),
                         this.toAddToGraphList.getFirst().getAlignmentStart(),
                         0);
-
             }
 
             // Get the records for the threads 
-            toAddToGraphThreadLists = toAddToGraphList.getThreadLists(NUM_THREADS);
+            toAddToGraphThreadLists = toAddToGraphList.getThreadLists(this.NUM_THREADS, this.graph.contig);
 
             // Create threads
             threads = new LinkedList<Thread>();
@@ -443,19 +441,18 @@ public class SRMA extends CommandLineProgram {
             for(i=0;i<this.NUM_THREADS;i++) {
                 toAlignThreadLists.add(new LinkedList<AlignRecord>());
                 threads.add(new GraphThread(i, 
-                            this.graph,
-                            this.referenceSequence,
                             toAddToGraphThreadLists.get(i).listIterator(),
                             toAlignThreadLists.get(i)));
             }
 
             // Start
             for(i=0;i<this.NUM_THREADS;i++) {
-                threads.get(i).start();
+                //threads.get(i).start();
             }
 
             // Join
             for(i=0;i<this.NUM_THREADS;i++) {
+                threads.get(i).start();
                 threads.get(i).join();
             }
 
@@ -485,7 +482,7 @@ public class SRMA extends CommandLineProgram {
         }
     }
 
-    private int processToAlignList(SAMProgramRecord programRecord, int ctr, boolean flush, int NUM_THREADS)
+    private int processToAlignList(SAMProgramRecord programRecord, int ctr, boolean flush)
         throws Exception
     {
         SAMRecord lastSAMRecord = null;
@@ -503,29 +500,30 @@ public class SRMA extends CommandLineProgram {
 
                 // Get thread data
                 if(flush) {
-                    toAlignThreadLists = this.toAlignList.getThreadLists(this.NUM_THREADS);
+                    toAlignThreadLists = this.toAlignList.getThreadLists(this.NUM_THREADS, this.graph.contig);
                 }
                 else {
                     toAlignThreadLists = this.toAlignList.getAlignRecordThreadLists(this.NUM_THREADS, 
+                            this.graph.contig,
                             this.toAlignList.getFirst().record.getAlignmentEnd() + this.OFFSET);
                 }
 
                 // Create threads
                 threads = new LinkedList<Thread>();
-                for(i=0;i<NUM_THREADS;i++) {
+                for(i=0;i<this.NUM_THREADS;i++) {
                     threads.add(new AlignThread(i, 
                                 programRecord, 
                                 toAlignThreadLists.get(i).listIterator()));
                 }
 
                 // Start
-                for(i=0;i<NUM_THREADS;i++) {
-                threads.get(i).start();
+                for(i=0;i<this.NUM_THREADS;i++) {
+                    threads.get(i).start();
                 }
 
                 // Join
-                for(i=0;i<NUM_THREADS;i++) {
-                threads.get(i).join();
+                for(i=0;i<this.NUM_THREADS;i++) {
+                    threads.get(i).join();
                 }
 
                 // Output the alignments
@@ -625,7 +623,7 @@ public class SRMA extends CommandLineProgram {
         public void run() 
         {
             try {
-                
+
                 // Align each record
                 while(iter.hasNext()) {
                     AlignRecord curAlignRecord = iter.next();
@@ -656,20 +654,14 @@ public class SRMA extends CommandLineProgram {
 
     private class GraphThread extends Thread {
         private int threadID;
-        private Graph graph;
-        private ReferenceSequence referenceSequence;
         private ListIterator<SAMRecord> iterSAMRecords;
         List<AlignRecord> toAlignThreadList;
 
         public GraphThread(int threadID,
-                Graph graph,
-                ReferenceSequence referenceSequence,
                 ListIterator<SAMRecord> iterSAMRecords,
                 List<AlignRecord> toAlignThreadList)
         {
             this.threadID = threadID;
-            this.graph = graph;
-            this.referenceSequence = referenceSequence;
             this.iterSAMRecords = iterSAMRecords;
             this.toAlignThreadList = toAlignThreadList;
         }
@@ -679,21 +671,20 @@ public class SRMA extends CommandLineProgram {
             while(this.iterSAMRecords.hasNext()) {
                 // Get record
                 SAMRecord rec = this.iterSAMRecords.next();
+
                 Node recNode = null;
 
-                synchronized (this.graph) {
-                    if(this.graph.contig != rec.getReferenceIndex()+1) {
-                        break;
-                    }
+                if(graph.contig != rec.getReferenceIndex()+1) {
+                    break;
+                }
 
-                    // Add to the graph 
-                    try {
-                        recNode = this.graph.addSAMRecord(rec, this.referenceSequence);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        System.err.println("Please report bugs to srma-help@lists.sourceforge.net");
-                        System.exit(1);
-                    }
+                // Add to the graph 
+                try {
+                    recNode = graph.addSAMRecord(rec, referenceSequence);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    System.err.println("Please report bugs to srma-help@lists.sourceforge.net");
+                    System.exit(1);
                 }
 
                 // Keep track of start node

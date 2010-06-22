@@ -11,7 +11,15 @@ public class NodeComparator implements Comparator<Node>
     // TODO: optimize this
     public int compare(Node o1, Node o2)
     {
-        if(o1.contig < o2.contig 
+        if(o1.contig == o2.contig 
+                && o1.position == o2.position 
+                && o1.offset == o2.offset 
+                && o1.type == o2.type 
+                && o1.base == o2.base) 
+        {
+            return 0;
+        }
+        else if(o1.contig < o2.contig 
                 || (o1.contig == o2.contig 
                     && o1.position < o2.position) 
                 || (o1.contig == o2.contig 
@@ -29,13 +37,6 @@ public class NodeComparator implements Comparator<Node>
         {
             return -1;
         }
-        else if(o1.contig == o2.contig 
-                && o1.position == o2.position 
-                && o1.offset == o2.offset 
-                && o1.type == o2.type 
-                && o1.base == o2.base) {
-            return 0;
-                }
         else {
             return 1;
         }   

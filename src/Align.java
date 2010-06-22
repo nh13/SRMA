@@ -33,8 +33,7 @@ public class Align {
         String readBases = null; // always nt
         String qualities=null; // could be cq
         SRMAUtil.Space space=SRMAUtil.Space.NTSPACE;
-        ListIterator<Node> iter=null;
-        ListIterator<Integer> iterCov=null;
+        ListIterator<Node.NodeRecord> iter=null;
         AlignHeapNodeComparator comp=null;
         int alignmentStart = -1;
         int numStartNodesAdded = 0;
@@ -190,7 +189,6 @@ public class Align {
                 MAXIMUM_TOTAL_COVERAGE,
                 MAX_HEAP_SIZE);
 
-        // HERE 
         /*
            System.err.println("readName="+rec.getReadName());
            if(null != bestAlignHeapNode) {
@@ -285,7 +283,6 @@ public class Align {
                 return;
             }
 
-            // HERE
             //System.err.println("strand:" + strand + "\tsize:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
             //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.startPosition + "\t");
             //curAlignHeapNode.node.print(System.err);
@@ -315,7 +312,6 @@ public class Align {
             if(curAlignHeapNode.readOffset == read.length() - 1) {
                 // All read bases examined, store if has the best alignment.
 
-                // HERE
                 //System.err.print(curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.score + ":");
                 //System.err.print(curAlignHeapNode.startPosition + ":");
                 //curAlignHeapNode.node.print(System.err);
@@ -335,25 +331,22 @@ public class Align {
                 if(strand) { // reverse
                     // Go to all the "prev" nodes
                     iter = curAlignHeapNode.node.prev.listIterator();
-                    iterCov = curAlignHeapNode.node.prevCov.listIterator();
                 }
                 else { // forward
                     // Go to all "next" nodes
                     iter = curAlignHeapNode.node.next.listIterator();
-                    iterCov = curAlignHeapNode.node.nextCov.listIterator();
                 }
                 while(iter.hasNext()) {
-                    Node nextNode = iter.next();
-                    int nextCoverage = iterCov.next();
+                    Node.NodeRecord next = iter.next();
                     int f = passFilters(graph,
-                            nextNode,
-                            nextCoverage,
+                            next.node,
+                            next.coverage,
                             alleleCoverageCutoffs,
                             MAXIMUM_TOTAL_COVERAGE);
                     if(0 == f) {
                         heap.add(new AlignHeapNode(curAlignHeapNode, 
-                                    nextNode, 
-                                    nextCoverage,
+                                    next.node,
+                                    next.coverage,
                                     read.charAt(curAlignHeapNode.readOffset+1), 
                                     qualities.charAt(curAlignHeapNode.readOffset+1), 
                                     useSequenceQualities,
@@ -413,8 +406,7 @@ public class Align {
         AlignHeapNode curAlignHeapNode = null;
         AlignHeapNode nextAlignHeapNode = null;
         AlignHeapNode bestAlignHeapNode=null;
-        ListIterator<Node> iter=null;
-        ListIterator<Integer> iterCov=null;
+        ListIterator<Node.NodeRecord> iter=null;
         AlignHeap heap = null;
         
         // Cannot bound
@@ -482,30 +474,27 @@ public class Align {
                 if(strand) { // reverse
                     // Go to all the "prev" nodes
                     iter = curAlignHeapNode.node.prev.listIterator();
-                    iterCov = curAlignHeapNode.node.prevCov.listIterator();
                 }
                 else { // forward
                     // Go to all "next" nodes
                     iter = curAlignHeapNode.node.next.listIterator();
-                    iterCov = curAlignHeapNode.node.nextCov.listIterator();
                 }
 
                 // Get the expected next position in the alignment
                 while(iter.hasNext()) {
-                    Node nextNode = iter.next();
-                    int nextCoverage = iterCov.next();
+                    Node.NodeRecord next = iter.next();
 
                     // Base should match alignment
-                    if(nextNode.base == readBases.charAt(curAlignHeapNode.readOffset+1)) {
+                    if(next.node.base == readBases.charAt(curAlignHeapNode.readOffset+1)) {
                         int f = passFilters(graph, 
-                                nextNode, 
-                                nextCoverage, 
+                                next.node,
+                                next.coverage,
                                 alleleCoverageCutoffs,
                                 MAXIMUM_TOTAL_COVERAGE);
                         if(0 == f) {
                             heap.add(new AlignHeapNode(curAlignHeapNode, 
-                                        nextNode, 
-                                        nextCoverage,
+                                next.node,
+                                next.coverage,
                                         read.charAt(curAlignHeapNode.readOffset+1), 
                                         qualities.charAt(curAlignHeapNode.readOffset+1), 
                                         useSequenceQualities,
@@ -517,7 +506,6 @@ public class Align {
                     }
                 }
                 iter=null;
-                iterCov=null;
             }
 
             // Get next
@@ -801,12 +789,10 @@ public class Align {
             return -1;
         }
         else if(alleleCoverageCutoffs.getQ(totalCoverage) <= toNodeCoverage) {
-            // HERE
             //System.err.println("TRUE totalCoverage="+totalCoverage+"\ttoNodeCoverage="+toNodeCoverage+"\tcutoff="+alleleCoverageCutoffs.getQ(totalCoverage));
             return 0;
         }
         else {
-            // HERE
             //System.err.println("FALSE totalCoverage="+totalCoverage+"\ttoNodeCoverage="+toNodeCoverage+"\tcutoff="+alleleCoverageCutoffs.getQ(totalCoverage));
             return 1;
         }

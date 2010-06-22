@@ -17,6 +17,7 @@ public class Graph {
     List<PriorityQueue<Node>> nodes; // zero based
     List<Integer> coverage; // does not count insertions with offset > 0
     SAMFileHeader header;
+    NodeComparator nodeComparator; 
 
     public Graph(SAMFileHeader header)
     {
@@ -26,6 +27,10 @@ public class Graph {
         this.position_end = 1;
         this.nodes = new ArrayList<PriorityQueue<Node>>(); 
         this.coverage = new ArrayList<Integer>();
+        this.nodeComparator = new NodeComparator();
+        // Add two initial dummy elements
+        this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
+        this.coverage.add(new Integer(0));
     }
 
     // Returns start/end node in the alignment graph with respect to strand
@@ -33,48 +38,42 @@ public class Graph {
     {
         Alignment alignment;
         PriorityQueue<Node> nodeQueue = null;
-        int i, ref_i, offset, node_type;
+        int i, ref_i, offset, node_type, alignment_start, alignment_reference_index;
         Node prev=null, cur=null, ret=null;
         boolean strand = false;
 
-        if(record.getReferenceIndex() != sequence.getContigIndex()) {
+        alignment_start = record.getAlignmentStart();
+        alignment_reference_index = record.getReferenceIndex();
+
+        if(alignment_reference_index != sequence.getContigIndex()) {
             throw new Exception("SAMRecord contig does not match the current reference sequence contig");
-        }
-        else if(record.getAlignmentStart() < this.position_start) {
-            // possible race condition otherwise.
-            throw new Exception("Unsynchronized addition");
         }
 
         // Get the alignment
-        /*
-           try {
-           alignment = new Alignment(record, sequence);
-           } catch(Alignment.AlignmentException e) {
-           return null;
-           }
-           */
         alignment = new Alignment(record, sequence);
         strand = record.getReadNegativeStrandFlag(); 
 
-        // Reset if there are no nodes
         synchronized (this) {
+            if(alignment_start < this.position_start) {
+                // possible race condition otherwise.
+                throw new Exception("Unsynchronized addition");
+            }
+
+            // Reset if there are no nodes
             if(0 == this.nodes.size()) {
-                this.position_start = record.getAlignmentStart();
+                this.position_start = alignment_start;
                 if(Alignment.GAP == alignment.reference[0]) { // insertion
                     this.position_start--;
                 }
-                // TOD0: could be insertions then deletions at the start, which will cause errors, not implemented yet
+                // TODO: could be insertions then deletions at the start, which will cause errors, not implemented yet
                 this.position_end = this.position_start;
-                this.contig = record.getReferenceIndex() + 1;
+                this.contig = alignment_reference_index + 1;
+                this.nodes.clear();
+                this.coverage.clear();
+                this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
+                this.coverage.add(new Integer(0));
             }
         }
-
-        // HERE
-        /*
-           System.err.println(record.toString()); 
-           alignment.print(System.err);
-           System.err.println("HERE: " + record.getAlignmentStart() + "-" + record.getAlignmentEnd());
-           */
 
         /* Reminders:
            i - index from 0 to 'alignment.length' 
@@ -107,9 +106,10 @@ public class Graph {
             // Create the node
             cur = this.addNode(new Node((char)alignment.read[i], 
                         node_type,
-                        record.getReferenceIndex() + 1,
-                        record.getAlignmentStart() + ref_i,
-                        prev),
+                        alignment_reference_index + 1,
+                        alignment_start + ref_i,
+                        prev,
+                        this.nodeComparator),
                     prev);
 
             // save return node
@@ -132,7 +132,6 @@ public class Graph {
     private synchronized Node addNode(Node node, Node prev)
         throws Exception
     {
-
         Node curNode = null;
         int i;
 
@@ -151,8 +150,8 @@ public class Graph {
                 }
             }
             // Add new queues if necessary
-            for(i=this.position_end;i<=node.position;i++) {
-                this.nodes.add(new PriorityQueue<Node>(1, new NodeComparator()));
+            for(i=this.position_end;i<node.position;i++) {
+                this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
                 this.coverage.add(new Integer(0));
             }
             // Get the proper queue and add
@@ -177,8 +176,8 @@ public class Graph {
         }
         // Update edges
         if(null != prev) {
-            curNode.addToPrev(prev);
-            prev.addToNext(curNode);
+            curNode.addToPrev(prev, this.nodeComparator);
+            prev.addToNext(curNode, this.nodeComparator);
         }
 
         return curNode;
@@ -192,7 +191,6 @@ public class Graph {
     {
         PriorityQueue<Node> nodeQueue = null;
         Iterator<Node> nodeQueueIter = null;
-        NodeComparator nodeComparator = null;
         Node curNode = null;
 
         // See if there are any nodes at this position
@@ -204,10 +202,9 @@ public class Graph {
 
         // Go through all nodes at this position etc.
         nodeQueueIter = nodeQueue.iterator();
-        nodeComparator = new NodeComparator();
         while(nodeQueueIter.hasNext()) {
             curNode = nodeQueueIter.next();
-            if(nodeComparator.equals(curNode, node)) {
+            if(this.nodeComparator.equals(curNode, node)) {
                 return curNode;
             }
         }
@@ -289,36 +286,17 @@ public class Graph {
         }
     }
 
-    public void prune(int referenceIndex, int alignmentStart, int offset)
+    public synchronized void prune(int referenceIndex, int alignmentStart, int offset)
         throws Exception
     {
         if(this.contig != referenceIndex+1) {
             this.destroy();
             this.contig = referenceIndex +  1;
-            this.position_end = this.position_end = alignmentStart;
+            this.position_start = this.position_end = alignmentStart;
+            this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
+            this.coverage.add(new Integer(0));
         }
         else {
-
-            //PriorityQueue<Node> queue = null;
-            /*
-               while(this.position_start < alignmentStart - offset) {
-            // remove nodes from the queue
-
-            // Is this necessary? 
-            queue = this.nodes.get(0); 
-            if(null != queue) {
-            while(null != queue.peek()) {
-            queue.poll().destroy();
-            }
-            }
-
-            // destroy the first node in the queue
-            queue = null;
-            this.nodes.remove(0); 
-            this.coverage.remove(0);
-            this.position_start++;
-               }
-               */
             if(this.position_start < alignmentStart - offset) {
                 this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size()-1);
                 this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size()-1);
@@ -327,7 +305,7 @@ public class Graph {
         }
     }
 
-    private void destroy()
+    private synchronized void destroy()
     {
         int i;
         PriorityQueue<Node> queue;
@@ -385,6 +363,42 @@ public class Graph {
                         throw new Exception("Inconsistent graph");
                     }
                 }
+            }
+        }
+    }
+
+    // Debugging function
+    public void printDebug()
+        throws Exception
+    {
+        int i;
+        System.err.println(this.contig + ":" + this.position_start + "-" + this.position_end + " " + this.nodes.size() + " " + this.coverage.size());
+
+        for(i=0;i<this.coverage.size();i++) {
+            Node prev = null;
+            PriorityQueue<Node> q1 = this.nodes.get(i);
+            // copy queue
+            PriorityQueue<Node> q2 = new PriorityQueue<Node>(1, new NodeComparator());
+            Iterator<Node> iter = q1.iterator();
+
+            while(iter.hasNext()) {
+                q2.add(iter.next());
+            }
+
+            System.err.println((i+1)+" "+this.coverage.get(i)+" ");
+            while(0 != q2.size()) {
+                Node n = q2.poll();
+                n.print(System.err);
+                n.checkList(n.prev.listIterator(), this.nodeComparator);
+                n.checkList(n.next.listIterator(), this.nodeComparator);
+                if(null != prev) {
+                    int c = this.nodeComparator.compare(prev, n);
+                    if(0 < c) {
+                        throw new Exception("OUT OF ORDER");
+                    }
+                    //System.err.println("comparison="+c);
+                }
+                prev = n;
             }
         }
     }

@@ -1,6 +1,7 @@
 package srma;
 
 import java.util.*;
+import net.sf.samtools.*;
 
 // Notes: optimized for use in SRMA.java
 public class ThreadPoolLinkedList<E> {
@@ -48,7 +49,8 @@ public class ThreadPoolLinkedList<E> {
         return this.buffer.removeFirst();
     }
 
-    public LinkedList<LinkedList<E>> getThreadLists(int numThreads)
+    // Only returns items from the specified contig.  Stops when an entry is not found.
+    public LinkedList<LinkedList<E>> getThreadLists(int numThreads, int contig)
     {
         int i = 0;
         int size = this.size();
@@ -60,6 +62,17 @@ public class ThreadPoolLinkedList<E> {
 
         i=0;
         while(0 != size) {
+            E e = this.buffer.getFirst();
+            SAMRecord rec = null;
+            if(e instanceof SAMRecord) {
+                rec = (SAMRecord)e;
+            }
+            else {
+                rec = ((AlignRecord)this.buffer.getFirst()).record;
+            }
+            if(rec.getReferenceIndex()+1 != contig) {
+                break;
+            }
             threadLists.get(i).add(this.buffer.removeFirst());
             size--;
             i++;
@@ -72,7 +85,7 @@ public class ThreadPoolLinkedList<E> {
     }
 
     // Do not use this if we mean to flush
-    public LinkedList<LinkedList<AlignRecord>> getAlignRecordThreadLists(int numThreads, int alignmentStartLowerBound)
+    public LinkedList<LinkedList<AlignRecord>> getAlignRecordThreadLists(int numThreads, int contig, int alignmentStartLowerBound)
     {
         int i = 0;
         int size = this.size();
@@ -84,8 +97,16 @@ public class ThreadPoolLinkedList<E> {
 
         i=0;
         while(0 != size) {
-            AlignRecord rec = (AlignRecord)this.buffer.getFirst();
-            if(alignmentStartLowerBound <= rec.record.getAlignmentEnd()) {
+            E e = this.buffer.getFirst();
+            SAMRecord rec = null;;
+            if(e instanceof SAMRecord) {
+                rec = (SAMRecord)e;
+            }
+            else {
+                rec = ((AlignRecord)e).record;
+            }
+            if(rec.getReferenceIndex()+1 != contig ||
+                    alignmentStartLowerBound <= rec.getAlignmentEnd()) {
                 break;
             }
             threadLists.get(i).add((AlignRecord)this.buffer.removeFirst());
@@ -98,5 +119,4 @@ public class ThreadPoolLinkedList<E> {
 
         return threadLists;
     }
-
 }
