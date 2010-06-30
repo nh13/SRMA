@@ -5,6 +5,8 @@ package srma;
 
 import srma.Align;
 import srma.ThreadPoolLinkedList;
+import srma.AlignRecordComparator;
+import srma.SAMRecordIO;
 
 import net.sf.samtools.*;
 import net.sf.samtools.util.*;
@@ -26,9 +28,9 @@ public class SRMA extends CommandLineProgram {
     @Usage (programVersion=PROGRAM_VERSION)
         public final String USAGE = getStandardUsagePreamble() + "Short read micro re-aligner.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The input SAM or BAM file.")
-        public File INPUT=null;
+        public List<File> INPUT = new ArrayList<File>();
     @Option(shortName=StandardOptionDefinitions.OUTPUT_SHORT_NAME, doc="The output SAM or BAM file.", optional=true)
-        public File OUTPUT=null;
+        public List<File> OUTPUT = new ArrayList<File>();
     @Option(shortName=StandardOptionDefinitions.REFERENCE_SHORT_NAME, doc="The reference FASTA file.")
         public File REFERENCE=null;
     @Option(doc="The alignment offset.", optional=true)
@@ -69,14 +71,13 @@ public class SRMA extends CommandLineProgram {
     private ReferenceSequence referenceSequence = null;
     private SAMSequenceDictionary referenceDictionary = null;
 
-    private ThreadPoolLinkedList<SAMRecord> toAddToGraphList = null;
-    private ThreadPoolLinkedList<AlignRecord> toAlignList = null;
-    private PriorityQueue<SAMRecord> toOutputQueue = null;
-    private SAMFileReader in = null;
-    private SAMFileHeader header = null;
-    private SAMFileWriter out = null;
+    private ThreadPoolLinkedList toAddToGraphList = null;
+    private ThreadPoolLinkedList toAlignList = null;
+    private PriorityQueue<AlignRecord> toOutputQueue = null;
+
+    private SAMRecordIO io = null;
+
     private Graph graph = null;
-    private CloseableIterator<SAMRecord> recordIter = null;
     private AlleleCoverageCutoffs alleleCoverageCutoffs = null;
 
     // for RANGES
@@ -108,8 +109,8 @@ public class SRMA extends CommandLineProgram {
     {
         int ctr=0;
         int prevReferenceIndex=-1, prevAlignmentStart=-1;
-        SAMRecord rec = null;
-
+        AlignRecord rec = null;
+        
         // initialize
         this.maxOutputString = new String("");
         this.alleleCoverageCutoffs = new AlleleCoverageCutoffs(MINIMUM_ALLELE_COVERAGE, MINIMUM_ALLELE_PROBABILITY, QUIET_STDERR);
@@ -122,37 +123,16 @@ public class SRMA extends CommandLineProgram {
                 System.err.println("**  Try running multiple processes with RANGES if the speed does not increase.      **");
             }
 
-            // Check input files
-            IoUtil.assertFileIsReadable(INPUT);
             IoUtil.assertFileIsReadable(REFERENCE);
 
+            if(0 == this.OUTPUT.size() && !QUIET) {
+                throw new Exception("Please use option 'QUIET' when outputting to stdout.");
+            }
+
             // Initialize basic input/output files
-            this.toAddToGraphList = new ThreadPoolLinkedList<SAMRecord>();
-            this.toAlignList = new ThreadPoolLinkedList<AlignRecord>();
-            this.toOutputQueue = new PriorityQueue<SAMRecord>(40, new SAMRecordCoordinateComparator()); 
-            this.in = new SAMFileReader(INPUT, true);
-            this.header = this.in.getFileHeader();
-
-            // Add SRMA to the header
-            SAMProgramRecord programRecord = this.header.getProgramRecord("srma");
-            String programVersion = new String(PROGRAM_VERSION);
-            if(null == programRecord) { // create a new one
-                programRecord = new SAMProgramRecord("srma");
-                programRecord.setProgramVersion(programVersion);
-                this.header.addProgramRecord(programRecord);
-            }
-            else if(0 != programVersion.compareTo(programRecord.getProgramVersion())) { // new version, but srma exists
-                programVersion = new String("srma-" + PROGRAM_VERSION); // append "srma-" so we know it was srma
-                programRecord = this.header.createProgramRecord();
-                programRecord.setProgramVersion(programVersion);
-            }
-
-            if(null == OUTPUT) { // to STDOUT as a SAM
-                this.out = new SAMFileWriterFactory().makeSAMWriter(this.header, true, System.out);
-            }
-            else { // to BAM file
-                this.out = new SAMFileWriterFactory().makeSAMOrBAMWriter(this.header, true, OUTPUT);
-            }
+            this.toAddToGraphList = new ThreadPoolLinkedList();
+            this.toAlignList = new ThreadPoolLinkedList();
+            this.toOutputQueue = new PriorityQueue<AlignRecord>(40, new AlignRecordComparator()); 
 
             // Get references
             this.referenceSequenceFile = new IndexedFastaSequenceFile(REFERENCE);
@@ -164,8 +144,7 @@ public class SRMA extends CommandLineProgram {
             // Get ranges
             if(null == RANGES && null == RANGE) {
                 this.useRanges = false;
-                // initialize SAM iter
-                this.recordIter = this.in.iterator();
+                this.io = new SAMRecordIO(INPUT, OUTPUT, PROGRAM_VERSION);
                 this.referenceSequence = this.referenceSequenceFile.nextSequence();
             }
             else if(null != RANGES && null != RANGE) {
@@ -199,129 +178,127 @@ public class SRMA extends CommandLineProgram {
                     throw new Exception("Could not find the reference sequence");
                 }
 
-
-                this.recordIter = this.in.query(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName(),
+                this.io = new SAMRecordIO(INPUT, OUTPUT, new String(PROGRAM_VERSION),
+                        this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName(),
                         this.inputRange.startPosition,
-                        this.inputRange.endPosition,
-                        false);
+                        this.inputRange.endPosition);
                 this.outputRange = this.outputRangesIterator.next();
             }
 
             // Initialize graph
-            this.graph = new Graph(this.header);
+            this.graph = new Graph(this.io.mergedHeader);
 
             // Get first record
-            rec = this.getNextSAMRecord();
+            rec = this.getNextAlignRecord();
 
             if(null != rec) {
                 // Do an initial prune
-                this.graph.prune(rec.getReferenceIndex(), rec.getAlignmentStart(), 0);
+                this.graph.prune(rec.record.getReferenceIndex(), rec.record.getAlignmentStart(), 0);
+            }
 
-                // Continue while either
-                // - there is input
-                // - there are records to add to the graph
-                // - there are records to re-align
-                while(null != rec ||
-                        0 < this.toAddToGraphList.size() ||
-                        0 < this.toAlignList.size()) 
-                {
-                    /*
-                       System.err.println("WHILE LOOP (" + 
-                       (null != rec) +
-                       ") (" +
-                       (0 < this.toAddToGraphList.size()) +
-                       ") (" +
-                       (0 < this.toAlignList.size()) +
-                       ")");
-                       */
-                    if(null != rec) {
-                        if(rec.getReadUnmappedFlag()) { 
-                            // TODO
-                            // Print this out somehow in some order somewhere
-                            rec = this.getNextSAMRecord();
-                            continue;
-                        }
-                        else if(rec.getMappingQuality() < MIN_MAPQ) {
-                            // TODO
-                            // Print this out somehow in some order somewhere
-                            rec = this.getNextSAMRecord();
-                            continue;
-                        }
-                        else {
-                            // Make sure that it is sorted
-                            if(rec.getReferenceIndex() < prevReferenceIndex || (rec.getReferenceIndex() == prevReferenceIndex && rec.getAlignmentStart() < prevAlignmentStart)) {
-                                throw new Exception("SAM/BAM file is not co-ordinate sorted.");
-                            }
-                            prevReferenceIndex = rec.getReferenceIndex();
-                            prevAlignmentStart = rec.getAlignmentStart();
-                        }
+            // Continue while either
+            // - there is input
+            // - there are records to add to the graph
+            // - there are records to re-align
+            while(null != rec ||
+                    0 < this.toAddToGraphList.size() ||
+                    0 < this.toAlignList.size()) 
+            {
+                /*
+                   System.err.println("WHILE LOOP (" + 
+                   (null != rec) +
+                   ") (" +
+                   (0 < this.toAddToGraphList.size()) +
+                   ") (" +
+                   (0 < this.toAlignList.size()) +
+                   ")");
+                   */
+                if(null != rec) {
+                    if(rec.record.getReadUnmappedFlag()) { 
+                        // TODO
+                        // Print this out somehow in some order somewhere
+                        rec = this.getNextAlignRecord();
+                        continue;
                     }
-
-                    // Process the graph if either:
-                    // - no more input
-                    // - we are moving to a new contig
-                    // - we have reached the queue size
-                    // RANGES? TODO
-                    if(null == rec 
-                            || this.graph.contig != rec.getReferenceIndex()+1 
-                            || this.MAX_QUEUE_SIZE <= this.toAddToGraphList.size())
-
-                    {
-                        // add all to the graph, up to the next contig
-                        // Threaded add to the graph
-                        this.processToAddToGraphList();
-                    }
-
-                    if(null != rec) {
-                        // If we are moving to a new contig, force processing
-                        if(this.graph.contig != rec.getReferenceIndex()+1) {
-                            // Process the rest of the reads
-                            if(0 < this.toAlignList.size()) {
-                                ctr = this.processToAlignList(programRecord, ctr, true);
-                            }
-
-                            // Get new reference sequence
-                            this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(rec.getReferenceIndex()).getSequenceName());
-
-                            if(null == this.referenceSequence) {
-                                throw new Exception("Premature EOF in the reference sequence");
-                            }
-                            else if(this.referenceSequence.getContigIndex() != rec.getReferenceIndex()) {
-                                throw new Exception("Could not find the reference sequence");
-                            }
-                        }
-
-                        // Add the current record to the graph addition list
-                        this.toAddToGraphList.add(rec);
-                    }
-
-                    // Process the available reads
-                    if(null == rec &&
-                            0 == this.toAddToGraphList.size()) 
-                    {
-                        // flush
-                        if(0 < this.toAlignList.size()) {
-                            ctr = this.processToAlignList(programRecord, ctr, true);
-                        }
+                    else if(rec.record.getMappingQuality() < MIN_MAPQ) {
+                        // TODO
+                        // Print this out somehow in some order somewhere
+                        rec = this.getNextAlignRecord();
+                        continue;
                     }
                     else {
-                        // there may be more to come
-                        if(this.MAX_QUEUE_SIZE <= this.toAlignList.size()) 
-                        {
-                            ctr = this.processToAlignList(programRecord, ctr, false);
+                        // Make sure that it is sorted
+                        if(rec.record.getReferenceIndex() < prevReferenceIndex || (rec.record.getReferenceIndex() == prevReferenceIndex && rec.record.getAlignmentStart() < prevAlignmentStart)) {
+                            throw new Exception("SAM/BAM file is not co-ordinate sorted.");
+                        }
+                        prevReferenceIndex = rec.record.getReferenceIndex();
+                        prevAlignmentStart = rec.record.getAlignmentStart();
+                    }
+                }
+
+                // Process the graph if either:
+                // - no more input
+                // - we are moving to a new contig
+                // - we have reached the queue size
+                // RANGES? TODO
+                if(null == rec 
+                        || this.graph.contig != rec.record.getReferenceIndex()+1 
+                        || this.MAX_QUEUE_SIZE <= this.toAddToGraphList.size())
+
+                {
+                    // add all to the graph, up to the next contig
+                    // Threaded add to the graph
+                    this.processToAddToGraphList();
+                }
+
+                if(null != rec) {
+                    // If we are moving to a new contig, force processing
+                    if(this.graph.contig != rec.record.getReferenceIndex()+1) {
+                        // Process the rest of the reads
+                        if(0 < this.toAlignList.size()) {
+                            ctr = this.processToAlignList(ctr, true);
+                        }
+
+                        // Get new reference sequence
+                        this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(rec.record.getReferenceIndex()).getSequenceName());
+
+                        if(null == this.referenceSequence) {
+                            throw new Exception("Premature EOF in the reference sequence");
+                        }
+                        else if(this.referenceSequence.getContigIndex() != rec.record.getReferenceIndex()) {
+                            throw new Exception("Could not find the reference sequence");
                         }
                     }
 
-                    // get new record
-                    if(null != rec) {
-                        rec = this.getNextSAMRecord();
+                    // Add the current record to the graph addition list
+                    this.toAddToGraphList.add(rec);
+                }
+
+                // Process the available reads
+                if(null == rec &&
+                        0 == this.toAddToGraphList.size()) 
+                {
+                    // flush
+                    if(0 < this.toAlignList.size()) {
+                        ctr = this.processToAlignList(ctr, true);
                     }
+                }
+                else {
+                    // there may be more to come
+                    if(this.MAX_QUEUE_SIZE <= this.toAlignList.size()) 
+                    {
+                        ctr = this.processToAlignList(ctr, false);
+                    }
+                }
+
+                // get new record
+                if(null != rec) {
+                    rec = this.getNextAlignRecord();
                 }
             }
 
             // Close input/output files
-            this.in.close();
-            this.out.close();
+            this.io.closeAll();
 
             this.endTime = System.nanoTime();
 
@@ -360,30 +337,27 @@ public class SRMA extends CommandLineProgram {
         return 0;
     }
 
-    private SAMRecord getNextSAMRecord()
+    private AlignRecord getNextAlignRecord()
         throws Exception
     {
-        if(this.recordIter.hasNext()) {
-            return this.recordIter.next();
+        if(this.io.hasNextAlignRecord()) {
+            return this.io.getNextAlignRecord();
         }
         else if(this.useRanges) {
             do {
                 if(this.inputRangesIterator.hasNext()) {
-                    // close previous iterator
-                    this.recordIter.close();
                     // get new range
                     this.inputRange = this.inputRangesIterator.next();
-                    // seek in the SAM file
-                    this.recordIter = this.in.query(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName(),
+                    // move to new range
+                    this.io.query(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName(),
                             this.inputRange.startPosition,
-                            this.inputRange.endPosition,
-                            false);
+                            this.inputRange.endPosition);
                 }
                 else {
-                    this.recordIter.close();
+                    this.io.closeInput();
                     return null;
                 }
-            } while(false == this.recordIter.hasNext());
+            } while(false == this.io.hasNextAlignRecord());
 
             this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName());
             if(null == this.referenceSequence) {
@@ -393,10 +367,10 @@ public class SRMA extends CommandLineProgram {
                 throw new Exception("Could not find the reference sequence");
             }
 
-            return this.recordIter.next();
+            return this.io.getNextAlignRecord();
         }
         else {
-            this.recordIter.close();
+            this.io.closeInput();
             return null;
         }
     }
@@ -429,15 +403,15 @@ public class SRMA extends CommandLineProgram {
 
             int i, size;
             LinkedList<Thread> threads = null;
-            LinkedList<LinkedList<SAMRecord>> toAddToGraphThreadLists = null;
+            LinkedList<LinkedList<AlignRecord>> toAddToGraphThreadLists = null;
             LinkedList<LinkedList<AlignRecord>> toAlignThreadLists = null;
 
             if(0 == this.toAlignList.size() 
-                    && this.graph.contig != this.toAddToGraphList.getFirst().getReferenceIndex()+1) 
+                    && this.graph.contig != this.toAddToGraphList.getFirst().record.getReferenceIndex()+1) 
             {
                 // Move to a new contig
-                this.graph.prune(this.toAddToGraphList.getFirst().getReferenceIndex(),
-                        this.toAddToGraphList.getFirst().getAlignmentStart(),
+                this.graph.prune(this.toAddToGraphList.getFirst().record.getReferenceIndex(),
+                        this.toAddToGraphList.getFirst().record.getAlignmentStart(),
                         0);
             }
 
@@ -490,7 +464,7 @@ public class SRMA extends CommandLineProgram {
         }
     }
 
-    private int processToAlignList(SAMProgramRecord programRecord, int ctr, boolean flush)
+    private int processToAlignList(int ctr, boolean flush)
         throws Exception
     {
         SAMRecord lastSAMRecord = null;
@@ -520,7 +494,7 @@ public class SRMA extends CommandLineProgram {
                 threads = new LinkedList<Thread>();
                 for(i=0;i<this.NUM_THREADS;i++) {
                     threads.add(new AlignThread(i, 
-                                programRecord, 
+                                this.io.programRecord, 
                                 toAlignThreadLists.get(i).listIterator()));
                 }
 
@@ -546,9 +520,8 @@ public class SRMA extends CommandLineProgram {
                     }
                     if(iters.get(i).hasNext()) {
                         AlignRecord rec = iters.get(i).next();
-
                         lastSAMRecord = rec.record;
-                        this.toOutputQueue.add(lastSAMRecord);
+                        this.toOutputQueue.add(rec);
                         ctr++;
 
                         size--;
@@ -574,10 +547,10 @@ public class SRMA extends CommandLineProgram {
 
         // Output alignments
         while(0 < this.toOutputQueue.size()) {
-            SAMRecord curSAMRecord = this.toOutputQueue.peek();
+            AlignRecord rec = this.toOutputQueue.peek();
             // alignment could have moved (+OFFSET), with another moving (-OFFSET) 
-            if(flush || curSAMRecord.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
-                this.out.addAlignment(this.toOutputQueue.poll());
+            if(flush || rec.record.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
+                this.io.output(this.toOutputQueue.poll());
             }
             else { // other alignments could be less than
                 break;
@@ -662,33 +635,33 @@ public class SRMA extends CommandLineProgram {
 
     private class GraphThread extends Thread {
         private int threadID;
-        private ListIterator<SAMRecord> iterSAMRecords;
+        private ListIterator<AlignRecord> iterAlignRecords;
         List<AlignRecord> toAlignThreadList;
 
         public GraphThread(int threadID,
-                ListIterator<SAMRecord> iterSAMRecords,
+                ListIterator<AlignRecord> iterAlignRecords,
                 List<AlignRecord> toAlignThreadList)
         {
             this.threadID = threadID;
-            this.iterSAMRecords = iterSAMRecords;
+            this.iterAlignRecords = iterAlignRecords;
             this.toAlignThreadList = toAlignThreadList;
         }
 
         public void run()
         {
-            while(this.iterSAMRecords.hasNext()) {
+            while(this.iterAlignRecords.hasNext()) {
                 // Get record
-                SAMRecord rec = this.iterSAMRecords.next();
+                AlignRecord rec = this.iterAlignRecords.next();
 
                 Node recNode = null;
 
-                if(graph.contig != rec.getReferenceIndex()+1) {
+                if(graph.contig != rec.record.getReferenceIndex()+1) {
                     break;
                 }
 
                 // Add to the graph 
                 try {
-                    recNode = graph.addSAMRecord(rec, referenceSequence);
+                    recNode = graph.addSAMRecord(rec.record, referenceSequence);
                 } catch (Exception e) {
                     e.printStackTrace();
                     System.err.println("Please report bugs to srma-help@lists.sourceforge.net");
@@ -696,7 +669,8 @@ public class SRMA extends CommandLineProgram {
                 }
 
                 // Keep track of start node
-                toAlignThreadList.add(new AlignRecord(rec, recNode));
+                rec.setNode(recNode);
+                toAlignThreadList.add(rec);
             }
         }
     }

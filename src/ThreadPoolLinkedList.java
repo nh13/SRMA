@@ -4,17 +4,17 @@ import java.util.*;
 import net.sf.samtools.*;
 
 // Notes: optimized for use in SRMA.java
-public class ThreadPoolLinkedList<E> {
+public class ThreadPoolLinkedList {
 
-    private LinkedList<E> buffer; // internal use only
+    private LinkedList<AlignRecord> buffer; // internal use only
 
     public ThreadPoolLinkedList()
     {
-        this.buffer = new LinkedList<E>();
+        this.buffer = new LinkedList<AlignRecord>();
     }
 
     // Add to buffer
-    public void add(E e)
+    public void add(AlignRecord e)
     {
         this.buffer.add(e);
     }
@@ -24,7 +24,7 @@ public class ThreadPoolLinkedList<E> {
         return this.buffer.size();
     }
 
-    public E getFirst()
+    public AlignRecord getFirst()
     {
         if(0 == this.size()) {
             return null;
@@ -32,7 +32,7 @@ public class ThreadPoolLinkedList<E> {
         return this.buffer.getFirst();
     }
 
-    public E getLast()
+    public AlignRecord getLast()
     {
         if(0 == this.size()) {
             return null;
@@ -40,7 +40,7 @@ public class ThreadPoolLinkedList<E> {
         return this.buffer.getLast();
     }
 
-    public E removeFirst()
+    public AlignRecord removeFirst()
     {
 
         if(0 == this.size()) {
@@ -50,27 +50,20 @@ public class ThreadPoolLinkedList<E> {
     }
 
     // Only returns items from the specified contig.  Stops when an entry is not found.
-    public LinkedList<LinkedList<E>> getThreadLists(int numThreads, int contig)
+    public LinkedList<LinkedList<AlignRecord>> getThreadLists(int numThreads, int contig)
     {
         int i = 0;
         int size = this.size();
-        LinkedList<LinkedList<E>> threadLists = new LinkedList<LinkedList<E>>();
+        LinkedList<LinkedList<AlignRecord>> threadLists = new LinkedList<LinkedList<AlignRecord>>();
 
         for(i=0;i<numThreads;i++) {
-            threadLists.add(new LinkedList<E>());
+            threadLists.add(new LinkedList<AlignRecord>());
         }
 
         i=0;
         while(0 != size) {
-            E e = this.buffer.getFirst();
-            SAMRecord rec = null;
-            if(e instanceof SAMRecord) {
-                rec = (SAMRecord)e;
-            }
-            else {
-                rec = ((AlignRecord)this.buffer.getFirst()).record;
-            }
-            if(rec.getReferenceIndex()+1 != contig) {
+            AlignRecord rec = this.buffer.getFirst();
+            if(rec.record.getReferenceIndex()+1 != contig) {
                 break;
             }
             threadLists.get(i).add(this.buffer.removeFirst());
@@ -97,19 +90,12 @@ public class ThreadPoolLinkedList<E> {
 
         i=0;
         while(0 != size) {
-            E e = this.buffer.getFirst();
-            SAMRecord rec = null;;
-            if(e instanceof SAMRecord) {
-                rec = (SAMRecord)e;
-            }
-            else {
-                rec = ((AlignRecord)e).record;
-            }
-            if(rec.getReferenceIndex()+1 != contig ||
-                    alignmentStartUpperBound <= rec.getAlignmentEnd()) {
+            AlignRecord rec = this.buffer.getFirst();
+            if(rec.record.getReferenceIndex()+1 != contig ||
+                    alignmentStartUpperBound <= rec.record.getAlignmentEnd()) {
                 break;
             }
-            threadLists.get(i).add((AlignRecord)this.buffer.removeFirst());
+            threadLists.get(i).add(this.buffer.removeFirst());
             size--;
             i++;
             if(numThreads <= i) {
