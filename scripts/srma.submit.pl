@@ -99,9 +99,9 @@ sub Schema {
 			  <xs:element name="minimumAlleleProbability" type="xs:double" use="optional"/>
 			  <xs:element name="minimumAlleleCoverage" type="xs:integer" use="optional"/>
 			  <xs:element name="maximumTotalCoverage" type="xs:integer" use="optional"/>
-			  <xs:element name="inputBAMFile" type="filePath" use="required">
-			  <xs:element name="outputBAMFile" type="filePath" use="required">
-			  <xs:element name="runDirectory" type="directoryPath" use="required">
+			  <xs:element name="inputBAMFile" type="filePath" use="required"/>
+			  <xs:element name="outputBAMFile" type="filePath" use="required"/>
+			  <xs:element name="runDirectory" type="directoryPath" use="required"/>
 			  <xs:element name="tmpDirectory" type="directoryPath" use="required"/>
 			  <xs:element name="queueType" use="required">
 				<xs:simpleType>
