@@ -56,9 +56,13 @@ public class Graph {
         strand = record.getReadNegativeStrandFlag(); 
 
         synchronized (this) {
+            //System.err.println("HERE " + alignment_start + " " + this.position_start + ":" + this.position_end);
             if(alignment_start < this.position_start) {
-                // possible race condition otherwise.
-                throw new Exception("Unsynchronized addition");
+                for(i=alignment_start;i<this.position_start;i++) {
+                    this.nodes.add(0, new PriorityQueue<Node>(1, this.nodeComparator));
+                    this.coverage.add(0, new Integer(0));
+                }
+                this.position_start = alignment_start;
             }
 
             // Reset if there are no nodes
@@ -74,6 +78,7 @@ public class Graph {
                 this.coverage.clear();
                 this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
                 this.coverage.add(new Integer(0));
+                this.isEmpty = false;
             }
         }
 
