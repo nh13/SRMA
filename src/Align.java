@@ -375,8 +375,6 @@ public class Align {
             rec.setProperPairFlag(false); // not paired any more
             rec.setMateUnmappedFlag(false);
             rec.setMateNegativeStrandFlag(false);
-            rec.setFirstOfPairFlag(false);
-            rec.setSecondOfPairFlag(false);
 
             // entries
             rec.setMateReferenceIndex(SAMRecord.NO_ALIGNMENT_REFERENCE_INDEX);
@@ -405,7 +403,7 @@ public class Align {
     {
         AlignHeapNode curAlignHeapNode = null;
         AlignHeapNode nextAlignHeapNode = null;
-        AlignHeapNode bestAlignHeapNode=null;
+        AlignHeapNode bestAlignHeapNode = null;
         ListIterator<Node.NodeRecord> iter=null;
         AlignHeap heap = null;
         
@@ -671,6 +669,7 @@ public class Align {
                     colorErrors[i] = (byte)read.charAt(i);
                 }
             }
+            // TODO qualities?
         }
         else if(correctBases) { // bases were corrected
             if(strand) {

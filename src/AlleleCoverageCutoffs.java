@@ -24,8 +24,6 @@ public class AlleleCoverageCutoffs {
             System.err.println("Allele coverage cutoffs:");
         }
         while(lastQ < MINIMUM_ALLELE_COVERAGE) {
-            int curAnswer = 0;
-
             // Dynamic programming for binomial co-efficients
             int k;
             Vector<Integer> v = new Vector<Integer>();

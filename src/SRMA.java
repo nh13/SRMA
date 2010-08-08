@@ -65,7 +65,6 @@ public class SRMA extends CommandLineProgram {
 
     private final static int SRMA_OUTPUT_CTR = 100;
     private int maxOutputStringLength = 0;
-    private String maxOutputString = null;
 
     ReferenceSequenceFile referenceSequenceFile = null; 
     private ReferenceSequence referenceSequence = null;
@@ -112,7 +111,6 @@ public class SRMA extends CommandLineProgram {
         AlignRecord rec = null;
         
         // initialize
-        this.maxOutputString = new String("");
         this.alleleCoverageCutoffs = new AlleleCoverageCutoffs(MINIMUM_ALLELE_COVERAGE, MINIMUM_ALLELE_PROBABILITY, QUIET_STDERR);
 
         try { 
@@ -140,6 +138,9 @@ public class SRMA extends CommandLineProgram {
                 throw new Exception("Reference sequence file was not indexed.");
             }
             this.referenceDictionary = this.referenceSequenceFile.getSequenceDictionary();
+            if(null == this.referenceDictionary) {
+                throw new Exception("Could not find FASTA dictionary file.");
+            }
 
             // Get ranges
             if(null == RANGES && null == RANGE) {
@@ -186,7 +187,7 @@ public class SRMA extends CommandLineProgram {
             }
 
             // Initialize graph
-            this.graph = new Graph(this.io.mergedHeader);
+            this.graph = new Graph();
 
             // Get first record
             rec = this.getNextAlignRecord();
@@ -382,16 +383,16 @@ public class SRMA extends CommandLineProgram {
         }
         else {
             // TODO: enforce column width ?
+            int i;
             String outputString = new String("Records processsed: " + ctr + " (last " + rec.getReferenceName() + ":" + rec.getAlignmentStart() + "-" + rec.getAlignmentEnd() + ")");
             int outputStringLength = outputString.length();
             if(this.maxOutputStringLength < outputStringLength) {
-                int i;
-                for(i=this.maxOutputStringLength;i< outputStringLength;i++) { // pad with blanks
-                    this.maxOutputString += " ";
-                }
                 this.maxOutputStringLength = outputStringLength;
             }
-            System.err.print("\r" + outputString + this.maxOutputString);
+            System.err.print("\r" + outputString);
+            for(i=outputStringLength;i<this.maxOutputStringLength;i++) {
+                System.err.print(" ");
+            }
         }
     }
 
