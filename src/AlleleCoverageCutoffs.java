@@ -51,13 +51,13 @@ public class AlleleCoverageCutoffs {
             if(MINIMUM_ALLELE_COVERAGE < curQ) {
                 this.minQ.add(MINIMUM_ALLELE_COVERAGE); 
                 if(!QUIET) {
-                    System.err.println("coverage:  "+curCoverage+"\tminimum allele coverage: "+MINIMUM_ALLELE_COVERAGE);
+                    System.err.println("coverage: "+curCoverage+"\tminimum allele coverage: "+MINIMUM_ALLELE_COVERAGE);
                 }
             }
             else {
                 this.minQ.add(curQ); 
                 if(!QUIET) {
-                    System.err.println("coverage:  "+curCoverage+"\tminimum allele coverage: "+curQ);
+                    System.err.println("coverage: "+curCoverage+"\tminimum allele coverage: "+curQ);
                 }
             }
             this.maxCoverage = curCoverage;
