@@ -18,7 +18,7 @@ public class SAMRecordIO
     private List<SAMFileReader> readers;
     private List<SAMFileWriter> writers;
     private List<CloseableIterator<SAMRecord>> recordsIters = null;
-    private List<AlignRecord> buffer; // should be one per input file
+    private List<AlignRecord> buffer = null; // should be one per input file
     boolean inputClosed = true;
 
     public SAMRecordIO(List<File> inputs, List<File> outputs, String programVersion)
@@ -61,7 +61,6 @@ public class SAMRecordIO
 
         this.readers = new ArrayList<SAMFileReader>();
         this.writers = new ArrayList<SAMFileWriter>();
-        this.buffer = new LinkedList<AlignRecord>();
 
         programVersion = new String("srma-" + programVersion); // append "srma-" so we know it was srma
 
@@ -120,6 +119,8 @@ public class SAMRecordIO
     {
         ListIterator<CloseableIterator<SAMRecord>> iter = null;
         int fileIndex = 0;
+        
+        this.buffer = new LinkedList<AlignRecord>();
 
         iter = this.recordsIters.listIterator();
         while(iter.hasNext()) {

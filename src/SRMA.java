@@ -90,6 +90,10 @@ public class SRMA extends CommandLineProgram {
     private Iterator<Range> outputRangesIterator = null;
     private Range outputRange = null;
 
+    // IMPORTANT: must be update when we move to a new range
+    private int prevReferenceIndex=-1;
+    private int prevAlignmentStart=-1;
+
     public static void main(final String[] args) {
         new SRMA().instanceMain(args);
     }
@@ -107,7 +111,6 @@ public class SRMA extends CommandLineProgram {
     protected int doWork() 
     {
         int ctr=0;
-        int prevReferenceIndex=-1, prevAlignmentStart=-1;
         AlignRecord rec = null;
         
         // initialize
@@ -367,6 +370,10 @@ public class SRMA extends CommandLineProgram {
             else if(this.referenceSequence.getContigIndex() != this.inputRange.referenceIndex) {
                 throw new Exception("Could not find the reference sequence");
             }
+    
+            // previous not be valid if the ranges are closely spaced
+            this.prevReferenceIndex=-1;
+            this.prevAlignmentStart=-1;
 
             return this.io.getNextAlignRecord();
         }
