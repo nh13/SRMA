@@ -363,14 +363,6 @@ public class SRMA extends CommandLineProgram {
                 }
             } while(false == this.io.hasNextAlignRecord());
 
-            this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(this.inputRange.referenceIndex).getSequenceName());
-            if(null == this.referenceSequence) {
-                throw new Exception("Premature EOF in the reference sequence");
-            }
-            else if(this.referenceSequence.getContigIndex() != this.inputRange.referenceIndex) {
-                throw new Exception("Could not find the reference sequence");
-            }
-    
             // previous not be valid if the ranges are closely spaced
             this.prevReferenceIndex=-1;
             this.prevAlignmentStart=-1;
@@ -557,7 +549,9 @@ public class SRMA extends CommandLineProgram {
         while(0 < this.toOutputQueue.size()) {
             AlignRecord rec = this.toOutputQueue.peek();
             // alignment could have moved (+OFFSET), with another moving (-OFFSET) 
-            if(flush || rec.record.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
+            if(flush || 
+                    rec.record.getReferenceIndex() + 1 != graph.contig || // different contig
+                    rec.record.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
                 this.io.output(this.toOutputQueue.poll());
             }
             else { // other alignments could be less than

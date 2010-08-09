@@ -80,7 +80,7 @@ public class Ranges {
                 
             String chrName = range.substring(0, colon);
             if(null == hm.get(chrName)) {
-                throw new Exception("Could not find reference name " + chrName + " in RANGE");
+                throw new Exception("Could not find reference name [" + chrName + "] in RANGE");
             }
             referenceIndex = (int)hm.get(chrName);
 
@@ -134,13 +134,15 @@ public class Ranges {
         while(st.hasMoreTokens()) {
             if(0 == i) {
                 Integer tmpInteger = -1;
+                String chrName = null;
                 try {
-                    tmpInteger = (int)m.get(new String(st.nextToken()));
+                    chrName = new String(st.nextToken());
+                    tmpInteger = (int)m.get(chrName);
                 } catch(java.lang.NullPointerException e) {
-                    throw new Exception("Could not find reference name in RANGES on line " + lineNumber);
+                    throw new Exception("Could not find reference name ["+chrName+"] in RANGES on line " + lineNumber);
                 }
                 if(null == tmpInteger) {
-                    throw new Exception("Could not find reference name in RANGES on line " + lineNumber);
+                    throw new Exception("Could not find reference name ["+chrName+"] in RANGES on line " + lineNumber);
                 }
                 referenceIndex = (int)tmpInteger;
             }
