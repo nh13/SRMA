@@ -13,6 +13,15 @@ import net.sf.samtools.*;
 public class Ranges {
 
     private LinkedList<Range> ranges = null;
+    
+    public Ranges(SAMSequenceDictionary referenceDictionary)
+    {
+        int i;
+        this.ranges = new LinkedList<Range>();
+        for(i=0;i<referenceDictionary.size();i++) {
+            this.ranges.add(new Range(i, 1, referenceDictionary.getSequence(i).getSequenceLength()));
+        }
+    }
 
     public Ranges(File file, SAMSequenceDictionary referenceDictionary, int offset)
     {
@@ -43,11 +52,6 @@ public class Ranges {
             e.printStackTrace();
             System.exit(1);
         }
-    }
-
-    public Ranges(File file, SAMSequenceDictionary referenceDictionary)
-    {
-        this(file, referenceDictionary, 0);
     }
 
     public Ranges(String range, SAMSequenceDictionary referenceDictionary, int offset)
