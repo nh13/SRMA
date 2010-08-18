@@ -18,50 +18,17 @@ public class SAMRecordIO
     private List<SAMFileReader> readers;
     private List<SAMFileWriter> writers;
     private List<CloseableIterator<SAMRecord>> recordsIters = null;
-    private List<AlignRecord> buffer; // should be one per input file
-    boolean inputClosed = true;
+    private List<AlignRecord> buffer = null; // should be one per input file
 
-    public SAMRecordIO(List<File> inputs, List<File> outputs, String programVersion)
-        throws Exception
-    {
-        ListIterator<SAMFileReader> readersIter = null;
-
-        this.init(inputs, outputs, programVersion);
-
-        // Open output iterators ...
-        this.recordsIters = new ArrayList<CloseableIterator<SAMRecord>>();
-        readersIter = this.readers.listIterator();
-        while(readersIter.hasNext()) {
-            this.recordsIters.add(readersIter.next().iterator());
-        }
-        this.initBuffer();
-    }
-
-    public SAMRecordIO(List<File> inputs, List<File> outputs, String programVersion, String sequenceName, int startPosition, int endPosition)
-        throws Exception
-    {
-        ListIterator<SAMFileReader> readersIter = null;
-
-        this.init(inputs, outputs, programVersion);
-
-        // Open output iterators ...
-        this.recordsIters = new ArrayList<CloseableIterator<SAMRecord>>();
-        readersIter = this.readers.listIterator();
-        while(readersIter.hasNext()) {
-            this.recordsIters.add(readersIter.next().query(sequenceName, startPosition, endPosition, false));
-        }
-        this.initBuffer();
-    }
-
-    private void init(List<File> inputs, List<File> outputs, String programVersion)
+    public SAMRecordIO(List<File> inputs, List<File> outputs, String programVersion, boolean useRanges)
         throws Exception
     {
         ListIterator<File> inputsIter = null;
         ListIterator<File> outputsIter = null;
+        ListIterator<SAMFileReader> readersIter = null;
 
         this.readers = new ArrayList<SAMFileReader>();
         this.writers = new ArrayList<SAMFileWriter>();
-        this.buffer = new LinkedList<AlignRecord>();
 
         programVersion = new String("srma-" + programVersion); // append "srma-" so we know it was srma
 
@@ -80,6 +47,9 @@ public class SAMRecordIO
             IoUtil.assertFileIsReadable(file);
 
             fileReader = new SAMFileReader(file, true);
+            if(useRanges && !fileReader.hasIndex()) {
+                throw new Exception("BAM files and BAM indexes when using the RANGE or RANGES option"); 
+            }
             fileHeader = fileReader.getFileHeader();
             this.programRecord = fileHeader.getProgramRecord("srma");
 
@@ -114,12 +84,22 @@ public class SAMRecordIO
         else if(1 == outputs.size()) { // one output file
             this.writers.add(new SAMFileWriterFactory().makeSAMOrBAMWriter(this.mergedHeader, true, outputs.get(0)));
         }
+
+        // Default iterators
+        this.recordsIters = new ArrayList<CloseableIterator<SAMRecord>>();
+        readersIter = this.readers.listIterator();
+        while(readersIter.hasNext()) {
+            this.recordsIters.add(readersIter.next().iterator());
+        }
+
     }
 
     private void initBuffer()
     {
         ListIterator<CloseableIterator<SAMRecord>> iter = null;
         int fileIndex = 0;
+
+        this.buffer = new LinkedList<AlignRecord>();
 
         iter = this.recordsIters.listIterator();
         while(iter.hasNext()) {
@@ -131,7 +111,6 @@ public class SAMRecordIO
             }
             fileIndex++;
         }
-        inputClosed = false;
     }
 
     private void addToBuffer(SAMRecord rec, int fileIndex) 
@@ -178,16 +157,21 @@ public class SAMRecordIO
     public void query(String sequenceName, int startPosition, int endPosition)
     {
         ListIterator<SAMFileReader> readersIter = null;
+        ListIterator<CloseableIterator<SAMRecord>> recordsItersIter = null;
+
+        readersIter = this.readers.listIterator();
+        recordsItersIter = this.recordsIters.listIterator();
 
         // Close all
-        this.closeInput();
-
-        // Open new output iterators 
-        this.recordsIters = new ArrayList<CloseableIterator<SAMRecord>>();
-        readersIter = this.readers.listIterator();
         while(readersIter.hasNext()) {
-            this.recordsIters.add(readersIter.next().query(sequenceName, startPosition, endPosition, false));
+            SAMFileReader reader = readersIter.next();
+            CloseableIterator<SAMRecord> recordIter = recordsItersIter.next();
+            if(reader.hasIndex()) {
+                recordIter.close();
+                recordsItersIter.set(reader.query(sequenceName, startPosition, endPosition, false));
+            }
         }
+
         this.initBuffer();
     }
 
@@ -201,20 +185,6 @@ public class SAMRecordIO
         }
     }
 
-    public void closeInput()
-    {
-        ListIterator<CloseableIterator<SAMRecord>> iter = null;
-
-        // Close all
-        iter = this.recordsIters.listIterator();
-        while(iter.hasNext()) {
-            iter.next().close();
-        }
-
-        buffer = null;
-        inputClosed = true;
-    }
-
     public void closeAll()
     {
         int i;
@@ -225,10 +195,8 @@ public class SAMRecordIO
         for(i=0;i<writers.size();i++) {
             writers.get(i).close();
         }
-        if(!inputClosed) {
-            for(i=0;i<recordsIters.size();i++) {
-                recordsIters.get(i).close();
-            }
+        for(i=0;i<recordsIters.size();i++) {
+            recordsIters.get(i).close();
         }
 
         buffer = null;
