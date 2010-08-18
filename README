@@ -1,13 +1,27 @@
 SRMA - short read micro re-aligner 
 
+There are two version of SRMA currently:
+1. A C-version found in the c-code sub-directory.
+2. A Java version found in the java sub-directory.
+
 === To Install ===
 
-Download sam-1.23.jar and picard-1.23.jar and place them in a folder 
+==== Java ====
+1. Move into the java sub-directory.
+
+2. Download sam-1.25.jar and picard-1.25.jar and place them in a folder 
 called lib.
 
-Run:
-ant jar
+3. Run:
+ ant jar
+
+==== C-code ====
+1. Move into the c-code sub-directory.
+
+2. Run:
+ sh autogen.sh && ./configure && make
 
 === For more help ===
 
 see http://srma.sf.net
+

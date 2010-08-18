@@ -68,8 +68,6 @@
 			<zipfileset dir="${scripts}" includes="*.pl" prefix="srma-${srma-version}"/>
 			<zipfileset dir="." includes="ChangeLog" prefix="srma-${srma-version}"/>
 			<zipfileset dir="." includes="TODO" prefix="srma-${srma-version}"/>
-			<zipfileset dir="../." includes="LICENSE" prefix="srma-${srma-version}"/>
-			<zipfileset dir="../." includes="README" prefix="srma-${srma-version}"/>
 		</zip>
 	</target>
 </project>
