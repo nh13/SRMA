@@ -19,8 +19,6 @@ public class AlignHeapNodeComparator implements Comparator<AlignHeapNode> {
 
     public int compare(AlignHeapNode a, AlignHeapNode b)
     {
-        int coordinate;
-
         // sort by:
         // - MIN/MAX genomic coordinate
         // - MIN read offset

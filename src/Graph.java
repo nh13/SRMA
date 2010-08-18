@@ -16,13 +16,11 @@ public class Graph {
     int position_end; // one based
     List<PriorityQueue<Node>> nodes; // zero based
     List<Integer> coverage; // does not count insertions with offset > 0
-    SAMFileHeader header;
     NodeComparator nodeComparator; 
     private boolean isEmpty;
 
-    public Graph(SAMFileHeader header)
+    public Graph()
     {
-        this.header = header;
         this.contig = 1; 
         this.position_start = 1; 
         this.position_end = 1;
@@ -159,7 +157,7 @@ public class Graph {
             this.nodes.get(node.position - this.position_start).add(node);
 
             // do not include insertions that extend an insertion
-            if(Node.INSERTION != node.type || 0 != node.offset) {
+            if(Node.INSERTION != node.type || 0 == node.offset) {
                 this.coverage.set(node.position - this.position_start, node.coverage + this.coverage.get(node.position - this.position_start)); // set coverage
             }
             if(this.position_end < node.position) {
@@ -212,22 +210,6 @@ public class Graph {
         }
 
         return null;
-    }
-
-    public int getPriorityQueueIndexAtPosition(int position)
-    {
-        PriorityQueue<Node> nodeQueue = null;
-
-        if(position < this.position_start || this.position_end < position) {
-            return 0;
-        }
-
-        nodeQueue = this.nodes.get(position - this.position_start);
-        if(0 < nodeQueue.size()) {
-            return position;
-        }
-
-        return 0;
     }
 
     public int getPriorityQueueIndexAtPositionOrGreater(int position)

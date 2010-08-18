@@ -125,7 +125,7 @@ public class Alignment {
         index = readIndex = 0;
         referenceIndex = alignmentStart - 1;
         while(index < this.length) {
-            if(0 == index || Alignment.GAP != reference[index-1]) { // previous not an ins
+            if(0 == index || Alignment.GAP != this.reference[index-1]) { // previous not an ins
                 referenceIndex++;
             }
             if(Alignment.GAP != read[index]) { // M/EQ/X/I

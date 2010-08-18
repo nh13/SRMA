@@ -138,6 +138,9 @@ public class SRMA extends CommandLineProgram {
                 throw new Exception("Reference sequence file was not indexed.");
             }
             this.referenceDictionary = this.referenceSequenceFile.getSequenceDictionary();
+            if(null == this.referenceDictionary) {
+                throw new Exception("Could not find FASTA dictionary file.");
+            }
 
             // Get ranges
             if(null == RANGES && null == RANGE) {
@@ -184,7 +187,7 @@ public class SRMA extends CommandLineProgram {
             }
 
             // Initialize graph
-            this.graph = new Graph(this.io.mergedHeader);
+            this.graph = new Graph();
 
             // Get first record
             rec = this.getNextAlignRecord();
