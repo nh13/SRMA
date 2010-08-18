@@ -1,0 +1,12 @@
+SRMA - short read micro re-aligner 
+
+=== To Install ===
+
+1. Move into the c-code sub-directory.
+
+2. Run:
+ sh autogen.sh && ./configure && make
+
+=== For more help ===
+
+see http://srma.sf.net

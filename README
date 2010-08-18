@@ -21,6 +21,8 @@ called lib.
 2. Run:
  sh autogen.sh && ./configure && make
 
+See the README in the sub-directory for more help.
+
 === For more help ===
 
 see http://srma.sf.net
