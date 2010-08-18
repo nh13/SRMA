@@ -7,9 +7,9 @@
 	<property name="scripts" value="../scripts"/>
 	<property name="main-class" value="srma.SRMA"/>
 	<property name="lib" value="lib"/>
-	<property name="sam-version" value="1.25"/>
-	<property name="picard-version" value="1.25"/>
-	<property name="srma-version" value="0.1.7"/>
+	<property name="sam-version" value="1.29"/>
+	<property name="picard-version" value="1.29"/>
+	<property name="srma-version" value="0.1.8"/>
 
 	<path id="sam-jdk.path">
 		<pathelement location="${lib}/sam-${sam-version}.jar"/>
