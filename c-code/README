@@ -4,7 +4,10 @@ SRMA - short read micro re-aligner
 
 1. Move into the c-code sub-directory.
 
-2. Run:
+2. Download the latest samtools from http://samtools.sf.net 
+and rename the directory to 'samtools' (no quotes).
+
+3. Run:
  sh autogen.sh && ./configure && make
 
 === For more help ===
