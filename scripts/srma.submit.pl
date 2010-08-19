@@ -88,6 +88,7 @@ sub Schema {
 		  <xs:complexType>
 			<xs:sequence>
 			  <xs:element name="srmaJar" type="directoryPath"/>
+			  <xs:element name="srmaBinary" type=dirctoryPath"/>
 			  <xs:element name="javaBin" type="directoryPath"/>
 			  <xs:element name="qsubBin" type="directoryPath"/>
 			  <xs:element name="referenceFasta" type="filePath" use="required/>
@@ -165,7 +166,8 @@ sub ValidateData {
 
 	# global options
 	die("The global options were not found.\n") unless (defined($data->{'srmaOptions'})); 
-	ValidatePath($data->{'srmaOptions'},         'srmaJar',                                  REQUIRED); 
+	ValidatePath($data->{'srmaOptions'},         'srmaBinary',                               OPTIONAL); 
+	ValidatePath($data->{'srmaOptions'},         'srmaJar',                                  OPTIONAL); 
 	ValidatePath($data->{'srmaOptions'},         'javaBin',                                  OPTIONAL); 
 	ValidateFile($data->{'srmaOptions'},         'javaArgs',							     OPTIONAL);
 	ValidatePath($data->{'srmaOptions'},         'qsubBin',                                  OPTIONAL); 
@@ -189,7 +191,8 @@ sub ValidateData {
 	die "Attribute splitSize required with referenceFasta.\n" if (!defined($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}));
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
 	die "Attribute \"splitSize\" may not be used with \"ranges\".\n" if (defined($data->{'srmaOptions'}->{'ranges'}) && 0 < $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'});
-	
+	die "One of 'srmaBinary' or 'srmaJar' must be present" if (!defined($data->{'srmaOptions'}->{'srmaJar'}) && !defined($data->{'srmaOptions'}->{'srmaBinary'}));
+	die "Attribute 'srmaBinary' cannot be used when the 'srmaJar' attribute is present" if (defined($data->{'srmaOptions'}->{'srmaJar'}) && defined($data->{'srmaOptions'}->{'srmaBinary'}));
 	if(defined($data->{'srmaOptions'}->{'range'}) && defined($data->{'srmaOptions'}->{'ranges'})) {
 		die("Both attributes \"range\" and \"ranges\" may not be used in conjuction.\n");
 	}
@@ -310,30 +313,49 @@ sub CreateJobsSRMA {
 	if($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} <= 0) { # do not split
 		my $runFile = CreateRunFile($data, 'srma', "");
 		my $cmd = "";
-		$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
-		$cmd .= "java";
-		if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
-			$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
-			if($data->{'srmaOptions'}->{'javaArgs'} !~ m/\-Xmx/) {
+
+		if(defined($data->{'srmaOptions'}->{'srmaJar'})) { 
+			$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+			$cmd .= "java";
+			if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
+				$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
+				if($data->{'srmaOptions'}->{'javaArgs'} !~ m/\-Xmx/) {
+					$cmd .= " -Xmx2g";
+				}
+			}
+			else {
 				$cmd .= " -Xmx2g";
 			}
+			$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
+			$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
+			$cmd .= " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
+			$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+			$cmd .= " RANGE=".$data->{'srmaOptions'}->{'range'} if(defined($data->{'srmaOptions'}->{'range'}));
+			$cmd .= " RANGES=".$data->{'srmaOptions'}->{'ranges'} if(defined($data->{'srmaOptions'}->{'ranges'}));
+			$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+			$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+			$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+			$cmd .= " MAXIMUM_TOTAL_COVERAGE=".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
+			$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
+			$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
+			$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
+			$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 		}
 		else {
-			$cmd .= " -Xmx2g";
+			$cmd = $data->{'srmaOptions'}->{'srmaBinary'} if defined($data->{'srmaOptions'}->{'srmaBinary'});
+			$cmd .= " -i ".$data->{'srmaOptions'}->{'inputBAMFile'};
+			$cmd .= " -o ".$data->{'srmaOptions'}->{'outputBAMFile'};
+			$cmd .= " -r ".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+			$cmd .= " -R ".$data->{'srmaOptions'}->{'range'} if(defined($data->{'srmaOptions'}->{'range'}));
+			$cmd .= " -Z ".$data->{'srmaOptions'}->{'ranges'} if(defined($data->{'srmaOptions'}->{'ranges'}));
+			$cmd .= " -O ".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+			$cmd .= " -p ".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+			$cmd .= " -c ".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+			$cmd .= " -t ".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
+			$cmd .= " -C " if(defined($data->{'srmaOptions'}->{'correctBases'}));
+			$cmd .= " -n ".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
+			$cmd .= " -Q ".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
 		}
-		$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
-		$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
-		$cmd .= " O=".$data->{'srmaOptions'}->{'outputBAMFile'};
-		$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
-		$cmd .= " RANGE=".$data->{'srmaOptions'}->{'range'} if(defined($data->{'srmaOptions'}->{'range'}));
-		$cmd .= " RANGES=".$data->{'srmaOptions'}->{'ranges'} if(defined($data->{'srmaOptions'}->{'ranges'}));
-		$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
-		$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
-		$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
-		$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
-		$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
-		$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
-		$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 		# Submit the job
 		my @a = (); # empty array for job dependencies
@@ -407,30 +429,46 @@ sub CreateJobsSRMA {
 				my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
 
 				my $cmd = "";
-				$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
-				$cmd .= "java";
-				if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
-					$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
-					if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+				if(defined($data->{'srmaOptions'}->{'srmaJar'})) { 
+					$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+					$cmd .= "java";
+					if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
+						$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
+						if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+							$cmd .= " -Xmx2g";
+						}
+					}
+					else {
 						$cmd .= " -Xmx2g";
 					}
+					$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
+					$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
+					$cmd .= " O=$outputFile";
+					$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+					$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+					$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+					$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+					$cmd .= " MAXIMUM_TOTAL_COVERAGE=".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
+					$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
+					$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
+					$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
+					$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
+					$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 				}
 				else {
-					$cmd .= " -Xmx2g";
+					$cmd = $data->{'srmaOptions'}->{'srmaBinary'} if defined($data->{'srmaOptions'}->{'srmaBinary'});
+					$cmd .= " -i ".$data->{'srmaOptions'}->{'inputBAMFile'};
+					$cmd .= " -o $outputFile";
+					$cmd .= " -r ".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+					$cmd .= " -O ".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+					$cmd .= " -p ".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+					$cmd .= " -c ".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+					$cmd .= " -t ".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
+					$cmd .= " -R \\\"$chrName\:$start-$end\\\"";
+					$cmd .= " -C " if(defined($data->{'srmaOptions'}->{'correctBases'}));
+					$cmd .= " -n ".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
+					$cmd .= " -q ".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
 				}
-				$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
-				$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
-				$cmd .= " O=$outputFile";
-				$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
-				$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
-				$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
-				$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
-				$cmd .= " MAXIMUM_TOTAL_COVERAGE=".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
-				$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
-				$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
-				$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
-				$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
-				$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
 
 				# Submit the job
 				my @a = (); # empty array for job dependencies
@@ -439,9 +477,9 @@ sub CreateJobsSRMA {
 				push(@$outputBAMs, $outputFile);
 			}
 		}
-	if(0 == @$qsubIDs) {
-		die;
-	}
+		if(0 == @$qsubIDs) {
+			die;
+		}
 	}
 }
 
