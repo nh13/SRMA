@@ -16,6 +16,7 @@ public class SAMRecordIO
 
     // Private
     private List<SAMFileReader> readers;
+    private List<SAMFileHeader> readersHeaders;
     private List<SAMFileWriter> writers;
     private List<CloseableIterator<SAMRecord>> recordsIters = null;
     private List<AlignRecord> buffer = null; // should be one per input file
@@ -28,6 +29,7 @@ public class SAMRecordIO
         ListIterator<SAMFileReader> readersIter = null;
 
         this.readers = new ArrayList<SAMFileReader>();
+        this.readersHeaders = new ArrayList<SAMFileHeader>();
         this.writers = new ArrayList<SAMFileWriter>();
 
         programVersion = new String("srma-" + programVersion); // append "srma-" so we know it was srma
@@ -67,13 +69,14 @@ public class SAMRecordIO
             fileHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
 
             this.readers.add(fileReader);
+            this.readersHeaders.add(fileHeader);
             if(1 < outputs.size()) { // to multiple files 
                 this.writers.add(new SAMFileWriterFactory().makeSAMOrBAMWriter(fileHeader, true, outputsIter.next())); 
             }
         }
 
         // Merge headers
-        final SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(this.readers, SAMFileHeader.SortOrder.coordinate, true);
+        final SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(SAMFileHeader.SortOrder.coordinate, this.readersHeaders, true);
         this.mergedHeader = headerMerger.getMergedHeader();
         // Always set to coordinate sorted
         this.mergedHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
