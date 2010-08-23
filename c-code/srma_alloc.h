@@ -1,5 +1,5 @@
-#ifndef DAT_ALLOC_H_
-#define DAT_ALLOC_H_
+#ifndef SRMA_ALLOC_H_
+#define SRMA_ALLOC_H_
 
 /*! @function
   @abstract              wrapper function for malloc
