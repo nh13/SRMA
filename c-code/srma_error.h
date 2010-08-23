@@ -1,5 +1,5 @@
-#ifndef BERROR_H_
-#define BERROR_H_
+#ifndef SRMA_ERROR_H_
+#define SRMA_ERROR_H_
 
 #define BREAK_LINE "************************************************************\n"
 
