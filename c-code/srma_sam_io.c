@@ -6,6 +6,7 @@
 #include "samtools/faidx.h"
 #include "samtools/sam.h"
 #include "samtools/bam.h"
+#include "samtools/sam_header.h"
 #include "srma_alloc.h"
 #include "srma_error.h"
 #include "srma_sam_io.h"
@@ -136,10 +137,11 @@ static inline bam1_t *srma_sam_io_read(srma_sam_io_t *s, int32_t fp_i)
 }
 
 // zero-based co-ordinates
-srma_sam_io_t *srma_sam_io_init(char **fn_inputs, int32_t fn_inputs_num, char **fn_outputs, int32_t fn_outputs_num, int32_t use_ranges)
+srma_sam_io_t *srma_sam_io_init(char **fn_inputs, int32_t fn_inputs_num, char **fn_outputs, int32_t fn_outputs_num, char *fn_output_header, int32_t use_ranges)
 {
 	int32_t i;
 	srma_sam_io_t *s= NULL;
+	bam_header_t **headers = NULL;
 
 	assert(fn_inputs_num == fn_outputs_num || fn_outputs_num == 1);
 
@@ -148,8 +150,10 @@ srma_sam_io_t *srma_sam_io_init(char **fn_inputs, int32_t fn_inputs_num, char **
 	s->fps_in_num = fn_inputs_num;
 	s->fps_in = srma_malloc(sizeof(samfile_t*)*s->fps_in_num, __func__, "s->fps_in");
 	s->fps_in_type = srma_malloc(sizeof(int32_t)*s->fps_in_num, __func__, "s->fps_in_type");
+	headers = srma_malloc(sizeof(bam_header_t*)*s->fps_in_num, __func__, "s->headers");
 	s->fps_out_num = fn_outputs_num;
 	s->fps_out = srma_malloc(sizeof(samfile_t*)*s->fps_out_num, __func__, "s->fps_out");
+
 
 	for(i=0;i<s->fps_in_num;i++) {
 		s->fps_in_type[i] = (1 == __is_sam(fn_inputs[i])) ? SRMA_SAM_IO_TYPE_SAM : SRMA_SAM_IO_TYPE_BAM;
@@ -163,16 +167,27 @@ srma_sam_io_t *srma_sam_io_init(char **fn_inputs, int32_t fn_inputs_num, char **
 				srma_error(__func__, fn_outputs[i], Exit, OpenFileError);
 			}
 		}
+		headers[i] = s->fps_in[i]->header;
 
-		// TODO: merged header ?
+		// TODO: merged header ? wait for SAMtools API?
 		// TODO: program records ? 
+		// TODO: read groups ?
 		// TODO: set coordinate sorted ?
 	}
 
 	if(1 < s->fps_in_num && 1 == s->fps_out_num) { // to a single file and from multiple files
-		// TODO: use a merged header instead of just the first one 
-		srma_error(__func__, "NOT IMPLEMENTED", Exit, OutOfRange);
-		s->fps_out[0] = samopen(fn_outputs[0], __is_sam(fn_outputs[0]) ? "wh" : "wb", s->fps_in[0]->header);
+		bam_header_t *header = NULL;
+		tamFile fp_output_header = sam_open(fn_output_header);
+		if(0 == fp_output_header) {
+			srma_error(__func__, fn_output_header, Warn, OpenFileError);
+			s->fps_out[0] = samopen(fn_outputs[0], __is_sam(fn_outputs[0]) ? "wh" : "wb", s->fps_in[0]->header);
+		}
+		else {
+			header = sam_header_read(fp_output_header);
+			sam_close(fp_output_header);
+			s->fps_out[0] = samopen(fn_outputs[0], __is_sam(fn_outputs[0]) ? "wh" : "wb", header);
+			bam_header_destroy(header);
+		}
 	}
 
 	if(0 == use_ranges) {

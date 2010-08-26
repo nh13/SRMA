@@ -7,6 +7,7 @@ typedef struct {
 	char **fn_outputs;
 	int32_t fn_outputs_num;
 	char *fn_ref;
+	char *fn_output_header;
 
 	int32_t offset;
 	int32_t min_mapq;

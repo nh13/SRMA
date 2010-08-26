@@ -413,14 +413,14 @@ static void srma_core(srma_opt_t *opt)
 		ranges_in = srma_ranges_init_from_fai(fai);
 		ranges_out = srma_ranges_init_from_fai(fai);
 		// init inputs/ouputs/indexes
-		srma_sam_io = srma_sam_io_init(opt->fn_inputs, opt->fn_inputs_num, opt->fn_outputs, opt->fn_outputs_num, 0);
+		srma_sam_io = srma_sam_io_init(opt->fn_inputs, opt->fn_inputs_num, opt->fn_outputs, opt->fn_outputs_num, opt->fn_output_header, 0);
 	}
 	else {
 		// Use ranges
 		ranges_in = srma_ranges_init(fai, opt->fn_ranges, opt->range, opt->offset);
 		ranges_out = srma_ranges_init(fai, opt->fn_ranges, opt->range, 0);
 		// init inputs/ouputs/indexes
-		srma_sam_io = srma_sam_io_init(opt->fn_inputs, opt->fn_inputs_num, opt->fn_outputs, opt->fn_outputs_num, 1);
+		srma_sam_io = srma_sam_io_init(opt->fn_inputs, opt->fn_inputs_num, opt->fn_outputs, opt->fn_outputs_num, opt->fn_output_header, 1);
 	}
 
 	// init
@@ -573,11 +573,12 @@ static int print_usage(srma_opt_t *opt)
 	fprintf(stderr, "         -t INT      maximum total coverage over a reference base [%d]\n", opt->max_total_coverage);
 	fprintf(stderr, "         -R STRING   an genomic range to consider [%s]\n", opt->range);
 	fprintf(stderr, "         -Z FILE     input genomic ranges to consider [%s]\n", opt->fn_ranges);
-	fprintf(stderr, "         -C          correct aligned bases [%d]\n", opt->correct_bases);
-	fprintf(stderr, "         -q          use sequence qualities to weight alignments [%d]\n", opt->use_qualities);
+	fprintf(stderr, "         -C INT      correct aligned bases [%d]\n", opt->correct_bases);
+	fprintf(stderr, "         -q INT      use sequence qualities to weight alignments [%d]\n", opt->use_qualities);
 	fprintf(stderr, "         -H INT      maximum heap size [%d]\n", opt->max_heap_size);
 	fprintf(stderr, "         -Q INT      maximum queue size [%d]\n", opt->max_queue_size);
 	fprintf(stderr, "         -n INT      number of threads [%d]\n", opt->num_threads);
+	fprintf(stderr, "         -b FILE     copy the header in FILE to the output SAM/BAM (multiple input, single output only)\n");
 	fprintf(stderr, "         -h          print this message\n");
 	fprintf(stderr, "\n");
 
@@ -595,6 +596,7 @@ int main(int argc, char *argv[])
 	opt.fn_inputs_num = 0;
 	opt.fn_outputs = NULL;
 	opt.fn_outputs_num = 0;
+	opt.fn_output_header = NULL;
 	opt.fn_ref = NULL;
 	// optional
 	opt.offset = 20;
@@ -610,7 +612,7 @@ int main(int argc, char *argv[])
 	opt.max_queue_size = 65536;
 	opt.num_threads = 1;
 
-	while(0 <= (c = getopt(argc, argv, "i:o:r:O:m:p:c:t:R:Z:C:qHQ:n:h"))) {
+	while(0 <= (c = getopt(argc, argv, "i:o:r:O:m:p:c:t:R:Z:C:qHQ:n:bh"))) {
 		switch(c) {
 			case 'i':
 				opt.fn_inputs = add_file(opt.fn_inputs, opt.fn_inputs_num, optarg); 
@@ -646,6 +648,8 @@ int main(int argc, char *argv[])
 				opt.max_queue_size = atoi(optarg); break;
 			case 'n':
 				opt.num_threads = atoi(optarg); break;
+			case 'b':
+				opt.fn_output_header = srma_strdup(optarg, __func__); break;
 			case 'h':
 			default:
 				return print_usage(&opt);
@@ -678,6 +682,9 @@ int main(int argc, char *argv[])
 	if(opt.fn_inputs_num != opt.fn_outputs_num && 1 != opt.fn_outputs_num) {
 		srma_error(__func__, "The same number of inputs and outputs must be specified, or only one output", Exit, CommandLineArgument);
 	}
+	if(opt.fn_inputs_num > 1 && 1 == opt.fn_outputs_num && NULL == opt.fn_output_header) {
+		srma_error(__func__, "Multiple inputs and a single output requires the -b option", Exit, CommandLineArgument);
+	}
 	if(1 < opt.num_threads) {
 		fprintf(stderr, "***** Warning: multiple threads may not increase performance,    ******\n"); 
 		fprintf(stderr, "***** and may actually derease peformance.  Try running multiple ******\n");
@@ -694,6 +701,7 @@ int main(int argc, char *argv[])
 		free(opt.fn_outputs[i]);
 	}
 	free(opt.fn_outputs);
+	free(opt.fn_output_header);
 	free(opt.fn_ref);
 	free(opt.fn_ranges);
 	free(opt.range);

@@ -109,15 +109,16 @@ typedef struct {
 
 /*! @function
   @abstract
-  @param  fn_inputs       a list of input file names 
-  @param  fn_inputs_num   the number of input file names
-  @param  fn_outputs      a list of ouput file names
-  @param  fn_outputs_num  the number of output file names, which must equal 1 or the number of input file names
-  @param  use_ranges      0 if we are not to use ranges, 1 otherwise
-  @discussion             if use_ranges is 1, then sam indexes will be loaded
+  @param  fn_inputs         a list of input file names 
+  @param  fn_inputs_num     the number of input file names
+  @param  fn_outputs        a list of output file names
+  @param  fn_outputs_num    the number of output file names, which must equal 1 or the number of input file names
+  @param  fn_output_header  file name for the header to use when there are multiple inputs and a single output
+  @param  use_ranges        0 if we are not to use ranges, 1 otherwise
+  @discussion               if use_ranges is 1, then sam indexes will be loaded
   @return 
 */
-srma_sam_io_t *srma_sam_io_init(char **fn_inputs, int32_t fn_inputs_num, char **fn_outputs, int32_t fn_outputs_num, int32_t use_ranges);
+srma_sam_io_t *srma_sam_io_init(char **fn_inputs, int32_t fn_inputs_num, char **fn_outputs, int32_t fn_outputs_num, char *fn_output_header, int32_t use_ranges);
 
 /*! @function
   @abstract   
