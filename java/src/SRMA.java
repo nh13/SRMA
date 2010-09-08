@@ -112,7 +112,7 @@ public class SRMA extends CommandLineProgram {
 
             if(1 < this.NUM_THREADS) {
                 System.err.println("** Warning: option NUM_THREADS currently may not increase performance significantly. **");
-                System.err.println("**  Try running multiple processes with RANGES if the speed does not increase.      **");
+                System.err.println("**  Try running multiple processes with RANGE if the speed does not increase.      **");
             }
 
             IoUtil.assertFileIsReadable(REFERENCE);
@@ -166,6 +166,7 @@ public class SRMA extends CommandLineProgram {
 
             while(this.inputRangesIterator.hasNext()) {
                 Range inputRange = this.inputRangesIterator.next();
+
                 int prevReferenceIndex=-1;
                 int prevAlignmentStart=-1;
 
@@ -246,11 +247,7 @@ public class SRMA extends CommandLineProgram {
             // Output any alignments left in the queue 
             while(0 < this.toOutputQueue.size()) {
                 rec = this.toOutputQueue.poll();
-                // alignment could have moved (+OFFSET), with another moving (-OFFSET) 
-
-                if(recordAlignmentStartContained(rec.record)) { 
-                    this.io.output(rec);
-                }
+                this.io.output(rec);
             }
             // Close input/output files
             this.io.closeAll();
@@ -494,21 +491,27 @@ public class SRMA extends CommandLineProgram {
 
     private boolean recordAlignmentStartContained(SAMRecord rec) 
     {
+        int recReferenceIndex = -1; 
         int recAlignmentStart = -1;
 
         if(null == this.outputRange) { // no more ranges
             return false;
         }
 
+        recReferenceIndex = rec.getReferenceIndex();
         recAlignmentStart = rec.getAlignmentStart();
-        while(this.outputRange.endPosition < recAlignmentStart) { // find a new range
+        while(this.outputRange.referenceIndex < recReferenceIndex 
+                || (this.outputRange.referenceIndex < recReferenceIndex 
+                    && this.outputRange.endPosition < recAlignmentStart)) { // find a new range
             if(!this.outputRangesIterator.hasNext()) { // no more ranges
                 this.outputRange = null;
                 return false;
             }
             this.outputRange = this.outputRangesIterator.next();
         }
-        if(recAlignmentStart < this.outputRange.startPosition) { // before range
+        if(recReferenceIndex < this.outputRange.referenceIndex 
+                || (recReferenceIndex == this.outputRange.referenceIndex
+                    && recAlignmentStart < this.outputRange.startPosition)) { // before range
             // not within range
             return false;
         }
