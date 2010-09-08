@@ -84,13 +84,17 @@ static int srma_core_start_contained(bam_record_t *bam_record, srma_ranges_t *ra
 		return 0;
 	}
 
-	while(range_out->end < bam_record->b->core.pos) { // find a new range
+	while(range_out->tid < bam_record->b->core.tid
+			|| (range_out->tid == bam_record->b->core.tid 
+				&& range_out->end < bam_record->b->core.pos)) { // find a new range
 		range_out = srma_ranges_poll(ranges_out);
 		if(NULL == range_out) {
 			return 0;
 		}
 	}	
-	if(bam_record->b->core.pos < range_out->beg) { // before next range
+	while(bam_record->b->core.tid < range_out->tid
+			|| (range_out->tid == bam_record->b->core.tid 
+				&& bam_record->b->core.pos < range_out->beg)) { // before the next range
 		return 0;
 	}
 	else {
@@ -524,10 +528,8 @@ static void srma_core(srma_opt_t *opt)
 	// flush the output queue
 	while(0 < to_output_list->size) {
 		bam_record = bam_record_ll_remove(to_output_list);
-		if(1 == srma_core_start_contained(bam_record, ranges_out)) {
-			// write to file
-			srma_sam_io_write(srma_sam_io, bam_record);
-		}
+		// write to file
+		srma_sam_io_write(srma_sam_io, bam_record);
 		// free bam_record
 		bam_record_free(bam_record);
 	}
