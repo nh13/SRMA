@@ -92,7 +92,7 @@ static int srma_core_start_contained(bam_record_t *bam_record, srma_ranges_t *ra
 			return 0;
 		}
 	}	
-	while(bam_record->b->core.tid < range_out->tid
+	if(bam_record->b->core.tid < range_out->tid
 			|| (range_out->tid == bam_record->b->core.tid 
 				&& bam_record->b->core.pos < range_out->beg)) { // before the next range
 		return 0;
