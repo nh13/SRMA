@@ -1,17 +1,17 @@
 bin_PROGRAMS = srma
 
 srma_SOURCES = \
-			   srma_error.c srma_error.h \
-			   srma_alloc.c srma_alloc.h \
-			   srma_util.c srma_util.h \
-			   srma_sam_io.c srma_sam_io.h \
-			   srma_faidx.c srma_faidx.h  \
-			   sw_node.c sw_node.h \
-			   sw_heap.c sw_heap.h \
-			   sw_align.c sw_align.h \
-			   node.c node.h \
-			   graph.c graph.h \
-			   main.c main.h
+			   src/srma_error.c src/srma_error.h \
+			   src/srma_alloc.c src/srma_alloc.h \
+			   src/srma_util.c src/srma_util.h \
+			   src/srma_sam_io.c src/srma_sam_io.h \
+			   src/srma_faidx.c src/srma_faidx.h  \
+			   src/sw_node.c src/sw_node.h \
+			   src/sw_heap.c src/sw_heap.h \
+			   src/sw_align.c src/sw_align.h \
+			   src/node.c src/node.h \
+			   src/graph.c src/graph.h \
+			   src/main.c src/main.h
 
 nodist_srma_SOURCES = \
 			   samtools/bam_import.c samtools/bam_import.h \
