@@ -157,4 +157,27 @@ public class SRMAUtil {
     public static String replaceCharAt(String s, int pos, char c) {
         return s.substring(0,pos) + c + s.substring(pos+1);
     }
+
+    public static char getCompliment(char base) {
+        switch(base) {
+            case 'A':
+                return 'T';
+            case 'a':
+                return 't';
+            case 'C':
+                return 'G';
+            case 'c':
+                return 'g';
+            case 'G':
+                return 'C';
+            case 'g':
+                return 'c';
+            case 'T':
+                return 'A';
+            case 't':
+                return 'a';
+            default:
+                return base;
+        }
+    }
 }

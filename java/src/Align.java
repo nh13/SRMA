@@ -198,8 +198,8 @@ public class Align {
            System.err.println("\nNOT FOUND (BEST): " + rec.toString());
            }
            Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, softClipStartBases, softClipStartQualities, softClipEndBases, softClipEndQualities, strand, correctBases);
-        return;
-        */
+           return;
+           */
 
         heap = new AlignHeap((strand) ? AlignHeap.HeapType.MAXHEAP : AlignHeap.HeapType.MINHEAP);
 
@@ -407,7 +407,7 @@ public class Align {
         AlignHeapNode bestAlignHeapNode = null;
         ListIterator<Node.NodeRecord> iter=null;
         AlignHeap heap = null;
-        
+
         // Cannot bound
         if(0 != passFilters(graph,
                     recNode,
@@ -423,7 +423,7 @@ public class Align {
         else { // forward
             heap = new AlignHeap(AlignHeap.HeapType.MINHEAP); 
         }
-        
+
         // Add start nodes
         heap.add(new AlignHeapNode(null, 
                     recNode,
@@ -492,8 +492,8 @@ public class Align {
                                 MAXIMUM_TOTAL_COVERAGE);
                         if(0 == f) {
                             heap.add(new AlignHeapNode(curAlignHeapNode, 
-                                next.node,
-                                next.coverage,
+                                        next.node,
+                                        next.coverage,
                                         read.charAt(curAlignHeapNode.readOffset+1), 
                                         qualities.charAt(curAlignHeapNode.readOffset+1), 
                                         useSequenceQualities,
@@ -662,15 +662,30 @@ public class Align {
             // Get color error string
             colorErrors = new byte[read.length()];
             char prevBase = SRMAUtil.COLORSPACE_ADAPTOR;
-            for(i=0;i<read.length();i++) {
-                if(SRMAUtil.colorSpaceNextBase(prevBase, read.charAt(i)) == readBases[i]) {
-                    colorErrors[i] = Alignment.GAP;
-                }
-                else {
-                    colorErrors[i] = (byte)read.charAt(i);
+            if(strand) { // reverse
+                for(i=0;i<read.length();i++) {
+                    char nextBase = SRMAUtil.colorSpaceNextBase(prevBase, read.charAt(i));
+                    if(nextBase == SRMAUtil.getCompliment((char)readBases[read.length()-i-1])) {
+                        colorErrors[i] = (byte)Alignment.GAP;
+                    }
+                    else {
+                        colorErrors[i] = (byte)read.charAt(i);
+                    }
+                    prevBase = SRMAUtil.getCompliment((char)readBases[read.length()-i-1]);
                 }
             }
-            // TODO qualities?
+            else {
+                for(i=0;i<read.length();i++) {
+                    char nextBase = SRMAUtil.colorSpaceNextBase(prevBase, read.charAt(i));
+                    if(nextBase == readBases[i]) {
+                        colorErrors[i] = (byte)Alignment.GAP;
+                    }
+                    else {
+                        colorErrors[i] = (byte)read.charAt(i);
+                    }
+                    prevBase = (char)readBases[i];
+                }
+            }
         }
         else if(correctBases) { // bases were corrected
             if(strand) {
@@ -765,12 +780,12 @@ public class Align {
         if(null != readColors) {
             rec.setAttribute("CS", readColors);
             rec.setAttribute("CQ", readColorQualities);
+            // set the XE attribute for colorError string
+            rec.setAttribute("XE", new String(colorErrors));
         }
         rec.setAttribute("AS", bestAlignHeapNode.score);
         rec.setAttribute("XC", bestAlignHeapNode.alleleCoverageSum);
         rec.setAttribute("PG", programRecord.getId());
-        // set the XE attribute for colorError string
-        //rec.setAttribute("CE", colorErrors);
     }
 
     /*
