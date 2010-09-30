@@ -55,7 +55,7 @@ static inline int srma_ranges_parse_range(srma_ranges_t *r, const faidx_t *fai, 
 	} else {
 		for (p = s + i + 1; i != k; ++i) if (s[i] == '-') break;
 		// TODO: make sure atoi works here
-		beg = atoi(p) -1;
+		beg = atoi(p) - 1;
 		if (i < k) {
 			p = s + i + 1;
 			// TODO: make sure atoi works here
