@@ -21,7 +21,7 @@ public class SAMRecordIO
     private List<CloseableIterator<SAMRecord>> recordsIters = null;
     private List<AlignRecord> buffer = null; // should be one per input file
 
-    public SAMRecordIO(List<File> inputs, List<File> outputs, String programVersion, boolean useRanges)
+    public SAMRecordIO(List<File> inputs, List<File> outputs, String programVersion, boolean useRanges, SAMSequenceDictionary referenceDictionary)
         throws Exception
     {
         ListIterator<File> inputsIter = null;
@@ -53,6 +53,10 @@ public class SAMRecordIO
                 throw new Exception("BAM files and BAM indexes when using the RANGE or RANGES option"); 
             }
             fileHeader = fileReader.getFileHeader();
+            if(!checkHeaderAgainstReferenceDictionary(fileHeader, referenceDictionary)) {
+                throw new Exception("FASTA sequence dictionary and SAM/BAM file dictionary are in different orders");
+            }
+
             this.programRecord = fileHeader.getProgramRecord("srma");
 
             if(null == programRecord) { // create a new one
@@ -95,6 +99,33 @@ public class SAMRecordIO
             this.recordsIters.add(readersIter.next().iterator());
         }
 
+    }
+
+    private boolean checkHeaderAgainstReferenceDictionary(SAMFileHeader header,  SAMSequenceDictionary referenceDictionary)
+    {
+        int i;
+        SAMSequenceDictionary headerDict;
+        if(null == header || null == referenceDictionary) {
+            return true;
+        }
+
+        headerDict = header.getSequenceDictionary();
+        if(headerDict.size() != referenceDictionary.size()) {
+            return false;
+        }
+        for(i=0;i<headerDict.size();i++) {
+            // check name and length
+            SAMSequenceRecord headerRec = headerDict.getSequence(i);
+            SAMSequenceRecord referenceRec = referenceDictionary.getSequence(i);
+
+            if(!headerRec.getSequenceName().equals(referenceRec.getSequenceName()) 
+                    || headerRec.getSequenceLength() != referenceRec.getSequenceLength()) 
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void initBuffer()

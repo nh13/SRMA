@@ -141,7 +141,7 @@ public class SRMA extends CommandLineProgram {
             else if(null == RANGES && null == RANGE) {
                 this.inputRanges = new Ranges(this.referenceDictionary);
                 this.outputRanges = new Ranges(this.referenceDictionary);
-                this.io = new SAMRecordIO(INPUT, OUTPUT, PROGRAM_VERSION, false);
+                this.io = new SAMRecordIO(INPUT, OUTPUT, PROGRAM_VERSION, false, this.referenceDictionary);
             }
             else {
                 if(null != RANGES) {
@@ -153,7 +153,7 @@ public class SRMA extends CommandLineProgram {
                     this.inputRanges = new Ranges(RANGE, this.referenceDictionary, OFFSET);
                     this.outputRanges = new Ranges(RANGE, this.referenceDictionary, 0);
                 }
-                this.io = new SAMRecordIO(INPUT, OUTPUT, PROGRAM_VERSION, true);
+                this.io = new SAMRecordIO(INPUT, OUTPUT, PROGRAM_VERSION, true, this.referenceDictionary);
             }
 
             this.inputRangesIterator = this.inputRanges.iterator();
@@ -335,7 +335,7 @@ public class SRMA extends CommandLineProgram {
             LinkedList<Thread> threads = null;
             LinkedList<LinkedList<AlignRecord>> toAddToGraphThreadLists = null;
             LinkedList<LinkedList<AlignRecord>> toAlignThreadLists = null;
-                
+
 
             if(0 == this.toAlignList.size() 
                     && this.graph.contig != this.toAddToGraphList.getFirst().record.getReferenceIndex()+1) 
@@ -420,11 +420,11 @@ public class SRMA extends CommandLineProgram {
 
                 // HERE
                 /*
-                for(i=this.graph.position_start;i<=this.graph.position_end;i++) {
-                    System.err.println(i + "\t"
-                            + this.graph.getCoverage(i));
-                }
-                */
+                   for(i=this.graph.position_start;i<=this.graph.position_end;i++) {
+                   System.err.println(i + "\t"
+                   + this.graph.getCoverage(i));
+                   }
+                   */
 
                 // Get thread data
                 if(flush) {
@@ -527,13 +527,13 @@ public class SRMA extends CommandLineProgram {
                 return false;
             }
             this.outputRange = this.outputRangesIterator.next();
-        }
+                    }
         if(recReferenceIndex < this.outputRange.referenceIndex 
                 || (recReferenceIndex == this.outputRange.referenceIndex
                     && recAlignmentStart < this.outputRange.startPosition)) { // before range
             // not within range
             return false;
-        }
+                    }
         else {
             // must be within range
             return true;
@@ -547,6 +547,8 @@ public class SRMA extends CommandLineProgram {
         int colon;
 
         if(null == INSERT_SIZE_RANGE) {
+            InsertSizeRangeLow = Integer.MIN_VALUE;
+            InsertSizeRangeHigh = Integer.MAX_VALUE;
             return;
         }
 
@@ -562,16 +564,19 @@ public class SRMA extends CommandLineProgram {
             throw new Exception("INSERT_SIZE_RANGE was improperly specified");
         }
     }
-    
+
     private boolean withinInsertSizeRange(SAMRecord rec)
     {
         int isize;
+        if(null == this.INSERT_SIZE_RANGE) {
+            return true;
+        }
         if(!rec.getReadPairedFlag()
                 || rec.getMateUnmappedFlag()) {
             // not paired
             // or only one end maps
             return true;
-        }
+                }
         // assumes: paired and both mapped
         isize = rec.getInferredInsertSize();
         if(rec.getFirstOfPairFlag()) { // first record, 5'
