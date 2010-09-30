@@ -268,12 +268,12 @@ void srma_sam_io_change_range(srma_sam_io_t *s, int32_t sequence_index, int32_t 
 	// query
 	for(i=0;i<s->fps_in_num;i++) {
 		switch(s->fps_in_type[i]) {
-			case SRMA_SAM_IO_TYPE_BAM:
-				s->fps_in_type[i] = SRMA_SAM_IO_TYPE_BAM_ITER; // fall through
 			case SRMA_SAM_IO_TYPE_BAM_ITER:
+				assert(NULL != s->bam_indexes); // DEBUG
 				assert(NULL != s->bam_indexes[i]); // DEBUG
 				s->bam_iters[i] = bam_iter_query(s->bam_indexes[i], sequence_index, position_start, position_end); 
 				break;
+			case SRMA_SAM_IO_TYPE_BAM: // fall through
 			case SRMA_SAM_IO_TYPE_SAM:
 				// ignore
 				break;
