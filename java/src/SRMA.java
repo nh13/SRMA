@@ -51,6 +51,8 @@ public class SRMA extends CommandLineProgram {
         public boolean CORRECT_BASES=false;
     @Option(doc="Use sequence qualities", optional=true)
         public boolean USE_SEQUENCE_QUALITIES=true;
+    @Option(doc="Only align read pairs within this range (ex. -1000:1000); read #1 is assumed to be 5' of read #2", optional=true)
+        public String INSERT_SIZE_RANGE=null;
     @Option(doc="Whether to suppress job-progress info on System.err", optional=true)
         public boolean QUIET_STDERR=false;
     @Option(doc="The maximum number of nodes on the heap before re-alignment is ignored", optional=true)
@@ -78,6 +80,7 @@ public class SRMA extends CommandLineProgram {
 
     private Graph graph = null;
     private AlleleCoverageCutoffs alleleCoverageCutoffs = null;
+    private int InsertSizeRangeLow, InsertSizeRangeHigh;
 
     // for RANGES
     // for inputting within RANGES
@@ -163,6 +166,7 @@ public class SRMA extends CommandLineProgram {
             // init
             this.alleleCoverageCutoffs = new AlleleCoverageCutoffs(MINIMUM_ALLELE_COVERAGE, MINIMUM_ALLELE_PROBABILITY, QUIET_STDERR);
             this.toOutputQueue = new PriorityQueue<AlignRecord>(40, new AlignRecordComparator()); 
+            this.InsertSizeRangeSet();
 
             while(this.inputRangesIterator.hasNext()) {
                 Range inputRange = this.inputRangesIterator.next();
@@ -381,9 +385,16 @@ public class SRMA extends CommandLineProgram {
 
                     if(null != rec.node 
                             && this.graph.contig == rec.record.getReferenceIndex()+1
-                            && this.recordAlignmentStartContained(rec.record)) 
+                            && this.recordAlignmentStartContained(rec.record))
                     {
-                        this.toAlignList.add(rec);
+                        if(this.withinInsertSizeRange(rec.record)) {
+                            // align then output
+                            this.toAlignList.add(rec);
+                        }
+                        else {
+                            // just otuput
+                            this.toOutputQueue.add(rec);
+                        }
                     }
                     size--;
                 }
@@ -406,6 +417,14 @@ public class SRMA extends CommandLineProgram {
                 int i, size;
                 LinkedList<Thread> threads = null;
                 LinkedList<LinkedList<AlignRecord>> toAlignThreadLists = null;
+
+                // HERE
+                /*
+                for(i=this.graph.position_start;i<=this.graph.position_end;i++) {
+                    System.err.println(i + "\t"
+                            + this.graph.getCoverage(i));
+                }
+                */
 
                 // Get thread data
                 if(flush) {
@@ -518,6 +537,58 @@ public class SRMA extends CommandLineProgram {
         else {
             // must be within range
             return true;
+        }
+    }
+
+    private void InsertSizeRangeSet() 
+        throws Exception
+    {
+        String low, high;
+        int colon;
+
+        if(null == INSERT_SIZE_RANGE) {
+            return;
+        }
+
+        colon = INSERT_SIZE_RANGE.indexOf(":");
+        if(colon < 0 || INSERT_SIZE_RANGE.length() <= colon) {
+            throw new Exception("INSERT_SIZE_RANGE was improperly specified");
+        }
+
+        InsertSizeRangeLow = Integer.parseInt(INSERT_SIZE_RANGE.substring(0, colon));
+        InsertSizeRangeHigh = Integer.parseInt(INSERT_SIZE_RANGE.substring(colon+1));
+
+        if(InsertSizeRangeHigh < InsertSizeRangeLow) {
+            throw new Exception("INSERT_SIZE_RANGE was improperly specified");
+        }
+    }
+    
+    private boolean withinInsertSizeRange(SAMRecord rec)
+    {
+        int isize;
+        if(!rec.getReadPairedFlag()
+                || rec.getMateUnmappedFlag()) {
+            // not paired
+            // or only one end maps
+            return true;
+        }
+        // assumes: paired and both mapped
+        isize = rec.getInferredInsertSize();
+        if(rec.getFirstOfPairFlag()) { // first record, 5'
+            if(InsertSizeRangeLow <= isize && isize <= InsertSizeRangeHigh) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        } 
+        else { // second record, 3'
+            if(InsertSizeRangeLow <= -isize && -isize <= InsertSizeRangeHigh) {
+                return true;
+            }
+            else {
+                return false;
+            }
         }
     }
 

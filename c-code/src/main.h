@@ -18,6 +18,7 @@ typedef struct {
 	char *range;
 	int32_t correct_bases;
 	int32_t use_qualities;
+	char *insert_size_range;
 	int32_t max_heap_size;
 	int32_t max_queue_size;
 	int32_t num_threads;

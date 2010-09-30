@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
+#include <limits.h>
 #include <assert.h>
+#include <ctype.h>
 #include <pthread.h>
 #include <config.h>
 
@@ -19,6 +21,66 @@
 
 static pthread_mutex_t thread_graph_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t thread_align_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int within_insert_size_range(bam_record_t *bam_record, int32_t insert_size_range_low, int32_t insert_size_range_high)
+{
+	bam1_t *b = bam_record->b;
+	int32_t isize = b->core.isize;
+
+	if(!(BAM_FPAIRED & b->core.flag) ||
+			(BAM_FMUNMAP & b->core.flag)) {
+		return 1;
+	}
+
+	if((BAM_FREAD1 & b->core.flag)) {
+		if(insert_size_range_low <= isize && isize <= insert_size_range_high) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
+	else {
+		if(insert_size_range_low <= -isize && -isize <= insert_size_range_high) {
+			return 1;
+		}
+		else {
+			return 0;
+		}
+	}
+}
+
+static void parse_insert_size_range(char *insert_size_range, int32_t *insert_size_range_low, int32_t *insert_size_range_high)
+{
+	if(NULL == insert_size_range) {
+		(*insert_size_range_low) = INT_MIN;
+		(*insert_size_range_high) = INT_MAX;
+	}
+	else {
+		int32_t i, k, l;
+		char *s = NULL;
+
+		l = strlen(insert_size_range);
+		s = srma_malloc(sizeof(char)*(l+1), __func__, s);
+		// remove commas (',')
+		for (i = k = 0; i != l; ++i)
+			if (insert_size_range[i] != ',' && !isspace(insert_size_range[i])) s[k++] = insert_size_range[i];
+		s[k] = '\0';
+		(*insert_size_range_low) = atoi(s); // low
+		// skip to the colon
+		for(i=0;i<k;i++) {
+			if(s[i] == ':') break;
+		}
+		if(i==k) {
+			srma_error(__func__, "-i option could not be understood", Exit, CommandLineArgument);
+		}
+		(*insert_size_range_high) = atoi(s+i+1); // high
+		if((*insert_size_range_high) < (*insert_size_range_low)) {
+			srma_error(__func__, "-i option could not be understood", Exit, CommandLineArgument);
+		}
+		free(s);
+	}
+}
 
 static void srma_core_output_progress(bam_record_t *bam_record, faidx_t *fai, int64_t records_processed, int32_t *max_msg_length)
 {
@@ -70,9 +132,11 @@ static bam_record_t *srma_core_get_next_record(srma_sam_io_t *srma_sam_io, faidx
 typedef struct {
 	bam_record_ll_t *to_graph_list;
 	bam_record_ll_t *to_align_list;
+	bam_record_ll_t *to_output_list;
 	graph_t *graph;
 	ref_t *ref;
 	srma_ranges_t *ranges_out;
+	int32_t insert_size_range_low, insert_size_range_high;
 } thread_graph_data_t;
 
 // Note: this must be used on the original bam record
@@ -102,7 +166,7 @@ static int srma_core_start_contained(bam_record_t *bam_record, srma_ranges_t *ra
 	}
 }
 
-static void srma_core_add_to_graph_worker(bam_record_ll_t *to_graph_list, bam_record_ll_t *to_align_list, graph_t *graph, ref_t *ref, srma_ranges_t *ranges_out, int32_t use_threads)
+static void srma_core_add_to_graph_worker(bam_record_ll_t *to_graph_list, bam_record_ll_t *to_align_list, bam_record_ll_t *to_output_list, graph_t *graph, ref_t *ref, srma_ranges_t *ranges_out, int32_t insert_size_range_low, int32_t insert_size_range_high, int32_t use_threads)
 {
 	int32_t i;
 
@@ -141,7 +205,12 @@ static void srma_core_add_to_graph_worker(bam_record_ll_t *to_graph_list, bam_re
 			cur = start;
 			for(i=0;i<THREAD_GRAPH_BLOCK_SIZE && NULL != cur;i++) {
 				if(graph->contig == cur->b->core.tid + 1 && 1 == srma_core_start_contained(cur, ranges_out)) {
-					bam_record_ll_add1(to_align_list, cur->b, cur->fp_i, cur->node); // IMPORTANT: must remove from to_graph_list later 
+					if(1 == within_insert_size_range(cur, insert_size_range_low, insert_size_range_high)) {
+						bam_record_ll_add1(to_align_list, cur->b, cur->fp_i, cur->node); // IMPORTANT: must remove from to_graph_list later 
+					}
+					else {
+						bam_record_ll_add1(to_output_list, cur->b, cur->fp_i, cur->node); // IMPORTANT: must remove from to_graph_list later 
+					}
 				}
 				else {
 					// destroy bam 
@@ -164,16 +233,19 @@ void *srma_core_add_to_graph_thread(void *arg)
 	thread_graph_data_t *data = (thread_graph_data_t*)arg;
 	bam_record_ll_t *to_graph_list = data->to_graph_list;
 	bam_record_ll_t *to_align_list = data->to_align_list;
+	bam_record_ll_t *to_output_list = data->to_output_list;
 	graph_t *graph = data->graph;
 	ref_t *ref = data->ref;
 	srma_ranges_t *ranges_out = data->ranges_out;
+	int32_t insert_size_range_low = data->insert_size_range_low;
+	int32_t insert_size_range_high = data->insert_size_range_high;
 
-	srma_core_add_to_graph_worker(to_graph_list, to_align_list, graph, ref, ranges_out, 1);
+	srma_core_add_to_graph_worker(to_graph_list, to_align_list, to_output_list, graph, ref, ranges_out, insert_size_range_low, insert_size_range_high, 1);
 
 	return arg;
 }
 
-static void srma_core_add_to_graph(srma_opt_t *opt, graph_t *graph, bam_record_ll_t *to_graph_list, bam_record_ll_t *to_align_list, ref_t *ref, srma_ranges_t *ranges_out)
+static void srma_core_add_to_graph(srma_opt_t *opt, graph_t *graph, bam_record_ll_t *to_graph_list, bam_record_ll_t *to_align_list, bam_record_ll_t *to_output_list, ref_t *ref, srma_ranges_t *ranges_out, int32_t insert_size_range_low, int32_t insert_size_range_high)
 {
 	pthread_t *threads = NULL;
 	thread_graph_data_t *data = NULL;
@@ -195,9 +267,12 @@ static void srma_core_add_to_graph(srma_opt_t *opt, graph_t *graph, bam_record_l
 			for(i=0;i<opt->num_threads;i++) {
 				data[i].to_graph_list = to_graph_list;
 				data[i].to_align_list = to_align_list;
+				data[i].to_output_list = to_output_list;
 				data[i].graph = graph;
 				data[i].ref = ref;
 				data[i].ranges_out = ranges_out;
+				data[i].insert_size_range_low = insert_size_range_low;
+				data[i].insert_size_range_high = insert_size_range_high;
 			}
 
 			threads = srma_malloc(sizeof(pthread_t)*opt->num_threads, __func__, "threads");
@@ -221,7 +296,7 @@ static void srma_core_add_to_graph(srma_opt_t *opt, graph_t *graph, bam_record_l
 			free(data);
 		}
 		else {
-			srma_core_add_to_graph_worker(to_graph_list, to_align_list, graph, ref, ranges_out, 0);
+			srma_core_add_to_graph_worker(to_graph_list, to_align_list, to_output_list, graph, ref, ranges_out, insert_size_range_low, insert_size_range_high, 0);
 		}
 
 		// clear graph list
@@ -399,6 +474,8 @@ static void srma_core(srma_opt_t *opt)
 	int32_t prev_tid = -1, prev_pos = -1; // TODO: reset when we move to a new range
 	int64_t records_processed=0;
 	int32_t max_msg_length=0;
+	int32_t insert_size_range_low=INT_MIN;
+	int32_t insert_size_range_high=INT_MAX;
 
 	start_time = clock();
 
@@ -430,6 +507,8 @@ static void srma_core(srma_opt_t *opt)
 	// init
 	cov_cutoffs = cov_cutoffs_init(opt->min_allele_coverage, opt->min_allele_prob);
 	to_output_list = bam_record_ll_init();
+	// TODO
+	parse_insert_size_range(opt->insert_size_range, &insert_size_range_low, &insert_size_range_high);
 
 	// Get first range
 	range_in = srma_ranges_peek(ranges_in);
@@ -482,7 +561,7 @@ static void srma_core(srma_opt_t *opt)
 			// process graph
 			if(opt->max_queue_size <= to_graph_list->size) {
 				// add all records left to the graph
-				srma_core_add_to_graph(opt, graph, to_graph_list, to_align_list, ref, ranges_out);
+				srma_core_add_to_graph(opt, graph, to_graph_list, to_align_list, to_output_list, ref, ranges_out, insert_size_range_low, insert_size_range_high);
 			}
 
 			// add to the graph list
@@ -498,7 +577,7 @@ static void srma_core(srma_opt_t *opt)
 		// process graph
 		if(0 < to_graph_list->size) {
 			// add all records left to the graph
-			srma_core_add_to_graph(opt, graph, to_graph_list, to_align_list, ref, ranges_out);
+			srma_core_add_to_graph(opt, graph, to_graph_list, to_align_list, to_output_list, ref, ranges_out, insert_size_range_low, insert_size_range_high);
 		}
 		// process alignments
 		if(0 < to_align_list->size) {
@@ -518,7 +597,7 @@ static void srma_core(srma_opt_t *opt)
 		}
 		free(ref);
 		ref=NULL;
-		
+
 		// destroy input buffer etc.
 		srma_sam_io_close_inputs(srma_sam_io);
 
@@ -577,6 +656,8 @@ static int print_usage(srma_opt_t *opt)
 	fprintf(stderr, "         -Z FILE     input genomic ranges to consider [%s]\n", opt->fn_ranges);
 	fprintf(stderr, "         -C INT      correct aligned bases [%d]\n", opt->correct_bases);
 	fprintf(stderr, "         -q INT      use sequence qualities to weight alignments [%d]\n", opt->use_qualities);
+	fprintf(stderr, "         -I STRING   only align read pairs within this range (ex. -1000:1000); read #1 is assumed to be 5' of read #2 [%s]\n", opt->insert_size_range); 
+
 	fprintf(stderr, "         -H INT      maximum heap size [%d]\n", opt->max_heap_size);
 	fprintf(stderr, "         -Q INT      maximum queue size [%d]\n", opt->max_queue_size);
 	fprintf(stderr, "         -n INT      number of threads [%d]\n", opt->num_threads);
@@ -610,11 +691,12 @@ int main(int argc, char *argv[])
 	opt.range = NULL;
 	opt.correct_bases = 0;
 	opt.use_qualities = 1;
+	opt.insert_size_range = NULL;
 	opt.max_heap_size = 8192;
 	opt.max_queue_size = 65536;
 	opt.num_threads = 1;
 
-	while(0 <= (c = getopt(argc, argv, "i:o:r:O:m:p:c:t:R:Z:C:qHQ:n:bh"))) {
+	while(0 <= (c = getopt(argc, argv, "i:o:r:O:m:p:c:t:R:Z:C:qI:HQ:n:bh"))) {
 		switch(c) {
 			case 'i':
 				opt.fn_inputs = add_file(opt.fn_inputs, opt.fn_inputs_num, optarg); 
@@ -644,6 +726,8 @@ int main(int argc, char *argv[])
 				opt.correct_bases = atoi(optarg); break;
 			case 'q':
 				opt.use_qualities = atoi(optarg); break;
+			case 'I':
+				opt.insert_size_range = srma_strdup(optarg, __func__); break;
 			case 'H':
 				opt.max_heap_size = atoi(optarg); break;
 			case 'Q':
@@ -707,6 +791,7 @@ int main(int argc, char *argv[])
 	free(opt.fn_ref);
 	free(opt.fn_ranges);
 	free(opt.range);
+	free(opt.insert_size_range);
 
 	return 0;
 }

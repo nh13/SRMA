@@ -176,7 +176,7 @@ node_t *graph_add_node(graph_t *g, node_t *node, node_t *prev, int32_t use_threa
 		assert(NULL != g->nodes[node->position - g->position_start]); // DEBUG
 		node_list_add(g->nodes[node->position - g->position_start], node);
 		if(NODE_INSERTION != __node_type(node) || 0 == node->offset) {
-			g->coverages[node->position - g->position_start] += node->coverage;;
+			g->coverages[node->position - g->position_start] += node->coverage;
 		}
 		if(g->position_end < node->position) {
 			g->position_end = node->position;
