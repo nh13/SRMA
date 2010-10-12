@@ -206,7 +206,8 @@ srma_sam_io_t *srma_sam_io_init(char **fn_inputs, int32_t fn_inputs_num, char **
 				case SRMA_SAM_IO_TYPE_BAM_ITER:
 					s->bam_indexes[i] = bam_index_load(fn_inputs[i]);
 					if(NULL == s->bam_indexes[i]) {
-						srma_error(__func__, fn_inputs[i], Exit, OpenFileError);
+						fprintf(stderr, "file: %s\n", fn_inputs[i]);
+						srma_error(__func__, "could not load the BAM index", Warn, OpenFileError);
 					}
 					break;
 				case SRMA_SAM_IO_TYPE_SAM:
