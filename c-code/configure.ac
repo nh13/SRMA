@@ -69,6 +69,18 @@ AC_CHECK_HEADERS([stdlib.h stdio.h stdint.h string.h sys/time.h unistd.h float.h
 
 AC_C_INLINE
 
+# test for SAMtools
+AC_MSG_CHECKING(for samtools)
+if test -d "samtools" ; then
+    AC_MSG_RESULT(yes)
+    LDFLAGS="${LDFLAGS} -L./samtools -lbam";
+    CFLAGS="${CFLAGS} -I./samtools";
+    AC_DEFINE(HAVE_SAMTOOLS, 1, [Define 1 if the samtools library is present])
+else
+    AC_MSG_RESULT(no)
+    AC_MSG_ERROR("could not find the samtools source sub-directory")
+fi
+
 AC_CONFIG_FILES([Makefile])
 
 AC_OUTPUT
