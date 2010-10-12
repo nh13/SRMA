@@ -495,8 +495,7 @@ public class SRMA extends CommandLineProgram {
         while(0 < this.toOutputQueue.size()) {
             AlignRecord rec = this.toOutputQueue.peek();
             // alignment could have moved (+OFFSET), with another moving (-OFFSET) 
-            if(flush || 
-                    rec.record.getReferenceIndex() + 1 != graph.contig || // different contig
+            if(rec.record.getReferenceIndex() + 1 != graph.contig || // different contig
                     rec.record.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
                 this.io.output(this.toOutputQueue.poll());
                     }

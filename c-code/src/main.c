@@ -444,8 +444,7 @@ static void srma_core_align(srma_opt_t *opt, graph_t *graph, faidx_t *fai, bam_r
 	while(0 < to_output_list->size) {
 		bam_record = to_output_list->head; // peek
 		// alignment could have moved (+OFFSET), with another moving (-OFFSET) 
-		if(0 != flush || 
-				bam_record->b->core.tid < graph->contig || // other alignments will be less than
+		if(bam_record->b->core.tid < graph->contig || // other alignments will be less than
 				(bam_record->b->core.pos + 1 + 2*opt->offset) < graph->position_start) { // other alignments will not be less than
 			bam_record = bam_record_ll_remove(to_output_list);
 			// write to file
