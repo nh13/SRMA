@@ -721,14 +721,17 @@ public class Align {
         }
         else { // bases not corrected 
             readBases = new byte[read.length()];
-            if(strand) {
+            baseQualities = new byte[qualities.length()]; // qualities.length() == read.length()
+            if(strand) { // reverse
                 for(i=0;i<read.length();i++) {
                     readBases[i] = (byte)read.charAt(read.length() - i - 1);
+                    baseQualities[i] = (byte)(qualities.charAt(read.length() - i -1) - 33);
                 }
             }
             else {
                 for(i=0;i<read.length();i++) {
                     readBases[i] = (byte)read.charAt(i);
+                    baseQualities[i] = (byte)(qualities.charAt(i) - 33);
                 }
             }
         }
@@ -751,25 +754,23 @@ public class Align {
                 baseQualities[i] = (byte)softClipStartQualities.charAt(i);
             }
         }
-        /*
-           if(null != softClipEndBases) { // append
-           cigarElements.add(new CigarElement(softClipEndBases.length(), CigarOperator.S));
+        if(null != softClipEndBases) { // append
+            cigarElements.add(new CigarElement(softClipEndBases.length(), CigarOperator.S));
 
-           byte tmpBases[] = new byte[readBases.length + softClipEndBases.length()];
-           System.arraycopy(readBases, 0, tmpBases, 0, readBases.length);
-           for(i=0;i<softClipEndBases.length();i++) {
-           tmpBases[i+readBases.length] = (byte)softClipEndBases.charAt(i);
-           }
-           readBases = tmpBases;
+            byte tmpBases[] = new byte[readBases.length + softClipEndBases.length()];
+            System.arraycopy(readBases, 0, tmpBases, 0, readBases.length);
+            for(i=0;i<softClipEndBases.length();i++) {
+                tmpBases[i+readBases.length] = (byte)softClipEndBases.charAt(i);
+            }
+            readBases = tmpBases;
 
-           byte tmpQualities[] = new byte[baseQualities.length + softClipEndQualities.length()];
-           System.arraycopy(baseQualities, 0, tmpQualities, 0, baseQualities.length);
-           for(i=0;i<softClipEndQualities.length();i++) {
-           tmpQualities[i+baseQualities.length] = (byte)softClipEndQualities.charAt(i);
-           }
-           baseQualities = tmpQualities;
-           }
-           */
+            byte tmpQualities[] = new byte[baseQualities.length + softClipEndQualities.length()];
+            System.arraycopy(baseQualities, 0, tmpQualities, 0, baseQualities.length);
+            for(i=0;i<softClipEndQualities.length();i++) {
+                tmpQualities[i+baseQualities.length] = (byte)softClipEndQualities.charAt(i);
+            }
+            baseQualities = tmpQualities;
+        }
 
         // Update SAM record
         rec.setCigar(new Cigar(cigarElements));
