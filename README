@@ -9,7 +9,7 @@ There are two version of SRMA currently:
 ==== Java ====
 1. Move into the java sub-directory.
 
-2. Download sam-1.31.jar and picard-1.31.jar and place them in a folder 
+2. Download sam-1.32.jar and picard-1.32.jar and place them in a folder 
 called lib.
 
 3. Run:
