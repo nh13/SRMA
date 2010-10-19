@@ -115,6 +115,11 @@ static bam_record_t *srma_core_get_next_record(srma_sam_io_t *srma_sam_io, faidx
 	}
 
 	bam_record = srma_sam_io_get_next(srma_sam_io);
+
+	if(ref->tid != bam_record->b->core.tid) { // skip fetching a reference sequence
+		return bam_record;
+	}
+
 	// check if we need more reference sequence
 	end = bam_calend(&bam_record->b->core, bam1_cigar(bam_record->b));
 	if(bam_record->b->core.pos < ref->beg && ref->end < end) {
@@ -124,7 +129,7 @@ static bam_record_t *srma_core_get_next_record(srma_sam_io_t *srma_sam_io, faidx
 		srma_fai_fetch(fai, ref, range_in->tid, bam_record->b->core.pos, ref->end);
 	}
 	else if(ref->end < end) {
-		srma_fai_fetch(fai, ref, range_in->tid, ref->beg, end);
+		srma_fai_fetch(fai, ref, range_in->tid, bam_record->b->core.pos, end);
 	}
 	return bam_record;
 }
@@ -527,61 +532,65 @@ static void srma_core(srma_opt_t *opt)
 		srma_fai_fetch(fai, ref, range_in->tid, range_in->beg, range_in->end); 
 
 		// get first record
-		bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
-
-		// initial prune
-		if(NULL != bam_record) { 
-			graph_prune(graph, bam_record->b->core.tid, bam_record->b->core.pos+1, opt->offset);
+		if(NULL == bam_record) {
+			bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
 		}
 
-		while(NULL != bam_record) { // while records to process in this interval
-			if(bam_record->b->core.flag & BAM_FUNMAP) {
-				// removed from output
-				bam_record_free(bam_record);
-				bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
-				continue;
-			}
-			else if(bam_record->b->core.qual < opt->min_mapq) {
-				// removed from output
-				bam_record_free(bam_record);
-				bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
-				continue;
+		if(range_in->tid == bam_record->b->core.tid) {
+			// initial prune
+			if(NULL != bam_record) { 
+				graph_prune(graph, bam_record->b->core.tid, bam_record->b->core.pos+1, opt->offset);
 			}
 
-			// check sorted
-			if(bam_record->b->core.tid < prev_tid ||
-					(bam_record->b->core.tid == prev_tid && bam_record->b->core.pos < prev_pos)) {
-				fprintf(stderr, "QNAME=%s\n", bam1_qname(bam_record->b));
-				srma_error(__func__, "SAM/BAM file is not co-ordinate sorted", Exit, OutOfRange);
-			}
-			prev_tid = bam_record->b->core.tid;
-			prev_pos = bam_record->b->core.pos;
+			while(NULL != bam_record && ref->tid == bam_record->b->core.tid) { // while records to process in this interval
+				if(bam_record->b->core.flag & BAM_FUNMAP) {
+					// removed from output
+					bam_record_free(bam_record);
+					bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
+					continue;
+				}
+				else if(bam_record->b->core.qual < opt->min_mapq) {
+					// removed from output
+					bam_record_free(bam_record);
+					bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
+					continue;
+				}
 
+				// check sorted
+				if(bam_record->b->core.tid < prev_tid ||
+						(bam_record->b->core.tid == prev_tid && bam_record->b->core.pos < prev_pos)) {
+					fprintf(stderr, "QNAME=%s\n", bam1_qname(bam_record->b));
+					srma_error(__func__, "SAM/BAM file is not co-ordinate sorted", Exit, OutOfRange);
+				}
+				prev_tid = bam_record->b->core.tid;
+				prev_pos = bam_record->b->core.pos;
+
+				// process graph
+				if(opt->max_queue_size <= to_graph_list->size) {
+					// add all records left to the graph
+					srma_core_add_to_graph(opt, graph, to_graph_list, to_align_list, to_output_list, ref, ranges_out, insert_size_range_low, insert_size_range_high);
+				}
+
+				// add to the graph list
+				bam_record_ll_add(to_graph_list, bam_record);
+
+				// align
+				if(opt->max_queue_size <= to_align_list->size) {
+					srma_core_align(opt, graph, fai, to_align_list, to_output_list, cov_cutoffs, srma_sam_io, 0, &records_processed, &max_msg_length);
+				}
+
+				bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
+			}
 			// process graph
-			if(opt->max_queue_size <= to_graph_list->size) {
+			if(0 < to_graph_list->size) {
 				// add all records left to the graph
 				srma_core_add_to_graph(opt, graph, to_graph_list, to_align_list, to_output_list, ref, ranges_out, insert_size_range_low, insert_size_range_high);
 			}
-
-			// add to the graph list
-			bam_record_ll_add(to_graph_list, bam_record);
-
-			// align
-			if(opt->max_queue_size <= to_align_list->size) {
-				srma_core_align(opt, graph, fai, to_align_list, to_output_list, cov_cutoffs, srma_sam_io, 0, &records_processed, &max_msg_length);
+			// process alignments
+			if(0 < to_align_list->size) {
+				// align all records left
+				srma_core_align(opt, graph, fai, to_align_list, to_output_list, cov_cutoffs, srma_sam_io, 1, &records_processed, &max_msg_length);
 			}
-
-			bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
-		}
-		// process graph
-		if(0 < to_graph_list->size) {
-			// add all records left to the graph
-			srma_core_add_to_graph(opt, graph, to_graph_list, to_align_list, to_output_list, ref, ranges_out, insert_size_range_low, insert_size_range_high);
-		}
-		// process alignments
-		if(0 < to_align_list->size) {
-			// align all records left
-			srma_core_align(opt, graph, fai, to_align_list, to_output_list, cov_cutoffs, srma_sam_io, 1, &records_processed, &max_msg_length);
 		}
 
 		// free

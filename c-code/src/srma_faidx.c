@@ -241,11 +241,25 @@ void srma_fai_fetch(const faidx_t *fai, ref_t *ref, int32_t tid, int32_t beg, in
 	if(end == -1) end = val.len-1;
 
 	// Validate inputs
-	if(end < beg) srma_error(__func__, "end < beg", Exit, OutOfRange);
-	if(beg < 0) srma_error(__func__, "beg < 0", Exit, OutOfRange);
-	else if(val.len <= beg) srma_error(__func__, "val.len <= beg", Exit, OutOfRange);
-	if(end < 0) srma_error(__func__, "end < 0", Exit, OutOfRange);
-	else if(val.len <= end) srma_error(__func__, "val.len <= end", Exit, OutOfRange);
+	if(end < beg) {
+		srma_error(__func__, "end < beg", Exit, OutOfRange);
+	}
+	if(beg < 0) {
+		srma_error(__func__, "beg < 0", Exit, OutOfRange);
+	}
+	if(val.len <= beg) {
+		fprintf(stderr, "\n\nalignment start [%d] goes beyond the end of the chromsome [%d].\n",
+				beg, val.len);
+		srma_error(__func__, "val.len <= beg", Exit, OutOfRange);
+	}
+	if(end < 0) {
+		srma_error(__func__, "end < 0", Exit, OutOfRange);
+	}
+	if(val.len <= end) {
+		fprintf(stderr, "\n\nalignment end [%d] goes beyond the end of the chromsome [%d].\n",
+				end, val.len);
+		srma_error(__func__, "val.len <= end", Exit, OutOfRange);
+	}
 	
 	free(ref->ref);
 	ref->ref=NULL;
