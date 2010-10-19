@@ -7,7 +7,7 @@
 # TODO: check that samtools sub-directory exists
 
 AC_PREREQ(2.59);
-AC_INIT([srma],[0.1.10],[srma-help@lists.sourceforge.net],[srma])
+AC_INIT([srma],[0.1.11],[srma-help@lists.sourceforge.net],[srma])
 AC_COPYRIGHT([See LICENSE for copyright information.])
 AC_CONFIG_AUX_DIR(config)
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
