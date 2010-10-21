@@ -513,6 +513,30 @@ public class Align {
 
         return bestAlignHeapNode;
     }
+    
+    private static byte getColorQuality(byte e1, byte e2, byte q1, byte q2)
+    {
+        int val;
+        if(e1 == (byte)Alignment.GAP && e2 == (byte)Alignment.GAP) {
+            val = q1 + q2 + 10;
+        }
+        else if(e1 == (byte)Alignment.GAP) {
+            val = q1 - q2;
+        }
+        else if(e2 == (byte)Alignment.GAP) {
+            val = q2 - q1;
+        }
+        else {
+            val = 1;
+        }
+        if(val <= 0) {
+            val = 1;
+        }
+        else if(63 < val) {
+            val = 63;
+        }
+        return (byte)val;
+    }
 
     private static void updateSAM(SAMRecord rec, SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, String softClipStartBases, String softClipStartQualities, String softClipEndBases, String softClipEndQualities, boolean strand, boolean correctBases)
         throws Exception
@@ -671,8 +695,17 @@ public class Align {
                     else {
                         colorErrors[i] = (byte)read.charAt(i);
                     }
+                    if(0 < i) {
+                        // qualities are assumed to be always in the same direction as the color errors
+                        baseQualities[read.length()-i-1] = getColorQuality(colorErrors[i-1],
+                                colorErrors[i],
+                                (byte)(qualities.charAt(i-1) - 33),
+                                (byte)(qualities.charAt(i) - 33));
+                    }
                     prevBase = SRMAUtil.getCompliment((char)readBases[read.length()-i-1]);
                 }
+                // last color
+                baseQualities[read.length()-1] = (byte)qualities.charAt(read.length()-1);
             }
             else {
                 for(i=0;i<read.length();i++) {
@@ -683,8 +716,16 @@ public class Align {
                     else {
                         colorErrors[i] = (byte)read.charAt(i);
                     }
+                    if(0 < i) {
+                        baseQualities[i-1] = getColorQuality(colorErrors[i-1],
+                                colorErrors[i],
+                                (byte)(qualities.charAt(i-1) - 33),
+                                (byte)(qualities.charAt(i) - 33));
+                    }
                     prevBase = (char)readBases[i];
                 }
+                // last color
+                baseQualities[read.length()-1] = (byte)qualities.charAt(read.length()-1);
             }
         }
         else if(correctBases) { // bases were corrected
