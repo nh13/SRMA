@@ -697,7 +697,7 @@ public class Align {
                     }
                     if(0 < i) {
                         // qualities are assumed to be always in the same direction as the color errors
-                        baseQualities[read.length()-i-1] = getColorQuality(colorErrors[i-1],
+                        baseQualities[read.length()-i] = getColorQuality(colorErrors[i-1],
                                 colorErrors[i],
                                 (byte)(qualities.charAt(i-1) - 33),
                                 (byte)(qualities.charAt(i) - 33));
@@ -705,7 +705,7 @@ public class Align {
                     prevBase = SRMAUtil.getCompliment((char)readBases[read.length()-i-1]);
                 }
                 // last color
-                baseQualities[read.length()-1] = (byte)qualities.charAt(read.length()-1);
+                baseQualities[0] = (byte)(qualities.charAt(read.length()-1)-33);
             }
             else {
                 for(i=0;i<read.length();i++) {
@@ -725,7 +725,7 @@ public class Align {
                     prevBase = (char)readBases[i];
                 }
                 // last color
-                baseQualities[read.length()-1] = (byte)qualities.charAt(read.length()-1);
+                baseQualities[read.length()-1] = (byte)(qualities.charAt(read.length()-1)-33);
             }
         }
         else if(correctBases) { // bases were corrected
