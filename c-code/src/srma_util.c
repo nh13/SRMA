@@ -134,11 +134,13 @@ bam_aln_t *bam_aln_init(bam1_t *bam, ref_t *ref)
 		switch(op) {
 			case BAM_CMATCH:
 				for(j=0;j<l;j++) {
+					/*
 					if(ref_index < 0 || strlen(ref->ref) <= ref_index) {
 						fprintf(stderr, "0 <= %d <= %d\n", ref_index, (int)strlen(ref->ref));
 					}
 					assert(0 <= ref_index); // DEBUG
 					assert(ref_index < strlen(ref->ref)); // DEBUG
+					*/
 					aln->ref[aln_index] = ref->ref[ref_index];
 					aln->read[aln_index] = bam_nt16_rev_table[bam1_seqi(bam1_seq(bam), read_index)];
 					ref_index++;
@@ -156,8 +158,8 @@ bam_aln_t *bam_aln_init(bam1_t *bam, ref_t *ref)
 				break;
 			case BAM_CDEL:
 				for(j=0;j<l;j++) {
-					assert(0 <= ref_index); // DEBUG
-					assert(ref_index < strlen(ref->ref)); // DEBUG
+					//assert(0 <= ref_index); // DEBUG
+					//assert(ref_index < strlen(ref->ref)); // DEBUG
 					aln->ref[aln_index] = ref->ref[ref_index];
 					aln->read[aln_index] = ALN_GAP;
 					ref_index++;

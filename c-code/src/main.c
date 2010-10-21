@@ -536,7 +536,7 @@ static void srma_core(srma_opt_t *opt)
 			bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
 		}
 
-		if(range_in->tid == bam_record->b->core.tid) {
+		if(NULL != bam_record && range_in->tid == bam_record->b->core.tid) {
 			// initial prune
 			if(NULL != bam_record) { 
 				graph_prune(graph, bam_record->b->core.tid, bam_record->b->core.pos+1, opt->offset);
