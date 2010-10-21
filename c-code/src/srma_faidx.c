@@ -227,11 +227,10 @@ void srma_ranges_free(srma_ranges_t *r)
 // want control of malloc and bound checking
 void srma_fai_fetch(const faidx_t *fai, ref_t *ref, int32_t tid, int32_t beg, int32_t end)
 {
-	int l;
-	char c;
 	khiter_t iter;
 	faidx1_t val;
 	char *seq=NULL;
+        int32_t i, j, k, n_left, n_read;
 
 	// Adjust position
 	iter = kh_get(s, fai->hash, fai->name[tid]);
@@ -268,13 +267,25 @@ void srma_fai_fetch(const faidx_t *fai, ref_t *ref, int32_t tid, int32_t beg, in
 	ref->end = end;
 
 	// Now retrieve the sequence 
-	l = 0;
 	seq = srma_malloc(sizeof(char)*(end - beg + 2), __func__, "seq");
 	razf_seek(fai->rz, val.offset + beg / val.line_blen * val.line_len + beg % val.line_blen, SEEK_SET);
-	while (razf_read(fai->rz, &c, 1) == 1 && l < end - beg + 1)
-		if (isgraph(c)) seq[l++] = c;
-	seq[l] = '\0';
-	if(l != end - beg + 1) srma_error(__func__, "len != end - beg + 1", Exit, OutOfRange);
+
+        i = 0; // next index to store
+        n_left = end - beg + 1;
+        while(0 < (n_read = razf_read(fai->rz, seq + i, n_left)) && 0 < n_left) {
+            for(j=i,k=0;j<i+n_read;j++) {
+                if(isgraph(seq[j])) { // store
+                    if(j != i+k) {
+                        seq[i+k] = seq[j];
+                    }
+                    k++;
+                }
+            }
+            n_left -= k;
+            i += k;
+        } 
+	seq[i] = '\0';
+	if(i != end - beg + 1) srma_error(__func__, "i != end - beg + 1", Exit, OutOfRange);
 
 	ref->ref = seq;
 }
