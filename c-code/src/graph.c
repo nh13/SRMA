@@ -120,6 +120,7 @@ node_t *graph_add_sam(graph_t *g, bam1_t *b, ref_t *ref, int32_t use_threads)
 	}
 	if(1 == use_threads) pthread_mutex_unlock(&graph_mutex); // synchronize end 
 	// --- SYNC OFF --- 
+	
 	for(aln_index=0,ref_index=-1;aln_index<aln->length;aln_index++,prev_node=cur_node) {
 
 		// Skip over a deletion
@@ -156,6 +157,7 @@ node_t *graph_add_sam(graph_t *g, bam1_t *b, ref_t *ref, int32_t use_threads)
 	}
 
 	bam_aln_free(aln);
+	
 	return ret_node;
 }
 
