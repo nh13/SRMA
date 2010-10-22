@@ -24,7 +24,7 @@ import java.lang.Math;
 
 public class SRMA extends CommandLineProgram { 
 
-    public final String PROGRAM_VERSION="0.1.12";
+    public final String PROGRAM_VERSION="0.1.13";
     @Usage (programVersion=PROGRAM_VERSION)
         public final String USAGE = getStandardUsagePreamble() + "Short read micro re-aligner.";
     @Option(shortName=StandardOptionDefinitions.INPUT_SHORT_NAME, doc="The input SAM or BAM file.")
