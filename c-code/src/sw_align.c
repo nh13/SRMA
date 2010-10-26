@@ -24,6 +24,14 @@ int nt4bit_to_int[16] = {
 
 int int_to_nt4bit[5] = {1, 2, 4, 8, 15};
 
+
+#define __srma_color_2_int(_c) do { \
+	if(_c < '0' || '3' < _c) _c = 4; \
+	else _c = _c - '0'; \
+} while (0)
+			
+const char *sw_align_save_tags[] = {"RG", "LB", "PU", "PG", "CS", "CQ", NULL};
+
 // DEBUG FUNCTION
 /*
    static void print_flag(bam1_t *b)
@@ -96,7 +104,7 @@ static int32_t sw_align_bound(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap,
 		// Get first base
 		if(SRMA_SPACE_CS == space) {
 			base = nt2int_table[(int)colors[1]];
-			qual = nt2int_table[(int)color_qualities[0]]; 
+			qual = color_qualities[0]; 
 		}
 		else {
 			if(strand) {
@@ -191,7 +199,7 @@ static int32_t sw_align_bound(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap,
 					if(0 == pass) {
 						if(SRMA_SPACE_CS == space) { // use color space data
 							base = nt2int_table[(int)colors[1 + (heap->nodes[sw_node_cur_i].read_offset+1)]];
-							qual = nt2int_table[(int)color_qualities[heap->nodes[sw_node_cur_i].read_offset+1]]; 
+							qual = color_qualities[heap->nodes[sw_node_cur_i].read_offset+1]; 
 						}
 						// add to the heap
 						sw_node_i = sw_heap_get_node_i(heap);
@@ -288,8 +296,8 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 	// bound with original alignment
 	sw_node_best_i = sw_align_bound(g, b, n, heap, strand, colors, color_qualities, space, cutoffs, use_qualities, max_total_coverage, max_heap_size);
 	if(0 <= sw_node_best_i) {
-		sw_heap_reset(heap); // reset the heap, keep old nodes
 		/*
+		sw_heap_reset(heap); // reset the heap, keep old nodes
 		   fprintf(stderr, "BOUNDED score=%d coverage_sum=%hu\n", 
 		   heap->nodes[sw_node_best_i].score,
 		   heap->nodes[sw_node_best_i].coverage_sum); // DEBUG
@@ -306,7 +314,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 	if(strand) {
 		if(SRMA_SPACE_CS == space) {
 			base = nt2int_table[(int)colors[1]];
-			qual = nt2int_table[(int)color_qualities[0]]; 
+			qual = color_qualities[0]; 
 		}
 		else {
 			base = nt4bit_to_int[bam1_seqi(bam1_seq(b), b->core.l_qseq-1)];
@@ -340,7 +348,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 	else {
 		if(SRMA_SPACE_CS == space) {
 			base = nt2int_table[(int)colors[1]];
-			qual = nt2int_table[(int)color_qualities[0]]; 
+			qual = color_qualities[0]; 
 		}
 		else {
 			base = nt4bit_to_int[bam1_seqi(bam1_seq(b), 0)];
@@ -426,7 +434,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 			{ // get the base and quality
 				if(SRMA_SPACE_CS == space) {
 					base = nt2int_table[(int)colors[1 + (heap->nodes[sw_node_cur_i].read_offset+1)]];
-					qual = nt2int_table[(int)color_qualities[heap->nodes[sw_node_cur_i].read_offset+1]]; 
+					qual = color_qualities[heap->nodes[sw_node_cur_i].read_offset+1]; 
 				}
 				else {
 					if(strand) {
@@ -494,7 +502,7 @@ static inline void sw_align_bam_alloc_data(bam1_t *bam, int size)
 
 // Bound quality score
 // For: sw_align_update_bam
-#define __bound_qual(_qual) ((_qual <= 0) ? 1 : ((93 < _qual) ? 93 : _qual))
+#define __bound_qual(_qual) ((_qual <= 0) ? 1 : ((63 < _qual) ? 63 : _qual))
 
 // Copy old tag into the new bam
 // For: sw_align_update_bam
@@ -514,6 +522,7 @@ bam1_t *sw_align_update_bam(bam1_t *bam_old, char *rg_id, sw_heap_t *heap, int32
 	int32_t cigar_cur_op, cigar_prev_op;
 	int32_t cigar_cur_length, cigar_prev_length;
 	uint32_t read_index;
+	char *color_errors = NULL;
 
 	if(sw_node_best_i < 0) { // none found, do not modify alignment
 		return bam_old;
@@ -686,47 +695,84 @@ bam1_t *sw_align_update_bam(bam1_t *bam_old, char *rg_id, sw_heap_t *heap, int32
 
 	{ // qualities
 		uint8_t *qual_ptr = NULL;
-		char qual;
+		char qual, q1, q2;
+		uint8_t prev_base = 0, next_base;
 
 		bam_new->data_len += bam_new->core.l_qseq;
 		sw_align_bam_alloc_data(bam_new, bam_new->data_len);
 		qual_ptr = bam1_qual(bam_new);
 
 		if(space == SRMA_SPACE_CS) {
+			color_errors = srma_malloc(sizeof(char)*(1 + bam_new->core.l_qseq), __func__, "color_errors");
+			prev_base = nt2int_table[(int)colors[0]];
+			for(i=0;i<bam_new->core.l_qseq;i++) {
+				if(0 == strand) {
+					next_base = nt4bit_to_int[bam1_seqi(bam1_seq(bam_new), i)];
+				}
+				else {
+					next_base = nt4bit_to_int[bam1_seqi(bam1_seq(bam_new), bam_new->core.l_qseq-i-1)];
+					if(next_base < 4) next_base = 3 - next_base;
+				}
+				if((prev_base ^ next_base) == nt2int_table[(int)colors[i+1]]) {
+					color_errors[i] = '-';
+				}
+				else {
+					color_errors[i] = colors[i+1];
+				}
+				prev_base = next_base;
+			}
+			color_errors[i]='\0';
+
 			// Get new base qualities based on color qualities
 			for(i=0;i<bam_new->core.l_qseq;i++) {
 				// use MAQ 0.7.1 conversion
-				if(i == bam_new->core.l_qseq - 1) { // at the end of the alignment
-					qual = srma_qual2char(color_qualities[i]);
+				if(i == bam_new->core.l_qseq-1) { 
+					qual = srma_char2qual(color_qualities[i]);
 				}
 				else {
 					int m1, m2;
-					m1 = ((nt2int_table[(int)colors[i]] ^ nt2int_table[(int)colors[i+1]]) ==  nt4bit_to_int[bam1_seqi(bam1_seq(bam_new), i)]) ? 1 : 0;
-					m2 = ((nt2int_table[(int)colors[i]] ^ nt2int_table[(int)colors[i+1]]) ==  nt4bit_to_int[bam1_seqi(bam1_seq(bam_new), i)]) ? 1 : 0;
+					if(0 == strand) { // forward
+						m1 = ('-' == color_errors[i]) ? 1 : 0;
+						m2 = ('-' == color_errors[i+1]) ? 1 : 0;
+						q1 = color_qualities[i];
+						q2 = color_qualities[i+1];
+					}
+					else {
+						m1 = ('-' == color_errors[bam_new->core.l_qseq-i-1]) ? 1 : 0;
+						m2 = ('-' == color_errors[bam_new->core.l_qseq-i-2]) ? 1 : 0;
+						q1 = color_qualities[bam_new->core.l_qseq-i-1];
+						q2 = color_qualities[bam_new->core.l_qseq-i-2];
+					}
 					if(1 == m1 && 1 == m2) {
-						qual = srma_char2qual(color_qualities[i]) + srma_char2qual(color_qualities[i+1]) + 10; 
+						qual = srma_char2qual(q1) + srma_char2qual(q2) + 10; 
 					}
 					else if(1 == m1) {
-						qual = srma_char2qual(color_qualities[i]) - srma_char2qual(color_qualities[i+1]);
+						qual = srma_char2qual(q1) - srma_char2qual(q2);
 					}
 					else if(1 == m2) {
-						qual = srma_char2qual(color_qualities[i+1]) - srma_char2qual(color_qualities[i]);
+						qual = srma_char2qual(q2) - srma_char2qual(q1);
 					}
 					else {
 						qual = 1;
 					}
 				}
-				bam1_qual(bam_new)[i] = __bound_qual(qual);
+				if(0 == strand) {
+					bam1_qual(bam_new)[i] = __bound_qual(qual);
+				}
+				else {
+					bam1_qual(bam_new)[bam_new->core.l_qseq-i-1] = __bound_qual(qual);
+				}
 			}
 		}
 		else if(1 == correct_bases) {
 			// Get new base qualities
 			for(i=0;i<bam_new->core.l_qseq;i++) {
 				if(bam1_seqi(bam1_seq(bam_new), i) == bam1_seqi(bam1_seq(bam_old), i)) {
-					bam1_qual(bam_new)[i] = __bound_qual(bam1_qual(bam_old)[i]);
+					bam1_qual(bam_new)[i] = bam1_qual(bam_old)[i];
 				}
 				else {
-					bam1_qual(bam_new)[i] = __bound_qual(bam1_qual(bam_old)[i] - SRMA_CORRECT_BASE_QUALITY_PENALTY);
+					qual = srma_char2qual(bam1_qual(bam_old)[i]) -  33; 
+					bam1_qual(bam_new)[i] = srma_qual2char(__bound_qual(qual - SRMA_CORRECT_BASE_QUALITY_PENALTY));
 				}
 			}
 		}
@@ -740,23 +786,51 @@ bam1_t *sw_align_update_bam(bam1_t *bam_old, char *rg_id, sw_heap_t *heap, int32
 
 	{ // Add in any auxiliary data as necessary
 		uint8_t *s;
+		int32_t i = 0;
 		bam_new->l_aux = 0;
-
-		if(space == SRMA_SPACE_CS) {
-			__copy_old("CS");
-			__copy_old("CQ");
-			__copy_old("RG");
+			
+		while(NULL != sw_align_save_tags[i]) {
+			__copy_old(sw_align_save_tags[i]);
+			i++;
 		}
+		
 		// TODO 
-		// XO/XQ
-		// AS
-		// XC
 		// PG
-	}
 
+		// TODO: is AS correct
+		fprintf(stderr, "heap->nodes[%d].score=%d\n", sw_node_best_i, heap->nodes[sw_node_best_i].score);
+		bam_aux_append(bam_new, "AS", 'i', sizeof(uint32_t), (uint8_t*)&heap->nodes[sw_node_best_i].score);
+		if(1 == correct_bases) {
+			int32_t l = bam_old->core.l_qseq;
+			char *str;
+
+			str = srma_malloc(sizeof(char)*(l+1), __func__, "seq");
+			for(i=0;i<l;i++) {
+				str[i] = bam_nt16_rev_table[bam1_seqi(bam1_seq(bam_old), i)];
+			}
+			str[i] = '\0';
+			bam_aux_append(bam_new, "XO", 'Z', l+1, (uint8_t*)str);
+
+			for(i=0;i<l;i++) {
+				str[i] = bam1_qual(bam_old)[i];  
+			}
+			str[i] = '\0';
+			bam_aux_append(bam_new, "XQ", 'Z', l+1, (uint8_t*)str);
+
+			free(str);
+		}
+		bam_aux_append(bam_new, "XC", 'i', sizeof(uint32_t), (uint8_t*)&heap->nodes[sw_node_best_i].coverage_sum);
+		if(space == SRMA_SPACE_CS) {
+			bam_aux_append(bam_new, "XE", 'Z', bam_new->core.l_qseq+1, (uint8_t*)color_errors);
+		}
+	}
 
 	// destroy the old bam structure
 	bam_destroy1(bam_old);
+		
+	if(space == SRMA_SPACE_CS) {
+		free(color_errors);
+	}
 
 	return bam_new;
 }	

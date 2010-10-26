@@ -704,7 +704,7 @@ int main(int argc, char *argv[])
 	opt.max_queue_size = 65536;
 	opt.num_threads = 1;
 
-	while(0 <= (c = getopt(argc, argv, "i:o:r:O:m:p:c:t:R:Z:C:qI:HQ:n:bh"))) {
+	while(0 <= (c = getopt(argc, argv, "i:o:r:O:m:p:c:t:R:Z:C:q:I:HQ:n:bh"))) {
 		switch(c) {
 			case 'i':
 				opt.fn_inputs = add_file(opt.fn_inputs, opt.fn_inputs_num, optarg); 
