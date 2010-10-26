@@ -798,7 +798,6 @@ bam1_t *sw_align_update_bam(bam1_t *bam_old, char *rg_id, sw_heap_t *heap, int32
 		// PG
 
 		// TODO: is AS correct
-		fprintf(stderr, "heap->nodes[%d].score=%d\n", sw_node_best_i, heap->nodes[sw_node_best_i].score);
 		bam_aux_append(bam_new, "AS", 'i', sizeof(uint32_t), (uint8_t*)&heap->nodes[sw_node_best_i].score);
 		if(1 == correct_bases) {
 			int32_t l = bam_old->core.l_qseq;
