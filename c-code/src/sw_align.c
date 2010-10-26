@@ -377,7 +377,6 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 
 	sw_node_cur_i = sw_heap_poll_i(heap);
 	while(0 <= sw_node_cur_i) {
-
 		if(max_heap_size <- heap->queue_end - heap->queue_start + 1) {
 			// too many to consider
 			sw_heap_clear(heap); // clear heap
@@ -411,6 +410,11 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 				sw_node_best_i = sw_node_cur_i;
 			}
 		}
+                else if(0 <= sw_node_best_i && 
+                        heap->nodes[sw_node_cur_i].score < heap->nodes[sw_node_best_i].score) {
+                        // ignore, under the assumption that scores can only
+                        // become more negative.
+                }
 		else {
 			edge_list_t *list = NULL;
 			if(1 == strand) { // reverse
