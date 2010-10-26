@@ -12,6 +12,9 @@ public class Align {
 
     private static final int CORRECT_BASE_QUALITY_PENALTY = 20; // TODO: should be a parameter to SRMA
 
+    private static final List<String> saveTags =
+        Arrays.asList("RG", "LB", "PU", "PG", "CS", "CQ");
+
     public static void align(Graph graph, SAMRecord rec, Node recNode, 
             ReferenceSequence sequence, 
             SAMProgramRecord programRecord,
@@ -513,7 +516,7 @@ public class Align {
 
         return bestAlignHeapNode;
     }
-    
+
     private static byte getColorQuality(byte e1, byte e2, byte q1, byte q2)
     {
         int val;
@@ -550,7 +553,9 @@ public class Align {
         byte baseQualities[] = null;
         byte colorErrors[] = null;
         int i;
-        String readColors=null, readColorQualities=null;
+        List<String> optFieldTags = new LinkedList<String>();
+        List<Object> optFieldValues = new LinkedList<Object>();
+        Object attr;
 
         // Debugging stuff
         //String readName = rec.getReadName();
@@ -571,13 +576,8 @@ public class Align {
         // setFlag
         // update base qualities for color space reads 
 
-        // Get color space attributes
-        if(null != rec.getAttribute("CS")) {
-            readColors = (String)rec.getAttribute("CS");
-            readColorQualities = (String)rec.getAttribute("CQ");
-        }
-        // Clear attributes
-        rec.clearAttributes();
+        // clear attributes, but save some
+        Align.clearAttributes(rec, optFieldTags, optFieldValues);
 
         readBases = new byte[read.length()];
         baseQualities = new byte[qualities.length()];
@@ -818,10 +818,10 @@ public class Align {
         rec.setAlignmentStart(alignmentStart);
         rec.setReadBases(readBases);
         rec.setBaseQualities(baseQualities);
+        // Reset saved attributes
+        Align.resetAttributes(rec, optFieldTags, optFieldValues);
         // Set new attributes
-        if(null != readColors) {
-            rec.setAttribute("CS", readColors);
-            rec.setAttribute("CQ", readColorQualities);
+        if(space == SRMAUtil.Space.COLORSPACE) { 
             // set the XE attribute for colorError string
             rec.setAttribute("XE", new String(colorErrors));
         }
@@ -859,5 +859,30 @@ public class Align {
             int MAXIMUM_TOTAL_COVERAGE) 
     {
         return passFilters(graph, node, node.coverage, alleleCoverageCutoffs, MAXIMUM_TOTAL_COVERAGE);
+    }
+
+    private static void clearAttributes(SAMRecord rec, List<String> optFieldTags, List<Object> optFieldValues)
+    {
+        ListIterator<String> iter = saveTags.listIterator();
+
+        while(iter.hasNext()) {
+            String tag = iter.next();
+            Object attr = rec.getAttribute(tag);
+            if(null != attr) {
+                optFieldTags.add(tag);
+                optFieldValues.add(attr);
+            }
+        }
+        rec.clearAttributes();
+    }
+
+    private static void resetAttributes(SAMRecord rec, List<String> optFieldTags, List<Object> optFieldValues)
+    {
+        ListIterator<String> iterTags = optFieldTags.listIterator();
+        ListIterator<Object> iterValues = optFieldValues.listIterator();
+
+        while(iterTags.hasNext()) {
+            rec.setAttribute(iterTags.next(), iterValues.next());
+        }
     }
 }
