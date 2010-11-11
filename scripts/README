@@ -1,0 +1,20 @@
+Array Jobs
+----------
+For SGE cluster, srma allows submission of array jobs, which 
+allow a much more efficient use of cluster resources.  One
+job is submitted per chromosome.
+
+To use array jobs, change
+
+    <queueType>SGE</queueType>
+
+to
+
+    <queueType arrayJob="true">SGE</queueType>
+
+in your srma configuration file.
+
+If one or more of the sub-jobs in an array job fails, resubmit 
+them using the "sge_resub" script included here, as
+
+$ sge_resub <job_id>

@@ -21,6 +21,7 @@ use Getopt::Long;
 use Pod::Usage;
 use File::Path; # for directory creation
 use Cwd;
+use POSIX qw/ceil/; # for ceil command
 
 my %QUEUETYPES = ("SGE" => 0, "PBS" => 1);
 my %SPACE = ("NT" => 0, "CS" => 1);
@@ -88,10 +89,10 @@ sub Schema {
 		  <xs:complexType>
 			<xs:sequence>
 			  <xs:element name="srmaJar" type="directoryPath"/>
-			  <xs:element name="srmaBinary" type=dirctoryPath"/>
+			  <xs:element name="srmaBinary" type="directoryPath"/>
 			  <xs:element name="javaBin" type="directoryPath"/>
 			  <xs:element name="qsubBin" type="directoryPath"/>
-			  <xs:element name="referenceFasta" type="filePath" use="required/>
+			  <xs:element name="referenceFasta" type="filePath" use="required"/>
 				<xs:complexType>
 				  <xs:attribute name="splitSize" type="positiveInteger" use="optional"/>
 				</xs:complexType>
@@ -104,13 +105,10 @@ sub Schema {
 			  <xs:element name="outputBAMFile" type="filePath" use="required"/>
 			  <xs:element name="runDirectory" type="directoryPath" use="required"/>
 			  <xs:element name="tmpDirectory" type="directoryPath" use="required"/>
-			  <xs:element name="queueType" use="required">
-				<xs:simpleType>
-				  <xs:restriction base="xs:string">
-					<xs:enumeration value="SGE"/>
-					<xs:enumeration value="PBS"/>
-				  </xs:restriction>
-				</xs:simpleType>
+			  <xs:element name="queueType" type="xs:string "use="required">
+				<xs:complexType>
+				  <xs:attribute name="arrayJob" type="xs:boolean" default="false" use="optional"/>
+				</xs:complexType>
 			  </xs:element>
 			  <xs:element name="cleanUpTmpDirectory" type="xs:integer"/>
 			  <xs:element name="javaArgs" type="xs:string"/>
@@ -166,33 +164,54 @@ sub ValidateData {
 
 	# global options
 	die("The global options were not found.\n") unless (defined($data->{'srmaOptions'})); 
+
 	ValidatePath($data->{'srmaOptions'},         'srmaBinary',                               OPTIONAL); 
 	ValidatePath($data->{'srmaOptions'},         'srmaJar',                                  OPTIONAL); 
 	ValidatePath($data->{'srmaOptions'},         'javaBin',                                  OPTIONAL); 
-	ValidateFile($data->{'srmaOptions'},         'javaArgs',							     OPTIONAL);
+	ValidateFile($data->{'srmaOptions'},         'javaArgs',                                 OPTIONAL);
 	ValidatePath($data->{'srmaOptions'},         'qsubBin',                                  OPTIONAL); 
-	ValidateOptions($data->{'srmaOptions'},      'queueType',          \%QUEUETYPES,         REQUIRED);
-	ValidateOption($data->{'srmaOptions'},	     'offset',									 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},	     'minimumAlleleProbability',				 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},	     'minimumAlleleCoverage',					 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},	     'maximumTotalCoverage',					 OPTIONAL);
-	ValidateFile($data->{'srmaOptions'},         'referenceFasta',                           REQUIRED);
+	ValidateOption($data->{'srmaOptions'},        'queueType',                                REQUIRED);
+
+	# fix up queueType to allow the user NOT to specify 'arrayJob'
+	# This is necessary because we're using XML::Simple for parsing
+	if (ref(\$data->{'srmaOptions'}->{'queueType'}) eq "SCALAR") {
+		my %hash = ();
+		$hash{'content'} = $data->{'srmaOptions'}->{'queueType'};
+		$hash{'arrayJob'} = "false";
+		$data->{'srmaOptions'}->{'queueType'} = \%hash;
+	}
+	
+	ValidateOption($data->{'srmaOptions'}->{'queueType'}, 'content',        		 REQUIRED);
+	ValidateOptions($data->{'srmaOptions'}->{'queueType'}, 'content',       \%QUEUETYPES,	 REQUIRED);
+	ValidateOption($data->{'srmaOptions'}->{'queueType'}, 'arrayJob',                        REQUIRED);
+
+	ValidateOption($data->{'srmaOptions'},	     'offset',                                   OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},	     'minimumAlleleProbability',		 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},	     'minimumAlleleCoverage',			 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},	     'maximumTotalCoverage',			 OPTIONAL);
+
+	ValidateOption($data->{'srmaOptions'},       'referenceFasta',                           REQUIRED);
+	ValidateOption($data->{'srmaOptions'}->{'referenceFasta'}, 'content',                    REQUIRED);
+	ValidateFile($data->{'srmaOptions'}->{'referenceFasta'}, 'content',                      REQUIRED);
+	ValidateOption($data->{'srmaOptions'}->{'referenceFasta'}, 'splitSize',                  REQUIRED);
+
 	ValidatePath($data->{'srmaOptions'},         'runDirectory',                             REQUIRED); 
 	ValidatePath($data->{'srmaOptions'},         'tmpDirectory',                             REQUIRED); 
-	ValidateFile($data->{'srmaOptions'},         'inputBAMFile',							 REQUIRED);
-	ValidateFile($data->{'srmaOptions'},         'outputBAMFile',							 REQUIRED);
-	ValidateOption($data->{'srmaOptions'},         'range',							 		 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},         'ranges',							     OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},         'validationStringency',					 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},         'correctBases',					 		 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},         'numThreads',					 		 OPTIONAL);
-	ValidateOption($data->{'srmaOptions'},	     'maximumQueueSize',					     OPTIONAL);
+	ValidateFile($data->{'srmaOptions'},         'inputBAMFile',				 REQUIRED);
+	ValidateFile($data->{'srmaOptions'},         'outputBAMFile',				 REQUIRED);
+	ValidateOption($data->{'srmaOptions'},         'range',			 		 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'ranges',				 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'validationStringency',			 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'correctBases',				 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},         'numThreads',				 OPTIONAL);
+	ValidateOption($data->{'srmaOptions'},	     'maximumQueueSize',			 OPTIONAL);
 
-	die "Attribute splitSize required with referenceFasta.\n" if (!defined($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'}));
 	die "Attribute splitSize must be greater than or equal tozero.\n" if ($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} < 0);
 	die "Attribute \"splitSize\" may not be used with \"ranges\".\n" if (defined($data->{'srmaOptions'}->{'ranges'}) && 0 < $data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'});
 	die "One of 'srmaBinary' or 'srmaJar' must be present" if (!defined($data->{'srmaOptions'}->{'srmaJar'}) && !defined($data->{'srmaOptions'}->{'srmaBinary'}));
 	die "Attribute 'srmaBinary' cannot be used when the 'srmaJar' attribute is present" if (defined($data->{'srmaOptions'}->{'srmaJar'}) && defined($data->{'srmaOptions'}->{'srmaBinary'}));
+	die "Array jobs are only available for SGE queues.\n" if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}->{'content'} && "true" eq $data->{'srmaOptions'}->{'queueType'}->{'arrayJob'});
+
 	if(defined($data->{'srmaOptions'}->{'range'}) && defined($data->{'srmaOptions'}->{'ranges'})) {
 		die("Both attributes \"range\" and \"ranges\" may not be used in conjuction.\n");
 	}
@@ -200,11 +219,11 @@ sub ValidateData {
 	# picard
 	if(defined($data->{'samOptions'})) {
 		ValidatePath($data->{'samOptions'},       'picardBin',                                OPTIONAL); 
-		ValidatePath($data->{'samOptions'},       'mergeLogBase',                             OPTIONAL); 
+		ValidateOption($data->{'samOptions'},     'mergeLogBase',                             OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'cleanUpTmpDirectory',                      OPTIONAL);
 		ValidateOption($data->{'samOptions'},     'qsubArgs',                                 OPTIONAL);
-		ValidateOption($data->{'samOptions'},     'validationStringency',					  OPTIONAL);
-		ValidateOption($data->{'samOptions'},     'assumeSorted',					  		  OPTIONAL);
+		ValidateOption($data->{'samOptions'},     'validationStringency',		      OPTIONAL);
+		ValidateOption($data->{'samOptions'},     'assumeSorted',			      OPTIONAL);
 	}
 }
 
@@ -265,17 +284,18 @@ sub CreateJobs {
 	my @srmaOutputBAMs = ();
 	my @samJobIDs = ();
 	my @samOutputIDs = ();
+	my %bamArrayJobs = ();
 
 	# Create directories - Error checking...
 	mkpath([$data->{'srmaOptions'}->{'runDirectory'}],    ($quiet) ? 0 : 1, 0755);
 	mkpath([$data->{'srmaOptions'}->{'tmpDirectory'}],    ($quiet) ? 0 : 1, 0755);
 
-	CreateJobsSRMA($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputBAMs);
+	CreateJobsSRMA($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputBAMs, \%bamArrayJobs);
 	if(0 < scalar(@srmaJobIDs)) {
-		CreateJobsSAM($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputBAMs);
+		CreateJobsSAM($data, $quiet, $start_step, $dryrun, \@srmaJobIDs, \@srmaOutputBAMs, \%bamArrayJobs);
 	}
 
-	if("PBS" ne $data->{'srmaOptions'}->{'queueType'}) {
+	if("PBS" ne $data->{'srmaOptions'}->{'queueType'}->{'content'}) {
 		# remove holds
 		foreach my $qsubID (@qsubGlobalIDs) {
 			my $outID="";
@@ -307,7 +327,7 @@ sub CreateTmpOutputFile {
 }
 
 sub CreateJobsSRMA {
-	my ($data, $quiet, $start_step, $dryrun, $qsubIDs, $outputBAMs) = @_;
+	my ($data, $quiet, $start_step, $dryrun, $qsubIDs, $outputBAMs, $bamArrayJobs) = @_;
 	my @read_files = ();
 
 	if($data->{'srmaOptions'}->{'referenceFasta'}->{'splitSize'} <= 0) { # do not split
@@ -419,18 +439,22 @@ sub CreateJobsSRMA {
 				$chrSize = $range_end;
 			}
 
-			for(;$start <= $chrSize;$start+=$splitSize) {
-				my $end = $start + $splitSize - 1;
-				if($chrSize < $end) { $end = $chrSize; }
-				my $within_range = -1;
-				die("$start $end\n") unless ($start <= $end);
-				my $outputID = "$chrName\_$start\-$end";
+			# For SGE, submit an array job
+			
+			if ("true" eq $data->{'srmaOptions'}->{'queueType'}->{'arrayJob'}) {
+				my $outputID = "$chrName";
 				my $runFile = CreateRunFile($data, 'srma', $outputID);
-				my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
+
+				my $pre_cmd = "chrSize=$chrSize;\n";
+				$pre_cmd .= "splitSize=$splitSize;\n";
+				$pre_cmd .= "start=\$(( (\$SGE_TASK_ID - 1) * \$splitSize + 1));\n";
+				$pre_cmd .= "end=\$((\$start+\$splitSize-1));\n";
+				$pre_cmd .= "end=\$((\$chrSize < \$end ? \$chrSize : \$end));\n";
+				$pre_cmd .= "outputFile=".$data->{'srmaOptions'}->{'tmpDirectory'}."srma.".$outputID."_\${start}-\${end}.bam;\n";
 
 				my $cmd = "";
 				if(defined($data->{'srmaOptions'}->{'srmaJar'})) { 
-					$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+					$cmd .= $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
 					$cmd .= "java";
 					if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
 						$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
@@ -443,13 +467,13 @@ sub CreateJobsSRMA {
 					}
 					$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
 					$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
-					$cmd .= " O=$outputFile";
+					$cmd .= " O=\$outputFile";
 					$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
 					$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
 					$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 					$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 					$cmd .= " MAXIMUM_TOTAL_COVERAGE=".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
-					$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
+					$cmd .= " RANGE=\\\"$chrName\:\$start-\$end\\\"";
 					$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
 					$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
 					$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
@@ -458,34 +482,101 @@ sub CreateJobsSRMA {
 				else {
 					$cmd = $data->{'srmaOptions'}->{'srmaBinary'} if defined($data->{'srmaOptions'}->{'srmaBinary'});
 					$cmd .= " -i ".$data->{'srmaOptions'}->{'inputBAMFile'};
-					$cmd .= " -o $outputFile";
+					$cmd .= " -o \$outputFile";
 					$cmd .= " -r ".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
 					$cmd .= " -O ".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
 					$cmd .= " -p ".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
 					$cmd .= " -c ".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
 					$cmd .= " -t ".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
-					$cmd .= " -R \\\"$chrName\:$start-$end\\\"";
+					$cmd .= " -R \\\"$chrName\:\$start-\$end\\\"";
 					$cmd .= " -C " if(defined($data->{'srmaOptions'}->{'correctBases'}));
 					$cmd .= " -n ".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
 					$cmd .= " -q ".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
 				}
-
 				# Submit the job
 				my @a = (); # empty array for job dependencies
-				my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
+				my $qsubID = SubmitArrayJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $pre_cmd, $cmd, $data, 
+								 $start, ceil($chrSize/$splitSize), 1, 'srmaOptions', $outputID, \@a);
 				push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
-				push(@$outputBAMs, $outputFile);
+
+				for(;$start <= $chrSize;$start+=$splitSize) {
+					my $end = $start + $splitSize - 1;
+					if($chrSize < $end) { $end = $chrSize; }
+					my $outputID = "$chrName\_$start\-$end";
+					my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
+					push(@$outputBAMs, $outputFile);
+					$bamArrayJobs->{$outputFile} = $qsubID;
+				}
 			}
-		}
-		if(0 == @$qsubIDs) {
-			die;
+			else {
+				for(;$start <= $chrSize;$start+=$splitSize) {
+					my $end = $start + $splitSize - 1;
+					if($chrSize < $end) { $end = $chrSize; }
+					my $within_range = -1;
+					die("$start $end\n") unless ($start <= $end);
+					my $outputID = "$chrName\_$start\-$end";
+					my $runFile = CreateRunFile($data, 'srma', $outputID);
+					my $outputFile = CreateTmpOutputFile($data, 'srma', $outputID);
+
+					my $cmd = "";
+					if(defined($data->{'srmaOptions'}->{'srmaJar'})) { 
+						$cmd = $data->{'srmaOptions'}->{'javaBin'} if defined($data->{'srmaOptions'}->{'javaBin'});
+						$cmd .= "java";
+						if(defined($data->{'srmaOptions'}->{'javaArgs'})) {
+							$cmd .= " ".$data->{'srmaOptions'}->{'javaArgs'};
+							if($data->{'srmaOptions'}->{'javaArgs'} !~ m/-Xmx/) {
+								$cmd .= " -Xmx2g";
+							}
+						}
+						else {
+							$cmd .= " -Xmx2g";
+						}
+						$cmd .= " -jar ".$data->{'srmaOptions'}->{'srmaJar'};
+						$cmd .= " I=".$data->{'srmaOptions'}->{'inputBAMFile'};
+						$cmd .= " O=$outputFile";
+						$cmd .= " R=".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+						$cmd .= " OFFSET=".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+						$cmd .= " MINIMUM_ALLELE_PROBABILITY=".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+						$cmd .= " MINIMUM_ALLELE_COVERAGE=".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+						$cmd .= " MAXIMUM_TOTAL_COVERAGE=".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
+						$cmd .= " RANGE=\\\"$chrName\:$start-$end\\\"";
+						$cmd .= " CORRECT_BASES=".$data->{'srmaOptions'}->{'correctBases'} if(defined($data->{'srmaOptions'}->{'correctBases'}));
+						$cmd .= " NUM_THREADS=".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
+						$cmd .= " MAX_QUEUE_SIZE=".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
+						$cmd .= " VALIDATION_STRINGENCY=".$data->{'srmaOptions'}->{'validationStringency'} if(defined($data->{'srmaOptions'}->{'validationStringency'}));
+					}
+					else {
+						$cmd = $data->{'srmaOptions'}->{'srmaBinary'} if defined($data->{'srmaOptions'}->{'srmaBinary'});
+						$cmd .= " -i ".$data->{'srmaOptions'}->{'inputBAMFile'};
+						$cmd .= " -o $outputFile";
+						$cmd .= " -r ".$data->{'srmaOptions'}->{'referenceFasta'}->{'content'};
+						$cmd .= " -O ".$data->{'srmaOptions'}->{'offset'} if(defined($data->{'srmaOptions'}->{'offset'}));
+						$cmd .= " -p ".$data->{'srmaOptions'}->{'minimumAlleleProbability'} if(defined($data->{'srmaOptions'}->{'minimumAlleleProbability'}));
+						$cmd .= " -c ".$data->{'srmaOptions'}->{'minimumAlleleCoverage'} if(defined($data->{'srmaOptions'}->{'minimumAlleleCoverage'}));
+						$cmd .= " -t ".$data->{'srmaOptions'}->{'maximumTotalCoverage'} if(defined($data->{'srmaOptions'}->{'maximumTotalCoverage'}));
+						$cmd .= " -R \\\"$chrName\:$start-$end\\\"";
+						$cmd .= " -C " if(defined($data->{'srmaOptions'}->{'correctBases'}));
+						$cmd .= " -n ".$data->{'srmaOptions'}->{'numThreads'} if(defined($data->{'srmaOptions'}->{'numThreads'}));
+						$cmd .= " -q ".$data->{'srmaOptions'}->{'maximumQueueSize'} if(defined($data->{'srmaOptions'}->{'maximumQueueSize'}));
+					}
+
+					# Submit the job
+					my @a = (); # empty array for job dependencies
+					my $qsubID = SubmitJob($runFile, $quiet, ($start_step <= $STARTSTEP{"srma"}) ? 1 : 0, 0, $dryrun, $cmd, $data, 'srmaOptions', $outputID, \@a);
+					push(@$qsubIDs, $qsubID) if (QSUBNOJOB ne $qsubID);
+					push(@$outputBAMs, $outputFile);
+				}
+			}
+			if(0 == @$qsubIDs) {
+				die;
+			}
 		}
 	}
 }
 
 
 sub CreateJobsSAM {
-	my ($data, $quiet, $start_step, $dryrun, $dependentQsubIDs, $dependentOutputBAMs) = @_;
+	my ($data, $quiet, $start_step, $dryrun, $dependentQsubIDs, $dependentOutputBAMs, $bamArrayJobs) = @_;
 	my @qsubIDs = ();
 	my ($run_file, $outputID, $qsub_id);
 
@@ -506,11 +597,17 @@ sub CreateJobsSAM {
 		die("samOptions must be defined");
 	}
 
+	# Get dependent qsubIDs
+	for(my $i=0;$i<scalar(@$dependentQsubIDs);$i++) {
+		push(@qsubIDs, $dependentQsubIDs->[$i]);
+	}
+
 	# Get BAM file names
 	for(my $i=0;$i<scalar(@$dependentOutputBAMs);$i++) {
-		push(@qsubIDs, $dependentQsubIDs->[$i]);
 		push(@outputBAMs, $dependentOutputBAMs->[$i]);
 	}
+
+	my $firstIter = 1;
 
 	my $mergeLogBase = MERGE_LOG_BASE;
 	if(defined($data->{'samOptions'}->{'mergeLogBase'}) && 1 < $data->{'samOptions'}->{'mergeLogBase'}) {
@@ -530,22 +627,35 @@ sub CreateJobsSAM {
 		@qsubIDs = ();
 		@outputBAMs = ();
 		my $finalIter = 1;
-		for(my $i=0;$i<scalar(@curIDs);$i+=$mergeLogBase) {
+		for(my $i=0;$i<scalar(@curBAMs);$i+=$mergeLogBase) {
 			$ctr++;
 		}
 		if(1 < $ctr) {
 			$finalIter = 0;
 		}
 		$ctr=0;
-		for(my $i=0;$i<scalar(@curIDs);$i+=$mergeLogBase) {
+		for(my $i=0;$i<scalar(@curBAMs);$i+=$mergeLogBase) {
 			$ctr++;
 			# Get the subset of dependent jobs
 			my @dependentIDs = ();
 			my @dependentBAMs = ();
-			for(my $j=$i;$j<scalar(@curIDs) && $j<$i+$mergeLogBase;$j++) {
-				push(@dependentIDs, $curIDs[$j]);
+			for(my $j=$i;$j<scalar(@curBAMs) && $j<$i+$mergeLogBase;$j++) {
 				push(@dependentBAMs, $curBAMs[$j]);
+				push(@dependentIDs, $bamArrayJobs->{$curBAMs[$j]}) if ($firstIter && 
+										       "true" eq $data->{'srmaOptions'}->{'queueType'}->{'arrayJob'});
+				push(@dependentIDs, $curIDs[$j]) if (!$firstIter || "false" eq $data->{'srmaOptions'}->{'queueType'}->{'arrayJob'});
 			}
+
+			if ($firstIter && "true" eq $data->{'srmaOptions'}->{'queueType'}->{'arrayJob'}) {
+				# The first time through, there will be many duplicate IDs if we used array jobs.
+				# Remove them.
+				my %depIDset = map { $_ => 1 } @dependentIDs;
+				@dependentIDs = ();
+				foreach my $id (%depIDset) {
+					push (@dependentIDs, $id);
+				}
+			}
+
 			# Set up ouptut ID, run file, and output BAM
 			$outputID = "merge.$mergeLevel.$ctr";
 			$run_file = $data->{'srmaOptions'}->{'runDirectory'}."$type.".$outputID.".sh";
@@ -597,6 +707,7 @@ sub CreateJobsSAM {
 			}
 		}
 		$shouldDepend = 1; # always depend on the next loops
+		$firstIter = 0; # We are no longer on the first iteration
 	} while(1 < scalar(@qsubIDs)); # while merging is necessary
 
 
@@ -640,7 +751,7 @@ END_OUTPUT
 		}
 		$output .= "\nrun \"hostname\";\n";
 		# Redirect PBS stderr/stdout, since it buffers them
-		if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}) {
+		if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}->{'content'}) {
 			my $pbs_stderr_redirect = "$run_file.stderr.redirect";
 			my $pbs_stdout_redirect = "$run_file.stdout.redirect";
 			$output .= "run \"$command 2> $pbs_stderr_redirect > $pbs_stdout_redirect\";\n";
@@ -657,18 +768,19 @@ END_OUTPUT
 	# Create qsub command
 	my $qsub = "";
 	$qsub .= $data->{'srmaOptions'}->{'qsubBin'} if defined($data->{'srmaOptions'}->{'qsubBin'});
-	$qsub .= "qsub" if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}); # without a user hold
-	$qsub .= "qsub -h" if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}); # with a user hold, remove later
+	$qsub .= "qsub" if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}->{'content'}); # without a user hold
+	$qsub .= "qsub -h" if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}->{'content'}); # with a user hold, remove later
 
 	if(0 < scalar(@$dependent_jobIDs) && 1 == $should_depend) {
-		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'});
-		$qsub .= " -W depend=afterok:".join(":", @$dependent_jobIDs) if ("PBS" eq $data->{'srmaOptions'}->{'queueType'});
+		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs)         if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}->{'content'});
+		$qsub .= " -W depend=afterok:".join(":", @$dependent_jobIDs) if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}->{'content'});
 	}
 	if(defined($data->{$type}->{'numThreads'}) && 1 < $data->{$type}->{'numThreads'}) {
-		$qsub .= " -pe serial ".$data->{$type}->{'numThreads'}     if ("SGE" eq $data->{'globalOptions'}->{'queueType'});
-		$qsub .= " -l nodes=1:ppn=".$data->{$type}->{'numThreads'} if ("PBS" eq $data->{'globalOptions'}->{'queueType'});
+		$qsub .= " -pe serial ".$data->{$type}->{'numThreads'}     if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}->{'content'});
+		$qsub .= " -l nodes=1:ppn=".$data->{$type}->{'numThreads'} if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}->{'content'});
 	}
 	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
+	$qsub .= " -terse" if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}->{'content'});
 	$qsub .= " -N $outputID -o $run_file.out -e $run_file.err $run_file";
 
 	if(1 == $should_run) {
@@ -702,6 +814,99 @@ END_OUTPUT
 		return $qsub_id;
 	}
 }
+
+sub SubmitArrayJob {
+	my ($run_file, $quiet, $should_run, $should_depend, $dryrun, $pre_command, $command, $data, 
+	    $start, $end, $step, $type, $outputID, $dependent_jobIDs) = @_;
+
+	if ("PBS" eq $data->{'srmaOptions'}->{'queueType'}->{'content'}) {
+		die("Array jobs are only supported under SGE.");
+	}
+
+	if(0 < length($outputID)) {
+		$outputID = "$type.$outputID"; $outputID =~ s/Options//g;
+	}
+	else {
+		$outputID = "$type"; $outputID =~ s/Options//g;
+	}
+
+	if(!$quiet) {
+		print STDERR "[srma submit] RUNFILE=$run_file\n";
+	}
+
+	if(1 == $should_run) {
+		my $output = <<END_OUTPUT;
+#\$ -e $run_file.\$TASK_ID.err
+#\$ -o $run_file.\$TASK_ID.out
+run ()
+{
+	echo "running: \$*" 2>&1;
+	eval \$*;
+	if test \$? != 0 ; then
+	echo "error: while running '\$*'";
+	exit 100;
+	fi
+}
+END_OUTPUT
+		if(defined($data->{'srmaOptions'}->{'javaUse'})) {
+			$output .= "use ".$data->{'srmaOptions'}->{'javaUse'}."\n";
+		}
+		$output .= $pre_command;
+		$output .= "\nrun \"hostname\";\n";
+		$output .= "run \"$command\";\n";
+		$output .= "exit 0;\n";
+		open(FH, ">$run_file") or die("Error.  Could not open $run_file for writing!\n");
+		print FH "$output";
+		close(FH);
+	}
+
+	# Create qsub command
+	my $qsub = "";
+	$qsub .= $data->{'srmaOptions'}->{'qsubBin'} if defined($data->{'srmaOptions'}->{'qsubBin'});
+	$qsub .= "qsub -h"; # with a user hold, remove later
+
+	if(0 < scalar(@$dependent_jobIDs) && 1 == $should_depend) {
+		$qsub .= " -hold_jid ".join(",", @$dependent_jobIDs);
+	}
+	if(defined($data->{$type}->{'numThreads'}) && 1 < $data->{$type}->{'numThreads'}) {
+		$qsub .= " -pe serial ".$data->{$type}->{'numThreads'};
+	}
+	$qsub .= " ".$data->{$type}->{'qsubArgs'} if defined($data->{$type}->{'qsubArgs'});
+	$qsub .= " -t ".$start."-".$end.":".$step;
+	$qsub .= " -terse" if ("SGE" eq $data->{'srmaOptions'}->{'queueType'}->{'content'});
+	$qsub .= " -N $outputID $run_file";
+
+	if(1 == $should_run) {
+		if(1 == $dryrun) {
+			$FAKEQSUBID++;
+			print STDERR "[srma submit] NAME=$outputID QSUBID=$FAKEQSUBID\n";
+			return $FAKEQSUBID;
+		}
+
+		# Submit the qsub command
+		my $qsub_id=`$qsub`;
+		$qsub_id = "$qsub_id";
+		chomp($qsub_id);
+
+		if($qsub_id =~ m/(\d+)\..+/) {
+			$qsub_id = $1;
+		}
+		die("Error submitting QSUB_COMMAND=$qsub\nQSUB_ID=$qsub_id\n") unless (0 < length($qsub_id));
+		if($qsub_id !~ m/^\S+$/) {
+			die("Error submitting QSUB_COMMAND=$qsub\nQSUB_ID=$qsub_id\n") unless (0 < length($qsub_id));
+		}
+
+		# save qsub id
+		push(@qsubGlobalIDs, $qsub_id);
+
+		if(!$quiet) {
+			print STDERR "[srma submit] NAME=$outputID QSUBID=$qsub_id\n";
+		}
+
+		return $qsub_id;
+	}
+}
+
 
 __END__
 =head1 SYNOPSIS
