@@ -17,4 +17,4 @@ in your srma configuration file.
 If one or more of the sub-jobs in an array job fails, resubmit 
 them using the "sge_resub" script included here, as
 
-$ sge_resub <job_id>
+$ qstat | grep <username> | grep Eqw | sge_resub
