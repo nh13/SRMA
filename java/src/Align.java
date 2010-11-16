@@ -40,135 +40,21 @@ public class Align {
         AlignHeapNodeComparator comp=null;
         int alignmentStart = -1;
         int numStartNodesAdded = 0;
+
+        AlignData data = null;
+
         boolean strand = rec.getReadNegativeStrandFlag(); // false -> forward, true -> reverse
-        String softClipStartBases = null;
-        String softClipStartQualities = null;
-        String softClipEndBases = null;
-        String softClipEndQualities = null;
+        data = new AlignData(rec);
 
-        // Debugging stuff
-        //String readName = rec.getReadName();
-
-        assert SRMAUtil.Space.COLORSPACE != space;
-
-        // Get space
-        read = (String)rec.getAttribute("CS");
-        if(null == read) {
-            // Use base space
-            space = SRMAUtil.Space.NTSPACE;
-        }
-        else {
-            // assumes CS and CQ are always in sequencing order
-            space = SRMAUtil.Space.COLORSPACE;
-        }
-
-        // Get read and qualities
+        space = data.space;
+        readBases = data.readBases;
         if(space == SRMAUtil.Space.NTSPACE) {
-            byte tmpRead[] = rec.getReadString().getBytes();
-            byte tmpQualities[] = rec.getBaseQualityString().getBytes();
-            // Reverse once
-            if(strand) { // reverse
-                SAMRecordUtil.reverseArray(tmpRead);
-                SAMRecordUtil.reverseArray(tmpQualities);
-            }
-            read = new String(tmpRead);
-            readBases = new String(tmpRead);
-            qualities = new String(tmpQualities);
-            // Reverse again
-            if(strand) { // reverse
-                SAMRecordUtil.reverseArray(tmpRead);
-                SAMRecordUtil.reverseArray(tmpQualities);
-            }
+            read = data.readBases;
+            qualities = data.readBaseQualities;
         }
         else {
-            byte tmpRead[] = rec.getReadString().getBytes();
-            // Reverse once
-            if(strand) { // reverse
-                SAMRecordUtil.reverseArray(tmpRead);
-            }
-            readBases = new String(tmpRead);
-            // Reverse again
-            if(strand) { // reverse
-                SAMRecordUtil.reverseArray(tmpRead);
-            }
-            read = SRMAUtil.normalizeColorSpaceRead(read);
-            qualities = (String)rec.getAttribute("CQ");
-            // Some aligners include a quality value for the adapter.  A quality value
-            // IMHO should not be given for an unobserved (assumed) peice of data.  Trim
-            // the first quality in this case
-            if(qualities.length() == 1 + read.length()) { // trim the first quality
-                qualities = qualities.substring(1);
-            }
-        }
-        // Reverse back
-        if(readBases.length() <= 0) {
-            throw new Exception("Error.  The current alignment has no bases.");
-        }
-        if(read.length() <= 0) {
-            throw new Exception("Error.  The current alignment has no bases.");
-        }
-        if(qualities.length() <= 0) {
-            throw new Exception("Error.  The current alignment has no qualities.");
-        }
-        if(readBases.length() != read.length()) {
-            if(space == SRMAUtil.Space.COLORSPACE) {
-                throw new Exception("Error.  The current alignment's read bases length does not match the length of the colors in the CS tag.");
-            }
-            else {
-                throw new Exception("Error.  Internal error: readBases.length() != read.length()");
-            }
-        }
-
-        // Deal with soft-clipping
-        // - save the soft clipped sequence for latter
-        {
-            List<CigarElement> cigarElements = null;
-
-            cigarElements = rec.getCigar().getCigarElements();
-            CigarElement e1 = cigarElements.get(0); // first
-            CigarElement e2 = cigarElements.get(cigarElements.size()-1); // last 
-
-            // Soft-clipped
-            if(CigarOperator.S == e1.getOperator()) {
-                if(space == SRMAUtil.Space.COLORSPACE) {
-                    throw new Exception("Error.  Soft clipping with color-space data not currently supported.");
-                }
-                int l = e1.getLength();
-                if(strand) { // reverse
-                    softClipStartBases = readBases.substring(readBases.length() - l);
-                    softClipStartQualities = qualities.substring(qualities.length() - l);
-                    readBases = readBases.substring(0, readBases.length() - l);
-                    read = read.substring(0, read.length() - l);
-                    qualities = qualities.substring(0, qualities.length() - l);
-                }
-                else {
-                    softClipStartBases = readBases.substring(0, l-1);
-                    softClipStartQualities = qualities.substring(0, l-1);
-                    readBases = readBases.substring(l);
-                    read = read.substring(l);
-                    qualities = qualities.substring(l);
-                }
-            }
-            if(CigarOperator.S == e2.getOperator()) {
-                if(space == SRMAUtil.Space.COLORSPACE) {
-                    throw new Exception("Error.  Soft clipping with color-space data not currently supported.");
-                }
-                int l = e2.getLength();
-                if(strand) { // reverse
-                    softClipEndBases = readBases.substring(0, l-1);
-                    softClipEndQualities = qualities.substring(0, l-1);
-                    readBases = readBases.substring(l);
-                    read = read.substring(l);
-                    qualities = qualities.substring(l);
-                }
-                else {
-                    softClipEndBases = readBases.substring(readBases.length() - l);
-                    softClipEndQualities = qualities.substring(qualities.length() - l);
-                    readBases = readBases.substring(0, readBases.length() - l);
-                    read = read.substring(0, read.length() - l);
-                    qualities = qualities.substring(0, qualities.length() - l);
-                }
-            }
+            read = data.readColors;
+            qualities = data.readColorQualities;
         }
 
         // Remove mate pair information
@@ -191,18 +77,6 @@ public class Align {
                 useSequenceQualities,
                 MAXIMUM_TOTAL_COVERAGE,
                 MAX_HEAP_SIZE);
-
-        /*
-           System.err.println("readName="+rec.getReadName());
-           if(null != bestAlignHeapNode) {
-           System.err.println("\nFOUND BEST:" + rec.toString());
-           }
-           else {
-           System.err.println("\nNOT FOUND (BEST): " + rec.toString());
-           }
-           Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, softClipStartBases, softClipStartQualities, softClipEndBases, softClipEndQualities, strand, correctBases);
-           return;
-           */
 
         heap = new AlignHeap((strand) ? AlignHeap.HeapType.MAXHEAP : AlignHeap.HeapType.MINHEAP);
 
@@ -287,11 +161,6 @@ public class Align {
                 return;
             }
 
-            //System.err.println("strand:" + strand + "\tsize:" + heap.size() + "\talignmentStart:" + alignmentStart + "\toffset:" + offset + "\treadOffset:" + curAlignHeapNode.readOffset);
-            //System.err.print("size:" + heap.size() + ":" + curAlignHeapNode.readOffset + ":" + curAlignHeapNode.score + ":" + curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.startPosition + "\t");
-            //curAlignHeapNode.node.print(System.err);
-            //System.err.print("\rposition:" + curAlignHeapNode.node.position + "\treadOffset:" + curAlignHeapNode.readOffset);
-
             // Remove all non-insertions with the same contig/pos/read-offset/type/base and lower score 
             nextAlignHeapNode = heap.peek();
             while(Node.INSERTION != curAlignHeapNode.node.type 
@@ -315,10 +184,6 @@ public class Align {
             // Check if the alignment is complete
             if(curAlignHeapNode.readOffset == read.length() - 1) {
                 // All read bases examined, store if has the best alignment.
-
-                //System.err.print(curAlignHeapNode.alleleCoverageSum + ":" + curAlignHeapNode.score + ":");
-                //System.err.print(curAlignHeapNode.startPosition + ":");
-                //curAlignHeapNode.node.print(System.err);
 
                 if(null == bestAlignHeapNode 
                         || bestAlignHeapNode.score < curAlignHeapNode.score 
@@ -367,7 +232,7 @@ public class Align {
         }
 
         // Recover alignment
-        Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, softClipStartBases, softClipStartQualities, softClipEndBases, softClipEndQualities, strand, correctBases);
+        Align.updateSAM(rec, programRecord, bestAlignHeapNode, read, qualities, data, correctBases);
     }
 
     private static void removeMateInfo(SAMRecord rec)
@@ -541,7 +406,8 @@ public class Align {
         return (byte)val;
     }
 
-    private static void updateSAM(SAMRecord rec, SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, String softClipStartBases, String softClipStartQualities, String softClipEndBases, String softClipEndQualities, boolean strand, boolean correctBases)
+    private static void updateSAM(SAMRecord rec, SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, 
+            String read, String qualities, AlignData data, boolean correctBases)
         throws Exception
     {
         AlignHeapNode curAlignHeapNode=null;
@@ -556,14 +422,17 @@ public class Align {
         List<String> optFieldTags = new LinkedList<String>();
         List<Object> optFieldValues = new LinkedList<Object>();
         Object attr;
-
-        // Debugging stuff
-        //String readName = rec.getReadName();
+        SRMAUtil.Space space;
+        boolean strand;
+        List<CigarElement> tmpCigarElements=null;
 
         if(null == bestAlignHeapNode) {
             // Do not modify the alignment
             return;
         }
+
+        strand = data.strand;
+        space = data.space;
 
         // To generate a new CIGAR
         List<CigarElement> cigarElements=null;
@@ -777,40 +646,55 @@ public class Align {
             }
         }
 
-        // Add in soft-clipping
-        if(null != softClipStartBases) { // prepend
-            cigarElements.add(0, new CigarElement(softClipStartBases.length(), CigarOperator.S));
+        // Add in soft-clipping and hard-clipping
+        tmpCigarElements = rec.getCigar().getCigarElements();
+        if(data.clippedStart) {
+            CigarElement e1 = tmpCigarElements.get(0); // first
+            int l = e1.getLength();
+            CigarOperator op = e1.getOperator();
 
-            byte tmpBases[] = new byte[readBases.length + softClipStartBases.length()];
-            System.arraycopy(readBases, 0, tmpBases, softClipStartBases.length(), readBases.length);
-            readBases = tmpBases;
-            for(i=0;i<softClipStartBases.length();i++) {
-                readBases[i] = (byte)softClipStartBases.charAt(i);
-            }
+            // add cigar operator
+            cigarElements.add(0, new CigarElement(l, op));
 
-            byte tmpQualities[] = new byte[baseQualities.length + softClipStartQualities.length()];
-            System.arraycopy(baseQualities, 0, tmpQualities, softClipStartQualities.length(), baseQualities.length);
-            baseQualities = tmpQualities;
-            for(i=0;i<softClipStartQualities.length();i++) {
-                baseQualities[i] = (byte)softClipStartQualities.charAt(i);
+            if(CigarOperator.S == op) { // soft-clipping, add bases & quality
+                byte tmpBases[] = new byte[readBases.length + l];
+                // copy over aligned bases
+                System.arraycopy(readBases, 0, tmpBases, l, readBases.length);
+                readBases = tmpBases;
+                // copy over soft-clipped bases
+                System.arraycopy(rec.getReadBases(), 0, readBases, 0, l);
+
+                byte tmpQualities[] = new byte[baseQualities.length + l];
+                // copy over aligned qualities
+                System.arraycopy(baseQualities, 0, tmpQualities, l, baseQualities.length);
+                baseQualities = tmpQualities;
+                // copy over soft-clipped qualities
+                System.arraycopy(rec.getBaseQualities(), 0, baseQualities, 0, l);
             }
         }
-        if(null != softClipEndBases) { // append
-            cigarElements.add(new CigarElement(softClipEndBases.length(), CigarOperator.S));
+        if(data.clippedEnd) {
+            CigarElement e2 = tmpCigarElements.get(tmpCigarElements.size()-1); // last 
+            int l = e2.getLength();
+            CigarOperator op = e2.getOperator();
 
-            byte tmpBases[] = new byte[readBases.length + softClipEndBases.length()];
-            System.arraycopy(readBases, 0, tmpBases, 0, readBases.length);
-            for(i=0;i<softClipEndBases.length();i++) {
-                tmpBases[i+readBases.length] = (byte)softClipEndBases.charAt(i);
-            }
-            readBases = tmpBases;
+            // add cigar operator
+            cigarElements.add(new CigarElement(l, op));
 
-            byte tmpQualities[] = new byte[baseQualities.length + softClipEndQualities.length()];
-            System.arraycopy(baseQualities, 0, tmpQualities, 0, baseQualities.length);
-            for(i=0;i<softClipEndQualities.length();i++) {
-                tmpQualities[i+baseQualities.length] = (byte)softClipEndQualities.charAt(i);
+            if(CigarOperator.S == op) { // soft-clipping, add bases & quality
+                byte tmpBases[] = new byte[readBases.length + l];
+                // copy over aligned bases 
+                System.arraycopy(readBases, 0, tmpBases, 0, readBases.length);
+                // copy over soft-clipped bases
+                System.arraycopy(rec.getReadBases(), readBases.length, tmpBases, readBases.length, l);
+                readBases = tmpBases;
+
+                byte tmpQualities[] = new byte[baseQualities.length + l];
+                // copy over aligned qualities
+                System.arraycopy(baseQualities, 0, tmpQualities, 0, baseQualities.length);
+                // copy over soft-clipped qualities
+                System.arraycopy(rec.getBaseQualities(), baseQualities.length, tmpQualities, baseQualities.length, l);
+                baseQualities = tmpQualities;
             }
-            baseQualities = tmpQualities;
         }
 
         // Update SAM record
@@ -883,6 +767,200 @@ public class Align {
 
         while(iterTags.hasNext()) {
             rec.setAttribute(iterTags.next(), iterValues.next());
+        }
+    }
+
+    private static class AlignData {
+        // General info
+        public SRMAUtil.Space space;
+        public boolean strand;
+
+        // Base space
+        public String readBases = null;
+        public String readBaseQualities=null; 
+
+        // Color space
+        public String readColors = null; // color space only, no adapter
+        public String readColorQualities  = null; // color space only
+
+        // Alignment info
+        public boolean clippedStart = false;
+        public boolean clippedEnd= false;
+
+        public AlignData(SAMRecord rec)
+            throws Exception
+        {
+            String read = null;
+
+            this.strand = rec.getReadNegativeStrandFlag();
+
+            // Get space
+            read = (String)rec.getAttribute("CS");
+            if(null == read) {
+                // Use base space
+                this.space = SRMAUtil.Space.NTSPACE;
+            }
+            else {
+                // assumes CS and CQ are always in sequencing order
+                this.space = SRMAUtil.Space.COLORSPACE;
+            }
+
+            // Note: the reads on the negative strand will not be complimented, only reversed
+            // Get read and qualities
+            if(this.space == SRMAUtil.Space.NTSPACE) {
+                byte tmpRead[] = rec.getReadString().getBytes();
+                byte tmpQualities[] = rec.getBaseQualityString().getBytes();
+                // Reverse once
+                if(this.strand) { // reverse
+                    SAMRecordUtil.reverseArray(tmpRead);
+                    SAMRecordUtil.reverseArray(tmpQualities);
+                }
+                this.readBases = new String(tmpRead);
+                this.readBaseQualities = new String(tmpQualities);
+                // Reverse again
+                if(this.strand) { // reverse
+                    SAMRecordUtil.reverseArray(tmpRead);
+                    SAMRecordUtil.reverseArray(tmpQualities);
+                }
+                this.readColors = null;
+                this.readColorQualities = null;
+                if(this.readBaseQualities.length() <= 0) {
+                    throw new Exception("Error.  The current alignment has no base qualities.");
+                }
+            }
+            else {
+                byte tmpRead[] = rec.getReadString().getBytes();
+                // Reverse once
+                if(this.strand) { // reverse
+                    SAMRecordUtil.reverseArray(tmpRead);
+                }
+                this.readBases = new String(tmpRead);
+                this.readBaseQualities = null;
+                // Reverse again
+                if(strand) { // reverse
+                    SAMRecordUtil.reverseArray(tmpRead);
+                }
+                this.readColors = SRMAUtil.normalizeColorSpaceRead((String)rec.getAttribute("CS"));
+                this.readColorQualities = (String)rec.getAttribute("CQ");
+                // Some aligners include a quality value for the adapter.  A quality value
+                // IMHO should not be given for an unobserved (assumed) peice of data.  Trim
+                // the first quality in this case
+                if(this.readColorQualities.length() > this.readColors.length()) { // trim the first quality
+                    this.readColorQualities = readColorQualities.substring(1);
+                }
+                if(this.readColors.length() <= 0) {
+                    throw new Exception("Error.  The current alignment has no colors.");
+                }
+                if(this.readColorQualities.length() <= 0) {
+                    throw new Exception("Error.  The current alignment has no color qualities.");
+                }
+            }
+            if(this.readBases.length() <= 0) {
+                throw new Exception("Error.  The current alignment has no bases.");
+            }
+
+            // Deal with soft-clipping and hard-cliping
+            {
+                List<CigarElement> cigarElements = null;
+
+                cigarElements = rec.getCigar().getCigarElements();
+                CigarElement e1 = cigarElements.get(0); // first
+                CigarElement e2 = cigarElements.get(cigarElements.size()-1); // last 
+
+                // get the bases that are clipped
+                if(CigarOperator.S == e1.getOperator()) {
+                    int l = e1.getLength();
+                    this.clippedStart = true;
+                    if(this.strand) { // reverse
+                        this.readBases = readBases.substring(0, this.readBases.length() - l);
+                        if(this.space == SRMAUtil.Space.NTSPACE) {
+                            this.readBaseQualities = this.readBaseQualities.substring(0, this.readBaseQualities.length() - l);
+                        }
+                        else { // adapter is not trimmed
+                            this.readColors = this.readColors.substring(0, this.readColors.length() - l); 
+                            this.readColorQualities = this.readColorQualities.substring(0, this.readColorQualities.length() - l); 
+                        }
+                    }
+                    else { 
+                        this.readBases = this.readBases.substring(l);
+                        if(this.space == SRMAUtil.Space.NTSPACE) {
+                            this.readBaseQualities = this.readBaseQualities.substring(l);
+                        }
+                        else { // adapter is trimmed
+                            this.readColors =  this.readColors.substring(l); // skip the first l colors 
+                            // the adapter is now the previously clipped base
+                            this.readColors = Character.toString(SRMAUtil.getCompliment(this.readBases.charAt(l-1))) + this.readColors; 
+                            this.readColors = SRMAUtil.normalizeColorSpaceRead(this.readColors); // re-normalize
+                            this.readColorQualities = this.readColorQualities.substring(l); // skip the first l qualities
+                        }
+                    }
+                }
+                else if(CigarOperator.H == e1.getOperator()) {
+                    this.clippedStart = true;
+                    if(this.space == SRMAUtil.Space.COLORSPACE) {
+                        int l = e1.getLength();
+                        // the adapter is the last non-clipped base, inferred by the first non-clipped color
+                        if(this.strand) { // reverse
+                            // not trimed
+                            this.readColors = this.readColors.substring(0, this.readColors.length() - l); 
+                            this.readColorQualities = this.readColorQualities.substring(0, this.readColorQualities.length() - l); 
+                        }
+                        else {
+                            this.readColors = this.readColors.substring(l); // skip the first l colors 
+                            this.readColors = SRMAUtil.colorSpaceNextBase(this.readBases.charAt(0), this.readColors.charAt(0)) + this.readColors;
+                            this.readColors = SRMAUtil.normalizeColorSpaceRead(this.readColors); // re-normalize
+                            this.readColorQualities = this.readColorQualities.substring(l); // skip the first l qualities
+                        }
+                    }
+                }
+
+                if(CigarOperator.S == e2.getOperator()) {
+                    int l = e2.getLength();
+                    this.clippedEnd = true;
+                    if(this.strand) { // reverse
+                        this.readBases = this.readBases.substring(l);
+                        if(this.space == SRMAUtil.Space.NTSPACE) {
+                            this.readBaseQualities = this.readBaseQualities.substring(l);
+                        }
+                        else { // adapter is trimmed
+                            this.readColors = this.readColors.substring(l); // skip the first l colors 
+                            // the adapter is now the previously clipped base
+                            this.readColors = Character.toString(SRMAUtil.getCompliment(this.readBases.charAt(l+1))) + this.readColors; 
+                            this.readColors = SRMAUtil.normalizeColorSpaceRead(this.readColors); // re-normalize
+                            this.readColorQualities = this.readColorQualities.substring(l); // skip the first
+                        }
+                    }
+                    else {
+                        this.readBases = this.readBases.substring(0, readBases.length() - l);
+                        if(this.space == SRMAUtil.Space.NTSPACE) {
+                            this.readBaseQualities = this.readBaseQualities.substring(0, this.readBaseQualities.length() - l);
+                        }
+                        else { // adapter is not trimmed
+                            this.readColors = this.readColors.substring(0, readColors.length() - l);
+                            this.readColorQualities = this.readColorQualities.substring(0, this.readColorQualities.length() - l);
+                        }
+                    }
+                }
+                else if(CigarOperator.H == e2.getOperator()) {
+                    this.clippedEnd = true;
+                    if(space == SRMAUtil.Space.COLORSPACE) {
+                        int l = e2.getLength();
+                        // the adapter is the last non-clipped base, inferred by the first non-clipped color
+                        if(this.strand) { // reverse
+                            this.readColors = this.readColors.substring(l); // skip the first l colors 
+                            char b = SRMAUtil.getCompliment(this.readBases.charAt(0));
+                            this.readColors = SRMAUtil.colorSpaceNextBase(b, this.readColors.charAt(0)) + this.readColors;
+                            this.readColors = SRMAUtil.normalizeColorSpaceRead(this.readColors); // re-normalize
+                            this.readColorQualities = this.readColorQualities.substring(l); // skip the first l qualities
+                        }
+                        else {
+                            // not trimed
+                            this.readColors = this.readColors.substring(0, readColors.length() - l);
+                            this.readColorQualities = this.readColorQualities.substring(0, this.readColorQualities.length() - l);
+                        }
+                    }
+                }
+            }
         }
     }
 }
