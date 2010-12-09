@@ -11,7 +11,6 @@
   @field  position_end    the end position of the graph (1-based)
   @field  nodes_mem       the memory allocated end position of the graph 
   @field  nodes           a list of list of nodes
-  @field  coverages       a list of total coverages of the nodes, not including insertions with offsets > 0
   @field  is_empty        are there any nodes in this graph?
 */
 typedef struct {
@@ -19,7 +18,6 @@ typedef struct {
 	uint32_t position_start, position_end;
 	uint32_t nodes_mem;
 	node_list_t **nodes;
-	uint16_t *coverages;
 	uint8_t is_empty;
 } graph_t;
 
