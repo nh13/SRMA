@@ -96,7 +96,6 @@ static int32_t sw_align_bound(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap,
 	char base, qual;
 
 	if(0 != pass_filters1(g, n, cutoffs, max_total_coverage)) {
-		//fprintf(stderr, "NOT BOUNDED 1\n"); // DEBUG
 		return -1;
 	}
 
@@ -247,6 +246,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 	int32_t sw_node_i=-1, sw_node_best_i=-1, sw_node_cur_i=-1, sw_node_next_i=-1;
 	int32_t soft_clip_start_l = 0, soft_clip_end_l = 0;
 
+
 	strand = bam1_strand(b);
 
 	// soft-clipping
@@ -309,7 +309,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 		sw_heap_clear(heap);
 	}
 	//return b; // HERE DEBUG HERE BUG
-
+                                        
 	// add start nodes
 	if(strand) {
 		if(SRMA_SPACE_CS == space) {
@@ -324,7 +324,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 		for(i=aln_start+offset;aln_start-offset<=i;i--) {
 			int32_t pos = graph_get_node_list_index_at_or_before(g, i);
 			node_list_t *list = graph_get_node_list(g, pos);
-			if(0 != pos && NULL != list) {
+			if(1 != pos && NULL != list) {
 				for(j=0;j<list->length;j++) {
 					node_t *node = list->nodes[j];
 					int32_t pass = pass_filters1(g, node, cutoffs, max_total_coverage);
@@ -385,7 +385,8 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 
 	sw_node_cur_i = sw_heap_poll_i(heap);
 	while(0 <= sw_node_cur_i) {
-		if(max_heap_size <- heap->queue_end - heap->queue_start + 1) {
+                    
+		if(max_heap_size < heap->queue_end - heap->queue_start + 1) {
 			// too many to consider
 			sw_heap_clear(heap); // clear heap
 			return b;
@@ -477,14 +478,14 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 		sw_node_cur_i = sw_heap_poll_i(heap);
 	}
 
-	/*
-	// fprintf(stderr, "sw_node_best_i=%d\n", sw_node_best_i); // DEBUG
+        /*
+	fprintf(stderr, "sw_node_best_i=%d\n", sw_node_best_i); // DEBUG
 	if(0 <= sw_node_best_i) {
 	fprintf(stderr, "END score=%d coverage_sum=%hu\n", 
 	heap->nodes[sw_node_best_i].score,
 	heap->nodes[sw_node_best_i].coverage_sum); // DEBUG
 	}
-	*/
+        */
 	// update SAM/BAM
 	b = sw_align_update_bam(b, rg_id, heap, sw_node_best_i, space, colors, color_qualities, strand, correct_bases);
 	sw_heap_clear(heap); // clear heap

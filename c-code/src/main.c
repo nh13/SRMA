@@ -21,6 +21,7 @@
 
 static pthread_mutex_t thread_graph_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t thread_align_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int32_t to_align_list_i = 0;
 
 static int within_insert_size_range(bam_record_t *bam_record, int32_t insert_size_range_low, int32_t insert_size_range_high)
 {
@@ -312,14 +313,15 @@ static void srma_core_add_to_graph(srma_opt_t *opt, graph_t *graph, bam_record_l
 typedef struct {
 	srma_opt_t *opt;
 	bam_record_ll_t *to_align_list;
+        int32_t to_align_list_length;
 	graph_t *graph;
 	cov_cutoffs_t *cov_cutoffs;
 } thread_align_data_t;
 
-static void srma_core_align_worker(srma_opt_t *opt, bam_record_ll_t *to_align_list, graph_t *graph, cov_cutoffs_t *cov_cutoffs, int32_t use_threads)
+static void srma_core_align_worker(srma_opt_t *opt, bam_record_ll_t *to_align_list, int32_t to_align_list_length, graph_t *graph, cov_cutoffs_t *cov_cutoffs, int32_t use_threads)
 {
 	sw_heap_t *heap=NULL;
-	int32_t i;
+	int32_t i,l;
 
 	heap = sw_heap_init(SRMA_SW_HEAP_MIN, opt->max_heap_size);
 
@@ -329,7 +331,7 @@ static void srma_core_align_worker(srma_opt_t *opt, bam_record_ll_t *to_align_li
 		// --- SYNC ON --- 
 		if(1 == use_threads) pthread_mutex_lock(&thread_align_mutex);
 		start = to_align_list->iter;
-		if(start == NULL) {
+		if(start == NULL || to_align_list_i == to_align_list_length) {
 			// No more to process
 			if(1 == use_threads) pthread_mutex_unlock(&thread_align_mutex);
 			break;
@@ -337,15 +339,17 @@ static void srma_core_align_worker(srma_opt_t *opt, bam_record_ll_t *to_align_li
 		}
 		else {
 			// shift iterator
-			for(i=0;i<THREAD_GRAPH_BLOCK_SIZE && NULL != to_align_list->iter;i++) {
+			for(i=l=0;i<THREAD_GRAPH_BLOCK_SIZE && to_align_list_i < to_align_list_length && NULL != to_align_list->iter;i++) {
 				to_align_list->iter = to_align_list->iter->next;
+                                to_align_list_i++;
+                                l++;
 			}
 			if(1 == use_threads) pthread_mutex_unlock(&thread_align_mutex);
 			// --- SYNC OFF --- 
 
 			// process
 			cur = start;
-			for(i=0;i<THREAD_GRAPH_BLOCK_SIZE && NULL != cur;i++) {
+                        for(i=0;i<l;i++) {
 				// remember to save the start node
 				cur->b = sw_align(graph, cur->b, cur->node, heap, NULL, opt->offset, cov_cutoffs, opt->correct_bases, opt->use_qualities, opt->max_total_coverage, opt->max_heap_size);
 				cur = cur->next;
@@ -361,10 +365,11 @@ void *srma_core_align_thread(void *arg)
 	thread_align_data_t *data = (thread_align_data_t*)arg;
 	srma_opt_t *opt = data->opt;
 	bam_record_ll_t *to_align_list = data->to_align_list;
+        int32_t to_align_list_length = data->to_align_list_length;
 	graph_t *graph = data->graph;
 	cov_cutoffs_t *cov_cutoffs = data->cov_cutoffs;
 
-	srma_core_align_worker(opt, to_align_list, graph, cov_cutoffs, 1);
+	srma_core_align_worker(opt, to_align_list, to_align_list_length, graph, cov_cutoffs, 1);
 
 	return arg;
 }
@@ -373,7 +378,7 @@ static void srma_core_align(srma_opt_t *opt, graph_t *graph, faidx_t *fai, bam_r
 {
 	pthread_t *threads = NULL;
 	thread_align_data_t *data = NULL;
-	int32_t i;
+	int32_t i, to_align_list_length = 0;
 	void *status = NULL;
 	bam_record_t *bam_record = NULL, *bam_record_last = NULL;;
 
@@ -381,7 +386,26 @@ static void srma_core_align(srma_opt_t *opt, graph_t *graph, faidx_t *fai, bam_r
 		//bam_calend(&b->core, bam1_cigar(b))
 		if(0 != flush || bam_calend(&to_align_list->head->b->core, bam1_cigar(to_align_list->head->b)) + opt->offset < to_align_list->tail->b->core.pos) {
 
-			to_align_list->iter = to_align_list->head; // IMPORTANT: must be set
+                        // IMPORTANT: must be set
+			to_align_list->iter = to_align_list->head; 
+                        to_align_list_i = 0;
+
+                        // get the # to align
+                        if(0 != flush) {
+                            to_align_list_length = to_align_list->size;
+                        }
+                        else {
+                            bam_record_t *record = to_align_list->head;
+                            for(i=0;i<to_align_list->size;i++) {
+                                if(bam_calend(&record->b->core, bam1_cigar(record->b)) + opt->offset < to_align_list->tail->b->core.pos) {
+                                    record = record->next;
+                                }
+                                else {
+                                    break;
+                                }
+                            }
+                            to_align_list_length = i+1;
+                        }
 
 			if(1 < opt->num_threads) {
 				// prepare thread data
@@ -389,6 +413,7 @@ static void srma_core_align(srma_opt_t *opt, graph_t *graph, faidx_t *fai, bam_r
 				for(i=0;i<opt->num_threads;i++) {
 					data[i].opt = opt;
 					data[i].to_align_list = to_align_list;
+                                        data[i].to_align_list_length = to_align_list_length;
 					data[i].graph = graph;
 					data[i].cov_cutoffs = cov_cutoffs;
 				}
@@ -413,7 +438,7 @@ static void srma_core_align(srma_opt_t *opt, graph_t *graph, faidx_t *fai, bam_r
 				free(data);
 			}
 			else {
-				srma_core_align_worker(opt, to_align_list, graph, cov_cutoffs, 0);
+				srma_core_align_worker(opt, to_align_list, to_align_list_length, graph, cov_cutoffs, 0);
 			}
 
 			// add aligned bams to the output queue
@@ -511,7 +536,6 @@ static void srma_core(srma_opt_t *opt)
 	// init
 	cov_cutoffs = cov_cutoffs_init(opt->min_allele_coverage, opt->min_allele_prob);
 	to_output_list = bam_record_ll_init();
-	// TODO
 	parse_insert_size_range(opt->insert_size_range, &insert_size_range_low, &insert_size_range_high);
 
 	// Get first range

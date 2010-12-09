@@ -44,10 +44,8 @@ static inline void graph_nodes_realloc(graph_t *g, int32_t size)
 	roundup32(g->nodes_mem); // round up
 	assert(size <= g->nodes_mem);
 	g->nodes = srma_realloc(g->nodes, sizeof(node_list_t*)*g->nodes_mem, __func__, "g->nodes");
-	g->coverages = srma_realloc(g->coverages, sizeof(uint16_t)*g->nodes_mem, __func__, "g->coverages");
 	for(i=prev_mem;i<g->nodes_mem;i++) {
 		g->nodes[i] = node_list_init();
-		g->coverages[i] = 0;
 	}
 }
 
@@ -60,14 +58,11 @@ graph_t *graph_init()
 	g->position_start = 1;
 	g->position_end = 1;
 	g->nodes = NULL;
-	g->coverages = NULL;
 	g->is_empty = 1;
 
 	// Add a dummy node
 	g->nodes = srma_malloc(sizeof(node_list_t*), __func__, "g->nodes");
 	g->nodes[0] = node_list_init();
-	g->coverages = srma_calloc(1, sizeof(uint16_t), __func__, "g->coverages");
-	g->coverages[0] = 0;
 	g->nodes_mem = 1;
 
 	return g;
@@ -93,13 +88,10 @@ node_t *graph_add_sam(graph_t *g, bam1_t *b, ref_t *ref, int32_t use_threads)
 		graph_nodes_realloc(g, g->position_end - aln_start + 1); // alloc more memory if needed
 		// shift up
 		for(i=g->position_end-g->position_start;0<=i;i--) {
-			node_list_t *list = g->nodes[i+diff];
-			uint16_t coverage = g->coverages[i+diff];
 			// swap
+			node_list_t *list = g->nodes[i+diff];
 			g->nodes[i+diff] = g->nodes[i];
-			g->coverages[i+diff] = g->coverages[i];
 			g->nodes[i] = list;
-			g->coverages[i] = coverage;
 		}
 		g->position_start = aln_start;
 	}
@@ -108,7 +100,6 @@ node_t *graph_add_sam(graph_t *g, bam1_t *b, ref_t *ref, int32_t use_threads)
 		for(i=0;i<g->position_end - g->position_start + 1;i++) {
 			node_list_clear(g->nodes[i]);
 			assert(0 == g->nodes[i]->length); // DEBUG
-			g->coverages[i] = 0;
 		}
 		g->position_start = aln_start;
 		if(ALN_GAP == aln->ref[0]) {
@@ -177,9 +168,6 @@ node_t *graph_add_node(graph_t *g, node_t *node, node_t *prev, int32_t use_threa
 		assert(node->position - g->position_start < g->nodes_mem); // DEBUG
 		assert(NULL != g->nodes[node->position - g->position_start]); // DEBUG
 		node_list_add(g->nodes[node->position - g->position_start], node);
-		if(NODE_INSERTION != __node_type(node) || 0 == node->offset) {
-			g->coverages[node->position - g->position_start] += node->coverage;
-		}
 		if(g->position_end < node->position) {
 			g->position_end = node->position;
 		}
@@ -190,9 +178,6 @@ node_t *graph_add_node(graph_t *g, node_t *node, node_t *prev, int32_t use_threa
 		node_free(node);
 		node=NULL;
 		cur->coverage++;
-		if(NODE_INSERTION != __node_type(cur) || 0 == cur->offset) {
-			g->coverages[cur->position - g->position_start]++;
-		}
 	}
 
 	if(NULL != prev) {
@@ -269,11 +254,19 @@ node_list_t *graph_get_node_list(graph_t *g, uint32_t position)
 
 uint16_t graph_get_coverage(graph_t *g, uint32_t position)
 {
+        int32_t j, coverage;
 	if(position < g->position_start || g->position_end < position) {
 		return 0;
 	}
 	else {
-		return g->coverages[position - g->position_start];
+            coverage = 0;
+            for(j=0;j<g->nodes[position - g->position_start]->length;j++) {
+                node_t *node = g->nodes[position - g->position_start]->nodes[j];
+		if(NODE_INSERTION != __node_type(node) || 0 == node->offset) {
+                    coverage += node->coverage;
+                }
+            }
+            return coverage;
 	}
 }
 
@@ -301,8 +294,6 @@ void graph_prune(graph_t *g, uint32_t contig_index, uint32_t alignment_start, in
 				assert(i+diff <= g->position_end);
 				g->nodes[i] = g->nodes[i+diff];
 				g->nodes[i+diff] = ptr;
-				g->coverages[i] = g->coverages[i+diff];
-				g->coverages[i+diff] = 0;
 			}
 			for(;i<g->position_end-g->position_start+1;i++) { // clear the rest
 				node_list_clear(g->nodes[i]);
@@ -315,7 +306,6 @@ void graph_prune(graph_t *g, uint32_t contig_index, uint32_t alignment_start, in
 		for(i=0;i<g->position_end - g->position_start + 1;i++) {
 			node_list_clear(g->nodes[i]);
 			assert(0 == g->nodes[i]->length); // DEBUG
-			g->coverages[i] = 0;
 		}
 		g->contig = contig_index + 1;
 		g->position_start = alignment_start;
@@ -332,6 +322,5 @@ void graph_free(graph_t *g)
 		node_list_free(g->nodes[i]);
 	}
 	free(g->nodes);
-	free(g->coverages);
 	free(g);
 }
