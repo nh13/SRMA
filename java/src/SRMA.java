@@ -181,6 +181,17 @@ public class SRMA extends CommandLineProgram {
                         inputRange.startPosition, 
                         inputRange.endPosition);
 
+                // Get first record
+                if(null == rec) {
+                    rec = this.getNextAlignRecord();
+                }
+
+                // skip this range
+                if(null != rec &&
+                        rec.record.getReferenceIndex() != inputRange.referenceIndex) {
+                    continue;
+                }
+
                 // TODO: could retrieve just the specified bases
                 if(null == this.referenceSequence || inputRange.referenceIndex != this.referenceSequence.getContigIndex()) {
                     this.referenceSequence = this.referenceSequenceFile.getSequence(this.referenceDictionary.getSequence(inputRange.referenceIndex).getSequenceName());
@@ -191,12 +202,9 @@ public class SRMA extends CommandLineProgram {
                         throw new Exception("Could not find the reference sequence");
                     }
                 }
-
-                // Get first record
-                rec = this.getNextAlignRecord();
-
+               
                 if(null != rec) {
-                    // Do an initial prune
+                    // do an initial prune
                     this.graph.prune(rec.record.getReferenceIndex(), rec.record.getAlignmentStart(), 0);
                 }
 
@@ -519,14 +527,15 @@ public class SRMA extends CommandLineProgram {
         recReferenceIndex = rec.getReferenceIndex();
         recAlignmentStart = rec.getAlignmentStart();
         while(this.outputRange.referenceIndex < recReferenceIndex 
-                || (this.outputRange.referenceIndex < recReferenceIndex 
-                    && this.outputRange.endPosition < recAlignmentStart)) { // find a new range
+                || (this.outputRange.referenceIndex == recReferenceIndex 
+                    && this.outputRange.endPosition < recAlignmentStart)) 
+        { // find a new range
             if(!this.outputRangesIterator.hasNext()) { // no more ranges
                 this.outputRange = null;
                 return false;
             }
             this.outputRange = this.outputRangesIterator.next();
-                    }
+        }
         if(recReferenceIndex < this.outputRange.referenceIndex 
                 || (recReferenceIndex == this.outputRange.referenceIndex
                     && recAlignmentStart < this.outputRange.startPosition)) { // before range
