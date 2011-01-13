@@ -504,8 +504,7 @@ public class SRMA extends CommandLineProgram {
             AlignRecord rec = this.toOutputQueue.peek();
             // alignment could have moved (+OFFSET), with another moving (-OFFSET) 
             if(rec.record.getReferenceIndex() + 1 != graph.contig || // different contig
-                    rec.record.getAlignmentStart() + 2*OFFSET < graph.position_start) { // other alignments will not be less than
-                this.io.output(this.toOutputQueue.poll());
+                    rec.record.getAlignmentStart() + 2*OFFSET + 50 < graph.position_start) { // other alignments will not be less than, but add in 50bp just to be safe
                     }
             else { // other alignments could be less than
                 break;
