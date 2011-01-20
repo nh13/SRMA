@@ -209,7 +209,7 @@ public class SRMA extends CommandLineProgram {
                 }
 
                 while(null != rec) {
-                    if(rec.record.getReadUnmappedFlag()) { 
+                    if(rec.record.getReadUnmappedFlag() || rec.record.getNotPrimaryAlignmentFlag()) { 
                         // TODO
                         // Print this out somehow in some order somewhere
                         rec = this.getNextAlignRecord();

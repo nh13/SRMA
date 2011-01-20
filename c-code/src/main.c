@@ -567,7 +567,8 @@ static void srma_core(srma_opt_t *opt)
 			}
 
 			while(NULL != bam_record && ref->tid == bam_record->b->core.tid) { // while records to process in this interval
-				if(bam_record->b->core.flag & BAM_FUNMAP) {
+				if((bam_record->b->core.flag & BAM_FUNMAP)
+                                   || (bam_record->b->core.flag & BAM_FSECONDARY)) {
 					// removed from output
 					bam_record_free(bam_record);
 					bam_record = srma_core_get_next_record(srma_sam_io, fai, range_in, ref);
