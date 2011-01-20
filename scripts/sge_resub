@@ -1,5 +1,0 @@
-#!/bin/sh
-
-script_path=$(cd "${0%/*}" 2>/dev/null; pwd)
-
-awk -f "${script_path}/sge_resub.awk" $*

@@ -15,6 +15,4 @@ to
 in your srma configuration file.
 
 If one or more of the sub-jobs in an array job fails, resubmit 
-them using the "sge_resub" script included here, as
-
-$ qstat | grep <username> | grep Eqw | sge_resub
+them using qmod -cj <job_number> or qmod -cj <job_number> -t <task_id>
