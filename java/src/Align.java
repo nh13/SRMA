@@ -367,7 +367,7 @@ public class Align {
         }
 
         // Recover alignment
-        Align.updateSAM(rec, programRecord, bestAlignHeapNode, space, read, qualities, softClipStartBases, softClipStartQualities, softClipEndBases, softClipEndQualities, strand, correctBases);
+        Align.updateSAM(rec, sequence, programRecord, bestAlignHeapNode, space, read, qualities, softClipStartBases, softClipStartQualities, softClipEndBases, softClipEndQualities, strand, correctBases);
     }
 
     private static void removeMateInfo(SAMRecord rec)
@@ -541,7 +541,9 @@ public class Align {
         return (byte)val;
     }
 
-    private static void updateSAM(SAMRecord rec, SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, String softClipStartBases, String softClipStartQualities, String softClipEndBases, String softClipEndQualities, boolean strand, boolean correctBases)
+    private static void updateSAM(SAMRecord rec, 
+            ReferenceSequence sequence, 
+            SAMProgramRecord programRecord, AlignHeapNode bestAlignHeapNode, SRMAUtil.Space space, String read, String qualities, String softClipStartBases, String softClipStartQualities, String softClipEndBases, String softClipEndQualities, boolean strand, boolean correctBases)
         throws Exception
     {
         AlignHeapNode curAlignHeapNode=null;
@@ -553,6 +555,7 @@ public class Align {
         byte baseQualities[] = null;
         byte colorErrors[] = null;
         int i;
+        int numEdits = 0;
         List<String> optFieldTags = new LinkedList<String>();
         List<Object> optFieldValues = new LinkedList<Object>();
         Object attr;
@@ -611,8 +614,8 @@ public class Align {
             }
             else {
                 switch(curAlignHeapNode.node.type) {
-                    case Node.MATCH: // Fall through
-                    case Node.MISMATCH:
+                    case Node.MISMATCH: // Fall through
+                    case Node.MATCH: 
                         curCigarOperator = CigarOperator.MATCH_OR_MISMATCH;
                         break;
                     case Node.INSERTION:
@@ -629,6 +632,31 @@ public class Align {
                     }
                     else {
                         readIndex--;
+                    }
+                    // count the number of mismatches
+                    switch(curAlignHeapNode.node.type) {
+                        case Node.MISMATCH: // Fall through
+                        case Node.INSERTION:
+                            numEdits++;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else {
+                    // count the number of mismatches
+                    switch(curAlignHeapNode.node.type) {
+                        case Node.MISMATCH: // Fall through
+                            // check if the current base matches the reference
+                            if(read.charAt(readIndex) != sequence.getBases()[curAlignHeapNode.node.position-1]) {
+                                numEdits++;
+                            }
+                            break;
+                        case Node.INSERTION:
+                            numEdits++;
+                            break;
+                        default:
+                            break;
                     }
                 }
             }
@@ -652,6 +680,7 @@ public class Align {
                 if(curCigarOperator == CigarOperator.DELETION) {
                     // length of deletion
                     prevCigarOperatorLength = Math.abs(curAlignHeapNode.node.position - prevAlignHeapNode.node.position) - 1;
+                    numEdits += prevCigarOperatorLength; // deletions
                 }
                 else {
                     prevCigarOperatorLength=1;
@@ -828,6 +857,7 @@ public class Align {
         rec.setAttribute("AS", bestAlignHeapNode.score);
         rec.setAttribute("XC", bestAlignHeapNode.alleleCoverageSum);
         rec.setAttribute("PG", programRecord.getId());
+        rec.setAttribute("NM", numEdits);
     }
 
     /*
