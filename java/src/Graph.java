@@ -58,6 +58,8 @@ public class Graph {
 
         synchronized (this) {
             //System.err.println("HERE " + alignment_start + " " + this.position_start + ":" + this.position_end);
+            //alignment.print(System.err);
+            //System.err.println("Cigar=" + record.getCigar().toString());
             if(alignment_start < this.position_start) {
                 for(i=alignment_start;i<this.position_start;i++) {
                     this.nodes.add(0, new PriorityQueue<Node>(1, this.nodeComparator));
@@ -92,9 +94,12 @@ public class Graph {
         { // go through the alignment
 
             // Skip over a deletion
-            while(Alignment.GAP == alignment.read[i]) { 
+            while(i<alignment.length && Alignment.GAP == alignment.read[i]) {
                 i++;
                 ref_i++;
+            }
+            if(alignment.length <= i) {
+                break;
             }
 
             // Get the node type

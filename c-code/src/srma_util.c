@@ -127,6 +127,11 @@ bam_aln_t *bam_aln_init(bam1_t *bam, ref_t *ref)
 
 	aln_index = read_index = 0;
 	ref_index = bam->core.pos - ref->beg; // zero-based 
+	if(!(ref->beg <= bam->core.pos)) { // DEBUG
+            fprintf(stderr, "%d:%d-%d %d:%d\n",
+                    ref->tid, ref->beg, ref->end,
+                    bam->core.tid, bam->core.pos);
+        }
 	assert(ref->beg <= bam->core.pos); // DEBUG
 	for(i=0;i<bam->core.n_cigar;i++) {
 		op = bam1_cigar(bam)[i] & BAM_CIGAR_MASK; // operation
