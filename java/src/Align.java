@@ -561,7 +561,7 @@ public class Align {
         Object attr;
 
         // Debugging stuff
-        //String readName = rec.getReadName();
+        String readName = rec.getReadName();
 
         if(null == bestAlignHeapNode) {
             // Do not modify the alignment
@@ -609,7 +609,6 @@ public class Align {
         while(null != curAlignHeapNode) {
             // Get the current cigar operator
             if(null != prevAlignHeapNode && CigarOperator.DELETION != prevCigarOperator && 1 < Math.abs(curAlignHeapNode.node.position - prevAlignHeapNode.node.position)) {
-                //System.out.println("DEL");
                 curCigarOperator = CigarOperator.DELETION;
             }
             else {
@@ -635,7 +634,7 @@ public class Align {
                     }
                     // count the number of mismatches
                     switch(curAlignHeapNode.node.type) {
-                        case Node.MISMATCH: // Fall through
+                        case Node.MISMATCH: 
                         case Node.INSERTION:
                             numEdits++;
                             break;
@@ -646,9 +645,13 @@ public class Align {
                 else {
                     // count the number of mismatches
                     switch(curAlignHeapNode.node.type) {
+                        case Node.MATCH:
+                            if(read.charAt(curAlignHeapNode.readOffset) != curAlignHeapNode.node.base) { 
+                                numEdits++;
+                            }
+                            break;
                         case Node.MISMATCH: // Fall through
-                            // check if the current base matches the reference
-                            if(read.charAt(readIndex) != sequence.getBases()[curAlignHeapNode.node.position-1]) {
+                            if(read.charAt(curAlignHeapNode.readOffset) != sequence.getBases()[curAlignHeapNode.node.position-1]) {
                                 numEdits++;
                             }
                             break;
