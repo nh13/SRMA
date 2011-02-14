@@ -47,10 +47,10 @@ public class Align {
         String softClipEndQualities = null;
 
         // Debugging stuff
-        //String readName = rec.getReadName();
+        String readName = rec.getReadName();
 
         assert SRMAUtil.Space.COLORSPACE != space;
-
+        
         // Get space
         read = (String)rec.getAttribute("CS");
         if(null == read) {

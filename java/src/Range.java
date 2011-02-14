@@ -1,5 +1,7 @@
 package srma;
 
+import java.io.PrintStream;
+
 public class Range {
 
 	public int referenceIndex = -1;
@@ -13,5 +15,10 @@ public class Range {
 		this.startPosition = startPosition;
 		this.endPosition = endPosition;
 	}
+
+    public void print(PrintStream out)
+    {
+        out.println(this.referenceIndex + ":" + this.startPosition + "-" + this.endPosition);
+    }
 }
 

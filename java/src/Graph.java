@@ -41,6 +41,9 @@ public class Graph {
         int i, ref_i, offset, node_type, alignment_start, alignment_reference_index;
         Node prev=null, cur=null, ret=null;
         boolean strand = false;
+        
+        // DEBUG
+        //String readName = record.getReadName();
 
         alignment_start = record.getAlignmentStart();
         alignment_reference_index = record.getReferenceIndex();
@@ -126,7 +129,7 @@ public class Graph {
         if(strand) { // negative strand
             ret = cur;
         }
-
+        
         return ret;
     }
 
