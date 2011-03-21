@@ -108,11 +108,11 @@ static int32_t sw_align_bound(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap,
 		else {
 			if(strand) {
 				base = nt4bit_to_int[bam1_seqi(bam1_seq(b), b->core.l_qseq-1)];
-				qual = bam1_qual(b)[b->core.l_qseq-1];
+				qual = bam1_qual(b)[b->core.l_qseq-1] + 33;
 			}
 			else {
 				base = nt4bit_to_int[bam1_seqi(bam1_seq(b), 0)];
-				qual = bam1_qual(b)[0];
+				qual = bam1_qual(b)[0] + 33;
 			}
 		}
 		sw_node_i = sw_heap_get_node_i(heap);
@@ -174,11 +174,11 @@ static int32_t sw_align_bound(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap,
 				// do not use color space data for bounding
 				if(strand) {
 					base = nt4bit_to_int[bam1_seqi(bam1_seq(b), b->core.l_qseq-1-heap->nodes[sw_node_cur_i].read_offset-1)];
-					qual = bam1_qual(b)[b->core.l_qseq-1-heap->nodes[sw_node_cur_i].read_offset-1];
+					qual = bam1_qual(b)[b->core.l_qseq-1-heap->nodes[sw_node_cur_i].read_offset-1] + 33;
 				}
 				else {
 					base = nt4bit_to_int[bam1_seqi(bam1_seq(b), (heap->nodes[sw_node_cur_i].read_offset+1))];
-					qual = bam1_qual(b)[(heap->nodes[sw_node_cur_i].read_offset+1)];
+					qual = bam1_qual(b)[(heap->nodes[sw_node_cur_i].read_offset+1)] + 33;
 				}
 			}
 			//fprintf(stderr, "list->length=%d\n", list->length); // DEBUG
@@ -318,7 +318,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 		}
 		else {
 			base = nt4bit_to_int[bam1_seqi(bam1_seq(b), b->core.l_qseq-1)];
-			qual = bam1_qual(b)[b->core.l_qseq-1];
+			qual = bam1_qual(b)[b->core.l_qseq-1] + 33;
 		}
 		aln_start = bam_calend(&b->core, bam1_cigar(b));
 		for(i=aln_start+offset;aln_start-offset<=i;i--) {
@@ -352,7 +352,7 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 		}
 		else {
 			base = nt4bit_to_int[bam1_seqi(bam1_seq(b), 0)];
-			qual = bam1_qual(b)[0];
+			qual = bam1_qual(b)[0] + 33;
 		}
 		aln_start = b->core.pos;
 		for(i=aln_start-offset;i<=aln_start+offset;i++) {
@@ -440,11 +440,11 @@ bam1_t *sw_align(graph_t *g, bam1_t *b, node_t *n, sw_heap_t *heap, char *rg_id,
 				else {
 					if(strand) {
 						base = nt4bit_to_int[bam1_seqi(bam1_seq(b), b->core.l_qseq-1-heap->nodes[sw_node_cur_i].read_offset-1)];
-						qual = bam1_qual(b)[b->core.l_qseq-1-heap->nodes[sw_node_cur_i].read_offset-1];
+						qual = bam1_qual(b)[b->core.l_qseq-1-heap->nodes[sw_node_cur_i].read_offset-1] + 33;
 					}
 					else {
 						base = nt4bit_to_int[bam1_seqi(bam1_seq(b), (heap->nodes[sw_node_cur_i].read_offset+1))];
-						qual = bam1_qual(b)[(heap->nodes[sw_node_cur_i].read_offset+1)];
+						qual = bam1_qual(b)[(heap->nodes[sw_node_cur_i].read_offset+1)] + 33;
 					}
 				}
 			}
@@ -812,7 +812,7 @@ bam1_t *sw_align_update_bam(bam1_t *bam_old, char *rg_id, sw_heap_t *heap, int32
 			bam_aux_append(bam_new, "XO", 'Z', l+1, (uint8_t*)str);
 
 			for(i=0;i<l;i++) {
-				str[i] = bam1_qual(bam_old)[i];  
+				str[i] = bam1_qual(bam_old)[i] + 33;  
 			}
 			str[i] = '\0';
 			bam_aux_append(bam_new, "XQ", 'Z', l+1, (uint8_t*)str);
