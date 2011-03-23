@@ -173,11 +173,6 @@ public class SRMA extends CommandLineProgram {
             while(this.inputRangesIterator.hasNext()) {
                 Range inputRange = this.inputRangesIterator.next();
 
-                System.err.println("On Range "
-                        + inputRange.referenceIndex
-                        + ":" + inputRange.startPosition
-                        + "-" + inputRange.endPosition);
-
                 int prevReferenceIndex=-1;
                 int prevAlignmentStart=-1;
 
