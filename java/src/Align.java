@@ -36,7 +36,7 @@ public class Align {
         String readBases = null; // always nt
         String qualities=null; // could be cq
         SRMAUtil.Space space=SRMAUtil.Space.NTSPACE;
-        ListIterator<Node.NodeRecord> iter=null;
+        ListIterator<NodeRecord> iter=null;
         AlignHeapNodeComparator comp=null;
         int alignmentStart = -1;
         int numStartNodesAdded = 0;
@@ -341,7 +341,7 @@ public class Align {
                     iter = curAlignHeapNode.node.next.listIterator();
                 }
                 while(iter.hasNext()) {
-                    Node.NodeRecord next = iter.next();
+                    NodeRecord next = iter.next();
                     int f = passFilters(graph,
                             next.node,
                             next.coverage,
@@ -408,7 +408,7 @@ public class Align {
         AlignHeapNode curAlignHeapNode = null;
         AlignHeapNode nextAlignHeapNode = null;
         AlignHeapNode bestAlignHeapNode = null;
-        ListIterator<Node.NodeRecord> iter=null;
+        ListIterator<NodeRecord> iter=null;
         AlignHeap heap = null;
 
         // Cannot bound
@@ -484,7 +484,7 @@ public class Align {
 
                 // Get the expected next position in the alignment
                 while(iter.hasNext()) {
-                    Node.NodeRecord next = iter.next();
+                    NodeRecord next = iter.next();
 
                     // Base should match alignment
                     if(next.node.base == readBases.charAt(curAlignHeapNode.readOffset+1)) {

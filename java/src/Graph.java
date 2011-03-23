@@ -17,6 +17,7 @@ public class Graph {
     List<PriorityQueue<Node>> nodes; // zero based
     List<Integer> coverage; // does not count insertions with offset > 0
     NodeComparator nodeComparator; 
+    NodeRecordComparator nodeRecordComparator;
     private boolean isEmpty;
 
     public Graph()
@@ -27,6 +28,7 @@ public class Graph {
         this.nodes = new ArrayList<PriorityQueue<Node>>(); 
         this.coverage = new ArrayList<Integer>();
         this.nodeComparator = new NodeComparator();
+        this.nodeRecordComparator = new NodeRecordComparator();
         // Add two initial dummy elements
         this.nodes.add(new PriorityQueue<Node>(1, this.nodeComparator));
         this.coverage.add(new Integer(0));
@@ -126,7 +128,7 @@ public class Graph {
                         alignment_reference_index + 1,
                         alignment_start + ref_i,
                         prev,
-                        this.nodeComparator),
+                        this.nodeRecordComparator),
                     prev);
 
             // save return node
@@ -188,8 +190,8 @@ public class Graph {
         }
         // Update edges
         if(null != prev) {
-            curNode.addToPrev(prev, this.nodeComparator);
-            prev.addToNext(curNode, this.nodeComparator);
+            curNode.addToPrev(prev, this.nodeRecordComparator);
+            prev.addToNext(curNode, this.nodeRecordComparator);
         }
 
         return curNode;
@@ -308,7 +310,7 @@ public class Graph {
                             // Go through all nodes at this position etc.
                             nodeQueueIter = nodeQueue.iterator();
                             while(nodeQueueIter.hasNext()) {
-                                nodeQueueIter.next().removeLinks(this.nodeComparator);
+                                nodeQueueIter.next().removeLinks(this.nodeRecordComparator);
                             }
                         }
                     }
@@ -330,7 +332,7 @@ public class Graph {
                     // Go through all nodes at this position etc.
                     nodeQueueIter = nodeQueue.iterator();
                     while(nodeQueueIter.hasNext()) {
-                        nodeQueueIter.next().removeLinks(this.nodeComparator);
+                        nodeQueueIter.next().removeLinks(this.nodeRecordComparator);
                     }
                 }
             }

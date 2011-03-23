@@ -23,7 +23,7 @@ public class Node {
     List<NodeRecord> next; // downstram nodes
     List<NodeRecord> prev; // upstream nodes
 
-    public Node(char base, int type, int contig, int position, Node prev, NodeComparator nodeComparator)
+    public Node(char base, int type, int contig, int position, Node prev, NodeRecordComparator comparator)
         throws Exception
     {
         this.inUse = 1;
@@ -33,8 +33,8 @@ public class Node {
         this.position = position;
         this.offset = 0;
         this.coverage = 1;
-        this.next = new LinkedList<NodeRecord>();
-        this.prev = new LinkedList<NodeRecord>();
+        this.next = new ArrayList<NodeRecord>();
+        this.prev = new ArrayList<NodeRecord>();
         if(null != prev) {
             if(Node.INSERTION == prev.type && Node.INSERTION == this.type) {
                 this.offset = prev.offset + 1;
@@ -42,48 +42,45 @@ public class Node {
         }
     }
 
-    public void addToNext(Node node, NodeComparator nodeComparator)
+    public void addToNext(Node node, NodeRecordComparator comparator)
         throws Exception
     {
+        NodeRecord rec = null;
+        int index;
         if(null == node) {
             throw new Exception("addToNext: node was null!");
         }
-        
-        this.addToList(this.next.listIterator(), node, nodeComparator);
+        rec = new NodeRecord(node, 1);
+        index = Collections.binarySearch(this.next, rec, comparator);
+        if(0 <= index) { // exists
+            this.next.get(index).coverage++;
+        }
+        else {
+            // add it at the insertion point
+            this.next.add(-index - 1, rec);
+        }
     }
 
 
-    public void addToPrev(Node node, NodeComparator nodeComparator)
+    public void addToPrev(Node node, NodeRecordComparator comparator)
         throws Exception
     {
+        NodeRecord rec = null;
+        int index;
         if(null == node) {
             throw new Exception("addToPrev: node was null!");
         }
-        this.addToList(this.prev.listIterator(), node, nodeComparator);
+        index = Collections.binarySearch(this.prev, rec, comparator);
+        rec = new NodeRecord(node, 1);
+        if(0 <= index) { // exists
+            this.prev.get(index).coverage++;
+        }
+        else {
+            // add it at the insertion point
+            this.prev.add(-index - 1, rec);
+        }
     }
     
-    private void addToList(ListIterator<NodeRecord> iter, Node node, NodeComparator nodeComparator) 
-    {
-
-        while(iter.hasNext()) {
-            NodeRecord rec = iter.next();
-            Node curN = rec.node;
-            Integer curI = rec.coverage;
-            int comparison = nodeComparator.compare(curN, node);
-
-            if(0 == comparison) {
-                iter.set(new NodeRecord(curN, curI+1));
-                return;
-            }
-            else if(0 < comparison) {
-                // move back one
-                iter.previous();
-                break;
-            }
-        }
-        iter.add(new NodeRecord(node, 1));
-    }
-
     public void checkList(ListIterator<NodeRecord> iter, NodeComparator nodeComparator)
         throws Exception
     {
@@ -139,32 +136,31 @@ public class Node {
         this.print(System.out);
     }
 
-    private void removeFromList(ListIterator<NodeRecord> iter, Node node, NodeComparator nodeComparator)
+    private void removeFromList(List<NodeRecord> list, Node node, NodeRecordComparator comparator)
         throws Exception
     {
-        while(iter.hasNext()) {
-            NodeRecord nodeRecord= iter.next();
-            if(0 == nodeComparator.compare(nodeRecord.node, node)) {
-                iter.remove();
-                return;
-            }
+        int index = Collections.binarySearch(list, new NodeRecord(node, 1), comparator);
+        if(0 <= index) { // exists
+            list.remove(index);
         }
-        throw new Exception("Could not remove node");
+        else {
+            throw new Exception("Could not remove node");
+        }
     }
 
-    public void removeFromNext(Node node, NodeComparator nodeComparator)
+    public void removeFromNext(Node node, NodeRecordComparator comparator)
         throws Exception
     {
-        this.removeFromList(this.next.listIterator(), node, nodeComparator);
+        this.removeFromList(this.next, node, comparator);
     }
 
-    public void removeFromPrev(Node node, NodeComparator nodeComparator)
+    public void removeFromPrev(Node node, NodeRecordComparator comparator)
         throws Exception
     {
-        this.removeFromList(this.prev.listIterator(), node, nodeComparator);
+        this.removeFromList(this.prev, node, comparator);
     }
 
-    public void removeLinks(NodeComparator nodeComparator)
+    public void removeLinks(NodeRecordComparator comparator)
         throws Exception
     {
         ListIterator<NodeRecord> iter = null;
@@ -174,7 +170,7 @@ public class Node {
         while(iter.hasNext()) {
             NodeRecord nodeRecord = iter.next();
             // sever the link
-            nodeRecord.node.removeFromNext(this, nodeComparator);
+            nodeRecord.node.removeFromNext(this, comparator);
             // remove the node
             iter.remove();
         }
@@ -183,7 +179,7 @@ public class Node {
         while(iter.hasNext()) {
             NodeRecord nodeRecord = iter.next();
             // sever the link
-            nodeRecord.node.removeFromPrev(this, nodeComparator);
+            nodeRecord.node.removeFromPrev(this, comparator);
             // remove the node
             iter.remove();
         }
@@ -196,16 +192,5 @@ public class Node {
 
         // Clear the next list
         this.next.clear();
-    }
-
-    public class NodeRecord {
-        public Node node;
-        public int coverage;
-
-        public NodeRecord(Node node, int coverage) 
-        {
-            this.node = node;
-            this.coverage = coverage;
-        }
     }
 }
