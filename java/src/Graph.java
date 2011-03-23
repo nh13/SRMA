@@ -57,7 +57,11 @@ public class Graph {
         strand = record.getReadNegativeStrandFlag(); 
 
         synchronized (this) {
-            //System.err.println("HERE " + alignment_start + " " + this.position_start + ":" + this.position_end);
+            /*
+            System.err.println("HERE alignment_start=" + alignment_start 
+                    + " this.position_start=" + this.position_start 
+                    + " this.position_end=" + this.position_end);
+                    */
             //alignment.print(System.err);
             //System.err.println("Cigar=" + record.getCigar().toString());
             if(alignment_start < this.position_start) {
@@ -137,7 +141,7 @@ public class Graph {
         
         return ret;
     }
-
+    
     /* 
      * Adds the node to the graph.  Merges if the graph already
      * contains a similar node.
@@ -278,9 +282,10 @@ public class Graph {
         }
     }
 
-    public synchronized void prune(int referenceIndex, int alignmentStart, int offset)
+    public synchronized void prune(int referenceIndex, int alignmentStart, int offset, boolean removeLinks)
         throws Exception
     {
+        int i;
         boolean shouldClear = false;
         
         if(this.contig != referenceIndex+1) {
@@ -292,6 +297,21 @@ public class Graph {
                     shouldClear = true;
                 }
                 else {
+                    if(removeLinks) {
+                        for(i=0;i<alignmentStart-offset-this.position_start;i++) {
+                            PriorityQueue<Node> nodeQueue = null;
+                            Iterator<Node> nodeQueueIter = null;
+
+                            // get the node queue 
+                            nodeQueue = this.nodes.get(i);
+
+                            // Go through all nodes at this position etc.
+                            nodeQueueIter = nodeQueue.iterator();
+                            while(nodeQueueIter.hasNext()) {
+                                nodeQueueIter.next().removeLinks(this.nodeComparator);
+                            }
+                        }
+                    }
                     this.nodes = this.nodes.subList(alignmentStart - offset - this.position_start, this.nodes.size());
                     this.coverage = this.coverage.subList(alignmentStart - offset - this.position_start, this.coverage.size());
                     this.position_start = alignmentStart - offset;
@@ -299,6 +319,21 @@ public class Graph {
             }
         }
         if(shouldClear) {
+            if(removeLinks) {
+                for(i=0;i<this.nodes.size();i++) {
+                    PriorityQueue<Node> nodeQueue = null;
+                    Iterator<Node> nodeQueueIter = null;
+
+                    // get the node queue 
+                    nodeQueue = this.nodes.get(i);
+
+                    // Go through all nodes at this position etc.
+                    nodeQueueIter = nodeQueue.iterator();
+                    while(nodeQueueIter.hasNext()) {
+                        nodeQueueIter.next().removeLinks(this.nodeComparator);
+                    }
+                }
+            }
             this.nodes.clear();
             this.coverage.clear();
             this.contig = referenceIndex + 1;

@@ -59,6 +59,8 @@ public class SRMA extends CommandLineProgram {
         public int MAX_HEAP_SIZE = 8192;
     @Option(doc="The maximum number of SAM records in the queue before re-alignment", optional=true)
         public int MAX_QUEUE_SIZE = 65536;
+    @Option(doc="Turn on/off aggressive graph pruning", optional=true)
+        public boolean GRAPH_PRUNING = false;
     @Option(doc="The number of threads for parallel processing", optional=true)
         public int NUM_THREADS = 1;
 
@@ -205,42 +207,62 @@ public class SRMA extends CommandLineProgram {
                
                 if(null != rec) {
                     // do an initial prune
-                    this.graph.prune(rec.record.getReferenceIndex(), rec.record.getAlignmentStart(), 0);
+                    this.graph.prune(rec.record.getReferenceIndex(), rec.record.getAlignmentStart(), 0, this.GRAPH_PRUNING);
                 }
 
                 while(null != rec) {
                     if(rec.record.getReadUnmappedFlag() || rec.record.getNotPrimaryAlignmentFlag()) { 
                         // TODO
                         // Print this out somehow in some order somewhere
-                        rec = this.getNextAlignRecord();
-                        continue;
                     }
                     else if(rec.record.getMappingQuality() < MIN_MAPQ) {
                         // TODO
                         // Print this out somehow in some order somewhere
-                        rec = this.getNextAlignRecord();
-                        continue;
                     }
                     else {
+                        int curReferenceIndex = rec.record.getReferenceIndex();
+                        int curAlignmentStart = rec.record.getAlignmentStart();
+
                         // Make sure that it is sorted
-                        if(rec.record.getReferenceIndex() < prevReferenceIndex || (rec.record.getReferenceIndex() == prevReferenceIndex && rec.record.getAlignmentStart() < prevAlignmentStart)) {
+                        if(rec.record.getReferenceIndex() < prevReferenceIndex 
+                                || (rec.record.getReferenceIndex() == prevReferenceIndex 
+                                    && rec.record.getAlignmentStart() < prevAlignmentStart)) 
+                        {
                             throw new Exception("SAM/BAM file is not co-ordinate sorted.");
                         }
-                        prevReferenceIndex = rec.record.getReferenceIndex();
-                        prevAlignmentStart = rec.record.getAlignmentStart();
-                    }
 
-                    // process graph 
-                    if(this.MAX_QUEUE_SIZE <= this.toAddToGraphList.size()) {
-                        this.processToAddToGraphList();
-                    }
+                        // check if we should flush the previous records
+                        if(prevReferenceIndex != curReferenceIndex
+                                || prevAlignmentStart + OFFSET < curAlignmentStart) 
+                        {
+                            // process graph 
+                            this.processToAddToGraphList();
 
-                    // Add the current record to the graph list
-                    this.toAddToGraphList.add(rec);
+                            // process the current queue
+                            ctr = this.processToAlignList(ctr, true);
 
-                    // align
-                    if(this.MAX_QUEUE_SIZE <= this.toAlignList.size()) { 
-                        ctr = this.processToAlignList(ctr, false);
+                            // prune the graph
+                            this.graph.prune(curReferenceIndex,
+                                    curAlignmentStart,
+                                    this.OFFSET,
+                                    this.GRAPH_PRUNING);
+                        }
+
+                        prevReferenceIndex = curReferenceIndex;
+                        prevAlignmentStart = curAlignmentStart;
+                        
+                        // Add the current record to the graph list
+                        this.toAddToGraphList.add(rec);
+
+                        // process graph 
+                        if(this.MAX_QUEUE_SIZE <= this.toAddToGraphList.size()) {
+                            this.processToAddToGraphList();
+                        }
+
+                        // align
+                        if(this.MAX_QUEUE_SIZE <= this.toAlignList.size()) {
+                            ctr = this.processToAlignList(ctr, false);
+                        }
                     }
 
                     // get new record
@@ -305,7 +327,7 @@ public class SRMA extends CommandLineProgram {
         throws Exception
     {
         if(this.io.hasNextAlignRecord()) {
-            // HERE: if we have only a subsequence of a contig, we need to check bounds
+            // TODO if we have only a subsequence of a contig, we need to check bounds
             return this.io.getNextAlignRecord();
         }
         else {
@@ -351,7 +373,8 @@ public class SRMA extends CommandLineProgram {
                 // Move to a new contig
                 this.graph.prune(this.toAddToGraphList.getFirst().record.getReferenceIndex(),
                         this.toAddToGraphList.getFirst().record.getAlignmentStart(),
-                        0);
+                        0,
+                        this.GRAPH_PRUNING);
             }
 
             // Get the records for the threads 
@@ -486,10 +509,10 @@ public class SRMA extends CommandLineProgram {
                 if(null != lastSAMRecord) {
                     this.outputProgress(lastSAMRecord, ctr);
                     if(0 < toAlignList.size()) {
-                        this.graph.prune(toAlignList.getFirst().record.getReferenceIndex(), toAlignList.getFirst().record.getAlignmentStart(), this.OFFSET);
+                        this.graph.prune(toAlignList.getFirst().record.getReferenceIndex(), toAlignList.getFirst().record.getAlignmentStart(), this.OFFSET, this.GRAPH_PRUNING);
                     }
                     else {
-                        this.graph.prune(lastSAMRecord.getReferenceIndex(), lastSAMRecord.getAlignmentStart(), this.OFFSET);
+                        this.graph.prune(lastSAMRecord.getReferenceIndex(), lastSAMRecord.getAlignmentStart(), this.OFFSET, this.GRAPH_PRUNING);
                     }
                 }
             }

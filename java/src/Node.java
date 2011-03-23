@@ -13,6 +13,7 @@ public class Node {
     public static final int INSERTION   = 2; // into the read
     public static final int DELETION    = 3; // from the read
 
+    byte inUse = 0;
     char base; // [acgtnACGTN]
     int type;
     int contig;
@@ -25,6 +26,7 @@ public class Node {
     public Node(char base, int type, int contig, int position, Node prev, NodeComparator nodeComparator)
         throws Exception
     {
+        this.inUse = 1;
         this.base = base;
         this.type = type;
         this.contig = contig;
@@ -135,6 +137,56 @@ public class Node {
         throws Exception
     {
         this.print(System.out);
+    }
+
+    private void removeFromList(ListIterator<NodeRecord> iter, Node node, NodeComparator nodeComparator)
+        throws Exception
+    {
+        while(iter.hasNext()) {
+            NodeRecord nodeRecord= iter.next();
+            if(0 == nodeComparator.compare(nodeRecord.node, node)) {
+                iter.remove();
+                return;
+            }
+        }
+        throw new Exception("Could not remove node");
+    }
+
+    public void removeFromNext(Node node, NodeComparator nodeComparator)
+        throws Exception
+    {
+        this.removeFromList(this.next.listIterator(), node, nodeComparator);
+    }
+
+    public void removeFromPrev(Node node, NodeComparator nodeComparator)
+        throws Exception
+    {
+        this.removeFromList(this.prev.listIterator(), node, nodeComparator);
+    }
+
+    public void removeLinks(NodeComparator nodeComparator)
+        throws Exception
+    {
+        ListIterator<NodeRecord> iter = null;
+
+        // remove links in prev
+        iter = this.prev.listIterator();
+        while(iter.hasNext()) {
+            NodeRecord nodeRecord = iter.next();
+            // sever the link
+            nodeRecord.node.removeFromNext(this, nodeComparator);
+            // remove the node
+            iter.remove();
+        }
+        // remove links in next
+        iter = this.next.listIterator();
+        while(iter.hasNext()) {
+            NodeRecord nodeRecord = iter.next();
+            // sever the link
+            nodeRecord.node.removeFromPrev(this, nodeComparator);
+            // remove the node
+            iter.remove();
+        }
     }
 
     public void destroy()
