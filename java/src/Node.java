@@ -70,8 +70,8 @@ public class Node {
         if(null == node) {
             throw new Exception("addToPrev: node was null!");
         }
-        index = Collections.binarySearch(this.prev, rec, comparator);
         rec = new NodeRecord(node, 1);
+        index = Collections.binarySearch(this.prev, rec, comparator);
         if(0 <= index) { // exists
             this.prev.get(index).coverage++;
         }
