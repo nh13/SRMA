@@ -9,13 +9,14 @@ import srma.*;
 
 public class AlignHeap {
     public enum HeapType { MINHEAP, MAXHEAP }
+    private final static int INITIAL_SIZE = 1024;
 
     private HeapType type;
     private PriorityQueue<AlignHeapNode> queue;
 
     public AlignHeap(HeapType type)
     {
-        this.queue = new PriorityQueue<AlignHeapNode>(1, new AlignHeapNodeComparator(type));
+        this.queue = new PriorityQueue<AlignHeapNode>(INITIAL_SIZE, new AlignHeapNodeComparator(type));
         this.type = type;
     }
 

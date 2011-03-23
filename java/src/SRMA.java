@@ -69,6 +69,7 @@ public class SRMA extends CommandLineProgram {
 
     private final static int SRMA_OUTPUT_CTR = 100;
     private int maxOutputStringLength = 0;
+    private final static int SRMA_OFFSET_PROCESS = 100; // the number of extra offset bases until we should process the graph
 
     ReferenceSequenceFile referenceSequenceFile = null; 
     private ReferenceSequence referenceSequence = null;
@@ -234,7 +235,7 @@ public class SRMA extends CommandLineProgram {
 
                         // check if we should flush the previous records
                         if(prevReferenceIndex != curReferenceIndex
-                                || prevAlignmentStart + OFFSET < curAlignmentStart) 
+                                || prevAlignmentStart + this.OFFSET + this.SRMA_OFFSET_PROCESS < curAlignmentStart) 
                         {
                             // process graph 
                             this.processToAddToGraphList();
