@@ -112,7 +112,7 @@ public class Align {
         }
         if(readBases.length() != read.length()) {
             if(space == SRMAUtil.Space.COLORSPACE) {
-                throw new Exception("Error.  The current alignment's read bases length does not match the length of the colors in the CS tag.");
+                throw new Exception("Error.  The current alignment's read bases length does not match the length of the colors in the CS tag [" + rec.getReadName() + "].");
             }
             else {
                 throw new Exception("Error.  Internal error: readBases.length() != read.length()");
